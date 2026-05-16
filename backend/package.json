@@ -3,17 +3,35 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "dev": "nest start --watch",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "nest build",
     "start:prod": "node --env-file=.env.production dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\"",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@banex/types": "workspace:*",
+    "@banex/utils": "workspace:*",
     "@nestjs/common": "latest",
+    "@nestjs/config": "latest",
     "@nestjs/core": "latest",
     "@nestjs/platform-express": "latest",
+    "@prisma/client": "^5.22.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "decimal.js": "^10.4.3",
     "dotenv": "latest",
     "reflect-metadata": "latest",
     "rxjs": "latest"
@@ -30,10 +48,13 @@
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "prettier": "latest",
+    "prisma": "^5.22.0",
     "source-map-support": "latest",
     "ts-loader": "latest",
     "ts-node": "latest",
     "tsconfig-paths": "latest",
-    "typescript": "latest"
+    "tsx": "^4.19.0",
+    "typescript": "latest",
+    "vitest": "^2.1.0"
   }
 }

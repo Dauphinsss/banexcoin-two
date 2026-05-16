@@ -7,13 +7,17 @@
     "dev": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "typecheck": "astro check"
   },
   "dependencies": {
     "@astrojs/check": "latest",
     "@astrojs/react": "latest",
+    "@banex/types": "workspace:*",
+    "@banex/utils": "workspace:*",
     "@tailwindcss/vite": "latest",
     "astro": "latest",
+    "decimal.js": "^10.4.3",
     "react": "latest",
     "react-dom": "latest",
     "tailwindcss": "latest",

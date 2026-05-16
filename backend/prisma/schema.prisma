@@ -1,0 +1,206 @@
+// BanexReintegra — Prisma schema
+//
+// Reglas (ver CONVENTIONS.md sección 1):
+// - Todos los montos monetarios usan Decimal @db.Decimal(20, 8)
+// - Porcentajes: Decimal @db.Decimal(5, 2)
+// - Identificadores externos (Excel) viajan como String
+// - Audit trail obligatorio: createdAt, updatedAt
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================================================================
+// USUARIOS
+// =========================================================================
+
+model User {
+  id            Int             @id @default(autoincrement())
+  username      String          @unique
+  accountNumber Int             @unique
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  transactions  QRTransaction[]
+  rebates       MonthlyRebate[]
+
+  @@index([username])
+}
+
+// =========================================================================
+// UPLOADS (carga de archivos)
+// =========================================================================
+
+enum UploadStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+  SUPERSEDED
+}
+
+model Upload {
+  id              String          @id @default(cuid())
+  filename        String
+  fileHash        String          @unique
+  fileSizeBytes   Int
+  period          String?         // "2025-05"; nullable hasta que el parser lo infiera
+  status          UploadStatus    @default(PENDING)
+  rowCount        Int             @default(0)
+  errorMessage    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  transactions    QRTransaction[]
+  rebates         MonthlyRebate[]
+  anomalies       Anomaly[]
+  parseErrors     ParseError[]
+
+  @@index([period])
+  @@index([status])
+}
+
+// =========================================================================
+// TRANSACCIONES QR
+// =========================================================================
+
+model QRTransaction {
+  id                    String   @id @default(cuid())
+  uploadId              String
+  upload                Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  userId                Int
+  user                  User     @relation(fields: [userId], references: [id])
+
+  quoteNumber           Int?     // "Número de cotización"
+  transactionId         String   // "Transacción Id" — clave de conciliación
+  status                String   // "Completed", etc.
+  amountUSDT            Decimal  @db.Decimal(20, 8)
+  amountBOB             Decimal  @db.Decimal(20, 8)
+  exchangeRate          Decimal  @db.Decimal(20, 8)
+  commission            Decimal  @db.Decimal(20, 8) @default(0)
+  serviceCode           String   // "S-001"
+  transactedAt          DateTime
+  createdAt             DateTime @default(now())
+
+  reconciledWithExtract Boolean  @default(false)
+  extractMismatchNote   String?
+
+  // Un transactionId puede repetirse entre uploads (mismo mes recargado),
+  // pero no dentro del mismo upload.
+  @@unique([uploadId, transactionId])
+  @@index([transactionId])
+  @@index([userId])
+}
+
+// =========================================================================
+// NIVELES DE CASHBACK (versionados)
+// =========================================================================
+
+model CashbackTier {
+  id              Int       @id @default(autoincrement())
+  name            String
+  minAmountBOB    Decimal   @db.Decimal(20, 8)
+  maxAmountBOB    Decimal?  @db.Decimal(20, 8) // null = sin tope superior
+  rebatePercent   Decimal   @db.Decimal(5, 2)
+  active          Boolean   @default(true)
+  validFrom       DateTime
+  validTo         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  rebates         MonthlyRebate[]
+
+  @@index([active])
+  @@index([validFrom, validTo])
+}
+
+// =========================================================================
+// REINTEGROS MENSUALES
+// =========================================================================
+
+model MonthlyRebate {
+  id              String        @id @default(cuid())
+  uploadId        String
+  upload          Upload        @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User          @relation(fields: [userId], references: [id])
+  period          String        // "2025-05"
+
+  totalSpentBOB   Decimal       @db.Decimal(20, 8)
+  tierId          Int?
+  tier            CashbackTier? @relation(fields: [tierId], references: [id])
+  rebatePercent   Decimal       @db.Decimal(5, 2)
+  rebateUSDT      Decimal       @db.Decimal(20, 8)
+  rebateBOB       Decimal       @db.Decimal(20, 8)
+  avgExchangeRate Decimal       @db.Decimal(20, 8)
+  transactionCount Int
+
+  paidOut         Boolean       @default(false)
+  paidOutAt       DateTime?
+  paidOutBy       String?
+  supersededBy    String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([userId, period])
+  @@index([uploadId])
+  @@index([period])
+  @@index([tierId])
+}
+
+// =========================================================================
+// ANOMALÍAS DE CONCILIACIÓN
+// =========================================================================
+
+enum AnomalyType {
+  NO_EXTRACT
+  NO_QR
+  AMOUNT_MISMATCH
+  INVALID_RATE
+}
+
+model Anomaly {
+  id                String      @id @default(cuid())
+  uploadId          String
+  upload            Upload      @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  transactionId     String
+  type              AnomalyType
+  qrAmountBOB       Decimal?    @db.Decimal(20, 8)
+  extractAmountBOB  Decimal?    @db.Decimal(20, 8)
+  deltaBOB          Decimal?    @db.Decimal(20, 8)
+  qrRowNumber       Int?
+  extractRowNumber  Int?
+
+  resolved          Boolean     @default(false)
+  resolvedAt        DateTime?
+  resolvedBy        String?
+  resolvedNote      String?
+
+  createdAt         DateTime    @default(now())
+
+  @@index([uploadId, type])
+  @@index([transactionId])
+}
+
+// =========================================================================
+// ERRORES DE PARSEO (auditoría de filas inválidas)
+// =========================================================================
+
+model ParseError {
+  id          String   @id @default(cuid())
+  uploadId    String
+  upload      Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  sheetName   String
+  rowNumber   Int
+  message     String
+  rawSnippet  String?
+  createdAt   DateTime @default(now())
+
+  @@index([uploadId])
+}

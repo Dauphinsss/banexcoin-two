@@ -1,0 +1,34 @@
+{
+  "name": "banex-reintegra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de cashback automatizado para Banexcoin Bolivia",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:push": "bun run --cwd backend prisma:push",
+    "db:migrate": "bun run --cwd backend prisma:migrate",
+    "db:studio": "bun run --cwd backend prisma:studio",
+    "db:seed": "bun run --cwd backend prisma:seed",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.0"
+  },
+  "packageManager": "bun@1.1.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "bun": ">=1.1.0"
+  }
+}

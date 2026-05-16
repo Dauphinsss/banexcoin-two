@@ -22,6 +22,14 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,
     "strictBindCallApply": true,
-    "noFallthroughCasesInSwitch": true
-  }
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@banex/types": ["../packages/types/src/index.ts"],
+      "@banex/types/*": ["../packages/types/src/*"],
+      "@banex/utils": ["../packages/utils/src/index.ts"],
+      "@banex/utils/*": ["../packages/utils/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "prisma"]
 }
