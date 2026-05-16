@@ -3,10 +3,11 @@ name: Deploy NestJS to EC2
 on:
   push:
     branches: [ "main" ] # El despliegue correrá cada vez que envíes cambios a la rama main
+
 env:
   AWS_REGION: sa-east-1                      # Configurado para São Paulo (tu servidor)
-  ECR_REPOSITORY: hackaton/backend           # El nombre exacto que le diste a tu repositorio en AWS ECR
-  EC2_USER: ubuntu                           # Usuario por 
+  ECR_REPOSITORY: hackaton/backend           # El nombre exacto de tu repositorio en AWS ECR
+  EC2_USER: ubuntu                           # Usuario por defecto para servidores Ubuntu en AWS
 
 jobs:
   build-and-ship:
@@ -32,7 +33,7 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: latest
       run: |
-        # Corregido: Apuntamos a la raíz para que resuelva los workspaces
+        # Manteniendo tu corrección para resolver workspaces desde la raíz
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f backend/Dockerfile .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
@@ -51,7 +52,7 @@ jobs:
           if ! command -v aws &> /dev/null; then sudo apt-get update && sudo apt-get install awscli -y; fi
           
           # Autenticar Docker dentro de tu EC2 con AWS ECR
-          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+          aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
           
           # Detener y remover el contenedor viejo si ya existiera
           docker stop nestjs_api || true
