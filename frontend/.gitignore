@@ -5,3 +5,5 @@ dist
 .env.*
 !.env.example
 bun.lockb
+playwright-report
+test-results

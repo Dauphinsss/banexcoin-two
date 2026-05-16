@@ -4,6 +4,7 @@ Guía corta para levantar el proyecto y probarlo rápido.
 
 ## Requisitos
 
+- `node` 22.12+
 - `bun` 1.1+
 - `git`
 - `docker` solo si luego quieres Redis para BullMQ
@@ -102,6 +103,7 @@ bun run db:studio
 ```bash
 bun run --cwd backend test
 bun run --cwd packages/utils test
+bun run --cwd frontend test:e2e
 ```
 
 ## Reset rápido
