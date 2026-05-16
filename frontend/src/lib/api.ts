@@ -3,6 +3,7 @@ import type {
   CashbackTierDTO,
   CreateUploadResponse,
   MonthlyRebateDTO,
+  QRTransactionDTO,
   ReconciliationStats,
   UploadSummary,
 } from '@banex/types'
@@ -89,5 +90,20 @@ export const api = {
   async listAnomalies(uploadId: string): Promise<AnomalyDTO[]> {
     const res = await fetch(`${API_BASE}/api/reconciliation/anomalies?uploadId=${encodeURIComponent(uploadId)}`)
     return handleResponse<AnomalyDTO[]>(res)
+  },
+
+  async resolveAnomaly(anomalyId: string, note?: string): Promise<AnomalyDTO> {
+    const res = await fetch(`${API_BASE}/api/reconciliation/anomalies/${encodeURIComponent(anomalyId)}/resolve`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note }),
+    })
+    return handleResponse<AnomalyDTO>(res)
+  },
+
+  async listUserTransactions(uploadId: string, accountNumber: string | number): Promise<QRTransactionDTO[]> {
+    const account = encodeURIComponent(String(accountNumber))
+    const res = await fetch(`${API_BASE}/api/uploads/${uploadId}/users/${account}/transactions`)
+    return handleResponse<QRTransactionDTO[]>(res)
   },
 }
