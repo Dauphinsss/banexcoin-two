@@ -64,4 +64,12 @@ export class UploadsController {
   async transactionsMinimal(@Param('id') id: string) {
     return this.uploads.listMinimalTransactions(id)
   }
+
+  @Get(':id/users/:accountNumber/transactions')
+  async userTransactions(
+    @Param('id') id: string,
+    @Param('accountNumber') accountNumber: string,
+  ) {
+    return this.uploads.listUserTransactions(id, accountNumber)
+  }
 }

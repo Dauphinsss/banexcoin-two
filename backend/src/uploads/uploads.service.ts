@@ -241,6 +241,41 @@ export class UploadsService {
     }))
   }
 
+  async listUserTransactions(uploadId: string, accountNumber: string) {
+    await this.ensureUpload(uploadId)
+
+    const transactions = await this.prisma.ledgerTransaction.findMany({
+      where: {
+        uploadId,
+        serviceCode: 'S-001',
+        userAccount: { accountNumber },
+      },
+      include: {
+        userAccount: { select: { accountNumber: true, username: true } },
+      },
+      orderBy: { transactedAt: 'asc' },
+    })
+
+    type Row = (typeof transactions)[number]
+
+    return transactions.map((tx: Row) => ({
+      id: tx.id,
+      uploadId: tx.uploadId,
+      userId: Number(tx.userAccount?.accountNumber ?? 0),
+      username: tx.userAccount?.username ?? tx.userAccount?.accountNumber ?? '',
+      accountNumber: Number(tx.userAccount?.accountNumber ?? 0),
+      transactionId: tx.transactionId,
+      status: tx.status ?? 'Unknown',
+      amountUSDT: tx.amountUSDT?.toString() ?? '0',
+      amountBOB: tx.amountBOB?.toString() ?? '0',
+      exchangeRate: tx.exchangeRate?.toString() ?? '0',
+      commission: tx.feeBOB?.toString() ?? '0',
+      transactedAt: tx.transactedAt?.toISOString() ?? '',
+      reconciledWithExtract: tx.reconciledWithExtract ?? false,
+      extractMismatch: null,
+    }))
+  }
+
   async listMinimalTransactions(uploadId: string) {
     await this.ensureUpload(uploadId)
 
