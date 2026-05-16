@@ -1,17 +1,17 @@
 ---
 import AppShell from '../layouts/AppShell.astro'
-import { TiersList } from '../islands/tiers/TiersList'
+import { TiersEditor } from '../islands/tiers/TiersEditor'
 ---
 
 <AppShell title="Niveles" activePage="tiers">
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold tracking-tight text-slate-100">Configuración de niveles</h2>
-      <p class="mt-2 max-w-2xl text-sm text-slate-400">
+      <h2 class="text-xl font-semibold tracking-tight text-main">Configuración de niveles</h2>
+      <p class="mt-2 max-w-2xl text-sm text-muted">
         Tiers activos que el motor usa para calcular el cashback mensual.
       </p>
     </div>
 
-    <TiersList client:load />
+    <TiersEditor client:load />
   </div>
 </AppShell>

@@ -50,7 +50,7 @@ jobs:
   fullstack:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: file:./playwright.db
+      DATABASE_URL: ${{ secrets.DATABASE_URL || vars.DATABASE_URL }}
       NODE_ENV: test
       CORS_ORIGIN: http://127.0.0.1:4321
       PUBLIC_API_URL: http://127.0.0.1:3000

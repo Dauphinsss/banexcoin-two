@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
+import { CircleCheck, X } from 'lucide-react'
 import type { AnomalyDTO, ReconciliationStats, UploadSummary } from '@banex/types'
 import { api, ApiCallError } from '../../lib/api'
 
@@ -17,6 +18,8 @@ export function AnomalyPanel(): JSX.Element {
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [resolving, setResolving] = useState<string | null>(null)
   const [resolveNote, setResolveNote] = useState('')
+  const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [aiText, setAiText] = useState<string>('')
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(
     null,
   )
@@ -77,6 +80,26 @@ export function AnomalyPanel(): JSX.Element {
     }
   }
 
+  const handleExplain = async (): Promise<void> => {
+    if (!upload) return
+    setAiStatus('loading')
+    setAiText('')
+    try {
+      const result = await api.explainAnomalies(upload.id)
+      setAiText(result.explanation)
+      setAiStatus(result.available ? 'done' : 'error')
+    } catch (error) {
+      const message =
+        error instanceof ApiCallError
+          ? error.payload.message
+          : error instanceof Error
+            ? error.message
+            : 'No se pudo generar la explicación.'
+      setAiText(message)
+      setAiStatus('error')
+    }
+  }
+
   const exportCSV = (): void => {
     const csv = buildAnomaliesCSV(filtered)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -91,38 +114,79 @@ export function AnomalyPanel(): JSX.Element {
     URL.revokeObjectURL(url)
   }
 
-  if (status === 'loading') return <p className="text-sm text-slate-400">Cargando conciliación...</p>
-  if (status === 'empty') return <p className="text-sm text-slate-300">Procesa un Excel para ver anomalías.</p>
-  if (status === 'error') return <p className="text-sm text-red-300">No se pudo cargar la conciliación.</p>
+  if (status === 'loading') return <p className="text-sm text-muted">Cargando conciliación...</p>
+  if (status === 'empty') return <p className="text-sm text-muted">Procesa un Excel para ver anomalías.</p>
+  if (status === 'error') return <p className="text-sm text-danger">No se pudo cargar la conciliación.</p>
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
         <div>
-          <p className="text-sm text-slate-400">Upload conciliado</p>
-          <h2 className="mt-1 text-base font-semibold text-slate-100">{upload?.filename}</h2>
+          <p className="text-sm text-muted">Upload conciliado</p>
+          <h2 className="mt-1 text-base font-semibold text-main">{upload?.filename}</h2>
         </div>
         <div className="flex items-center gap-3">
-          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-mono text-sm text-emerald-200">
+          <div className="rounded-md border border-success-muted bg-success-soft px-3 py-2 font-mono text-sm text-success">
             {stats?.reconciliationRate ?? '0.00'}% conciliado
           </div>
           <button
             type="button"
+            onClick={() => void handleExplain()}
+            disabled={aiStatus === 'loading' || (stats?.total ?? 0) === 0}
+            className="h-10 px-4 rounded-md border border-blue-500/40 bg-blue-500/10 text-sm text-blue-100 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {aiStatus === 'loading' ? (
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-transparent" />
+                Analizando...
+              </span>
+            ) : (
+              'Explicar con IA ✦'
+            )}
+          </button>
+          <button
+            type="button"
             onClick={exportCSV}
             disabled={filtered.length === 0}
-            className="h-10 px-4 rounded-md border border-slate-700 bg-slate-900 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-10 px-4 rounded-md border border-line-strong bg-panel-solid text-sm text-soft hover-bg-chart-track disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Exportar CSV
           </button>
         </div>
       </div>
 
+      {aiStatus === 'done' || aiStatus === 'error' ? (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm animate-[fadeIn_400ms_ease-out] ${
+            aiStatus === 'error'
+              ? 'border-red-500/40 bg-red-500/10 text-red-200'
+              : 'border-blue-500/40 bg-blue-500/10 text-blue-100'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-blue-300/70">
+                {aiStatus === 'error' ? 'IA no disponible' : 'Explicación de IA ✦'}
+              </p>
+              <p className="mt-1 leading-relaxed">{aiText}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAiStatus('idle')}
+              className="text-current opacity-60 hover:opacity-100"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {feedback ? (
         <div
           className={`rounded-md border px-4 py-2 text-sm ${
             feedback.kind === 'error'
-              ? 'border-red-500/40 bg-red-500/10 text-red-200'
-              : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+              ? 'border-danger-soft bg-danger-soft text-danger'
+              : 'border-success-soft bg-success-soft text-success'
           }`}
         >
           <div className="flex items-center justify-between gap-3">
@@ -131,8 +195,9 @@ export function AnomalyPanel(): JSX.Element {
               type="button"
               onClick={() => setFeedback(null)}
               className="text-current opacity-60 hover:opacity-100"
+              aria-label="Cerrar mensaje"
             >
-              ×
+              <X className="size-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -145,9 +210,9 @@ export function AnomalyPanel(): JSX.Element {
         <Badge label="Monto distinto" value={stats?.amountMismatch ?? 0} active={type === 'AMOUNT_MISMATCH'} onClick={() => setType('AMOUNT_MISMATCH')} tone="orange" />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-800">
-        <table className="min-w-full divide-y divide-slate-800 text-sm">
-          <thead className="bg-slate-950 text-left text-xs uppercase tracking-widest text-slate-500">
+      <div className="overflow-hidden rounded-lg border border-line">
+        <table className="min-w-full divide-y divide-line text-sm">
+          <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
             <tr>
               <th className="px-4 py-3">Tipo</th>
               <th className="px-4 py-3">Transacción</th>
@@ -158,44 +223,47 @@ export function AnomalyPanel(): JSX.Element {
               <th className="px-4 py-3 text-right">Acción</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-900 bg-slate-900/30">
+          <tbody className="divide-y divide-line-dark bg-panel-muted">
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-400" colSpan={7}>
+                <td className="px-4 py-8 text-center text-muted" colSpan={7}>
                   No hay anomalías para este filtro.
                 </td>
               </tr>
             ) : (
               filtered.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-800/40 align-top">
-                  <td className="px-4 py-3 text-slate-200">{labels[row.type]}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{row.transactionId}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
+                <tr key={row.id} className="hover-bg-panel-hover-soft align-top">
+                  <td className="px-4 py-3 text-soft">{labels[row.type]}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted">{row.transactionId}</td>
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-muted">
                     {row.qrAmountBOB ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-muted">
                     {row.extractAmountBOB ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-amber-200">
+                  <td className="px-4 py-3 text-right font-mono tabular-nums text-warning">
                     {row.deltaBOB ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-slate-300">
+                  <td className="px-4 py-3 text-muted">
                     {row.resolved ? (
-                      <span className="text-emerald-300 text-xs">
-                        ✓ Resuelta
+                      <span className="inline-flex items-start gap-1 text-success-strong text-xs">
+                        <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                        <span>
+                          Resuelta
                         {row.resolvedNote ? (
-                          <span className="block font-mono text-slate-500 text-[11px] truncate max-w-[200px]" title={row.resolvedNote}>
+                          <span className="block font-mono text-faint text-[11px] truncate max-w-[200px]" title={row.resolvedNote}>
                             "{row.resolvedNote}"
                           </span>
                         ) : null}
+                        </span>
                       </span>
                     ) : (
-                      <span className="text-amber-200 text-xs">Pendiente</span>
+                      <span className="text-warning text-xs">Pendiente</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {row.resolved ? (
-                      <span className="text-xs text-slate-500">—</span>
+                      <span className="text-xs text-faint">—</span>
                     ) : resolving === row.id ? (
                       <div className="flex flex-col gap-2 items-end">
                         <input
@@ -204,7 +272,7 @@ export function AnomalyPanel(): JSX.Element {
                           value={resolveNote}
                           onChange={(e) => setResolveNote(e.target.value)}
                           placeholder="Motivo (opcional)"
-                          className="w-48 h-8 rounded-md border border-slate-700 bg-slate-950 px-2 text-xs text-slate-100 outline-none focus:border-blue-500"
+                          className="w-48 h-8 rounded-md border border-line-strong bg-app px-2 text-xs text-main outline-none focus-border-brand"
                         />
                         <div className="flex gap-1">
                           <button
@@ -213,14 +281,14 @@ export function AnomalyPanel(): JSX.Element {
                               setResolving(null)
                               setResolveNote('')
                             }}
-                            className="px-2 h-7 text-xs text-slate-300 hover:text-slate-100"
+                            className="px-2 h-7 text-xs text-muted hover-text-main"
                           >
                             Cancelar
                           </button>
                           <button
                             type="button"
                             onClick={() => void handleResolve(row.id)}
-                            className="px-2 h-7 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-500"
+                            className="px-2 h-7 text-xs rounded bg-success text-inverse hover-bg-success-hover"
                           >
                             Confirmar
                           </button>
@@ -234,7 +302,7 @@ export function AnomalyPanel(): JSX.Element {
                           setResolveNote('')
                           setFeedback(null)
                         }}
-                        className="text-xs text-blue-400 hover:text-blue-300"
+                        className="text-xs text-brand hover-text-brand-soft"
                       >
                         Marcar resuelta
                       </button>
@@ -264,10 +332,10 @@ function Badge({
   tone?: 'default' | 'red' | 'amber' | 'orange'
 }): JSX.Element {
   const toneClasses: Record<typeof tone, string> = {
-    default: active ? 'border-blue-500/50 bg-blue-500/15' : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/50',
-    red: active ? 'border-red-500/50 bg-red-500/15' : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/50',
-    amber: active ? 'border-amber-500/50 bg-amber-500/15' : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/50',
-    orange: active ? 'border-orange-500/50 bg-orange-500/15' : 'border-slate-800 bg-slate-900/40 hover:bg-slate-800/50',
+    default: active ? 'border-brand-active bg-brand-selected' : 'border-line bg-panel hover-bg-panel-hover-soft',
+    red: active ? 'border-danger-active bg-danger-selected' : 'border-line bg-panel hover-bg-panel-hover-soft',
+    amber: active ? 'border-warning-active bg-warning-selected' : 'border-line bg-panel hover-bg-panel-hover-soft',
+    orange: active ? 'border-orange-active bg-orange-selected' : 'border-line bg-panel hover-bg-panel-hover-soft',
   }
   return (
     <button
@@ -275,8 +343,8 @@ function Badge({
       type="button"
       onClick={onClick}
     >
-      <p className="text-xs uppercase tracking-widest text-slate-500">{label}</p>
-      <p className="mt-2 font-mono text-2xl font-semibold text-slate-100 tabular-nums">{value}</p>
+      <p className="text-xs uppercase tracking-widest text-faint">{label}</p>
+      <p className="mt-2 font-mono text-2xl font-semibold text-main tabular-nums">{value}</p>
     </button>
   )
 }

@@ -117,6 +117,6 @@ banexcoin-two/
 - ✅ **F0.1** Monorepo Bun + Turborepo con workspaces.
 - ✅ **F0.2** SQLite local para datos y Docker Compose opcional para Redis 7.
 - ✅ **F0.3** Prisma schema completo (User, Upload, QRTransaction, CashbackTier, MonthlyRebate, Anomaly, ParseError) con `Decimal` en todos los montos.
-- ✅ **F0.4** `tier-engine` puro en `packages/utils` con tests Vitest (asignación de niveles, promedio ponderado, casos borde, volumen 5.000 filas).
+- ✅ **F0.4** `tier-engine` puro en `packages/utils` con tests Vitest (asignación de niveles, T/C histórico auditado, casos borde, volumen 5.000 filas).
 
 **Siguiente etapa:** [F1 Ingesta](FEATURES.md#f1--ingesta) — upload, parser, idempotencia.

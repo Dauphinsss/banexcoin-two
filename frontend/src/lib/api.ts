@@ -7,6 +7,24 @@ import type {
   ReconciliationStats,
   UploadSummary,
 } from '@banex/types'
+import type { TierValidationOutput } from '@banex/utils'
+
+export interface TierInput {
+  id?: string
+  level: number
+  name: string
+  minAmountBOB: string
+  maxAmountBOB?: string | null
+  rebatePercent: string
+}
+
+export interface CreateTierPayload extends TierInput {
+  validFromPeriod: string
+  validToPeriod?: string | null
+  active?: boolean
+}
+
+export type UpdateTierPayload = Partial<CreateTierPayload>
 
 const API_BASE = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
@@ -82,9 +100,57 @@ export const api = {
     return handleResponse<CashbackTierDTO[]>(res)
   },
 
+  async listTiersHistory(): Promise<CashbackTierDTO[]> {
+    const res = await fetch(`${API_BASE}/api/tiers/history`)
+    return handleResponse<CashbackTierDTO[]>(res)
+  },
+
+  async createTier(payload: CreateTierPayload): Promise<CashbackTierDTO> {
+    const res = await fetch(`${API_BASE}/api/tiers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse<CashbackTierDTO>(res)
+  },
+
+  async updateTier(id: string, payload: UpdateTierPayload): Promise<CashbackTierDTO> {
+    const res = await fetch(`${API_BASE}/api/tiers/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse<CashbackTierDTO>(res)
+  },
+
+  async deactivateTier(id: string): Promise<CashbackTierDTO> {
+    const res = await fetch(`${API_BASE}/api/tiers/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    })
+    return handleResponse<CashbackTierDTO>(res)
+  },
+
+  async validateTiers(tiers: TierInput[]): Promise<TierValidationOutput> {
+    const res = await fetch(`${API_BASE}/api/tiers/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tiers }),
+    })
+    return handleResponse<TierValidationOutput>(res)
+  },
+
   async reconciliationStats(uploadId: string): Promise<ReconciliationStats> {
     const res = await fetch(`${API_BASE}/api/reconciliation/stats?uploadId=${encodeURIComponent(uploadId)}`)
     return handleResponse<ReconciliationStats>(res)
+  },
+
+  async explainAnomalies(
+    uploadId: string,
+  ): Promise<{ available: boolean; cached: boolean; explanation: string }> {
+    const res = await fetch(
+      `${API_BASE}/api/reconciliation/explain?uploadId=${encodeURIComponent(uploadId)}`,
+    )
+    return handleResponse(res)
   },
 
   async listAnomalies(uploadId: string): Promise<AnomalyDTO[]> {

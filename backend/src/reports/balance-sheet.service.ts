@@ -203,7 +203,7 @@ export class BalanceSheetService {
         code,
         name,
         kind,
-        found: services.has(code) ? '✓ Sí' : '— No',
+        found: services.has(code) ? 'Si' : 'No',
       })
     }
 

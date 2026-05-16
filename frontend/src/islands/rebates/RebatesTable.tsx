@@ -101,30 +101,30 @@ export function RebatesTable(): JSX.Element {
     URL.revokeObjectURL(url)
   }
 
-  if (status === 'loading') return <p className="text-sm text-slate-400">Cargando reintegros...</p>
+  if (status === 'loading') return <p className="text-sm text-muted">Cargando reintegros...</p>
   if (status === 'empty') return <EmptyState />
-  if (status === 'error') return <p className="text-sm text-red-300">No se pudieron cargar los reintegros.</p>
+  if (status === 'error') return <p className="text-sm text-danger">No se pudieron cargar los reintegros.</p>
 
   return (
     <>
       <div className="space-y-4">
         <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
           <div>
-            <p className="text-sm text-slate-400">Último upload procesado</p>
-            <h2 className="mt-1 text-base font-semibold text-slate-100">{upload?.filename}</h2>
-            <p className="text-xs text-slate-500 font-mono mt-1">
+            <p className="text-sm text-muted">Último upload procesado</p>
+            <h2 className="mt-1 text-base font-semibold text-main">{upload?.filename}</h2>
+            <p className="text-xs text-faint font-mono mt-1">
               {filteredSorted.length} de {rebates.length} reintegros
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
-              className="h-10 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none focus:border-blue-500"
+              className="h-10 rounded-md border border-line-strong bg-app px-3 text-sm text-main outline-none focus-border-brand"
               placeholder="Buscar usuario o cuenta"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
             <select
-              className="h-10 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none focus:border-blue-500"
+              className="h-10 rounded-md border border-line-strong bg-app px-3 text-sm text-main outline-none focus-border-brand"
               value={tier}
               onChange={(event) => setTier(event.target.value)}
             >
@@ -138,7 +138,7 @@ export function RebatesTable(): JSX.Element {
               type="button"
               onClick={exportCSV}
               disabled={filteredSorted.length === 0}
-              className="h-10 px-4 rounded-md border border-slate-700 bg-slate-900 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-10 px-4 rounded-md border border-line-strong bg-panel-solid text-sm text-soft hover-bg-chart-track disabled:opacity-40 disabled:cursor-not-allowed"
               title={`Exportar ${filteredSorted.length} filas a CSV`}
             >
               Exportar CSV
@@ -146,10 +146,10 @@ export function RebatesTable(): JSX.Element {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-slate-800">
+        <div className="overflow-hidden rounded-lg border border-line">
           <div className="max-h-[620px] overflow-auto">
-            <table className="min-w-full divide-y divide-slate-800 text-sm">
-              <thead className="sticky top-0 bg-slate-950 text-left text-xs uppercase tracking-widest text-slate-500 z-10">
+            <table className="min-w-full divide-y divide-line text-sm">
+              <thead className="sticky top-0 bg-app text-left text-xs uppercase tracking-widest text-faint z-10">
                 <tr>
                   <SortHeader label="Usuario" sortKey="username" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Total BOB" sortKey="totalSpentBOB" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
@@ -160,10 +160,10 @@ export function RebatesTable(): JSX.Element {
                   <SortHeader label="Tx" sortKey="transactionCount" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-900 bg-slate-900/30">
+              <tbody className="divide-y divide-line-dark bg-panel-muted">
                 {filteredSorted.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-8 text-center text-slate-400" colSpan={7}>
+                    <td className="px-4 py-8 text-center text-muted" colSpan={7}>
                       No hay reintegros que coincidan con los filtros.
                     </td>
                   </tr>
@@ -171,31 +171,31 @@ export function RebatesTable(): JSX.Element {
                   filteredSorted.map((row) => (
                     <tr
                       key={row.id}
-                      className="hover:bg-slate-800/60 cursor-pointer"
+                      className="hover-bg-panel-hover cursor-pointer"
                       onClick={() => setSelected(row)}
                     >
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-100">{row.username}</div>
-                        <div className="font-mono text-xs text-slate-500">{row.userId}</div>
+                        <div className="font-medium text-main">{row.username}</div>
+                        <div className="font-mono text-xs text-faint">{row.userId}</div>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-200">
+                      <td className="px-4 py-3 text-right font-mono tabular-nums text-soft">
                         {formatBOB(row.totalSpentBOB)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs text-blue-200">
+                        <span className="rounded-md border border-brand-muted bg-brand-soft px-2 py-1 text-xs text-brand-soft">
                           {row.tierName ?? 'Sin nivel'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-200">
+                      <td className="px-4 py-3 text-right font-mono tabular-nums text-soft">
                         {formatPercent(row.rebatePercent)}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-emerald-200">
+                      <td className="px-4 py-3 text-right font-mono tabular-nums text-success">
                         {formatUSDT(row.rebateUSDT)}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
+                      <td className="px-4 py-3 text-right font-mono tabular-nums text-muted">
                         {formatRate(row.avgExchangeRate)}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
+                      <td className="px-4 py-3 text-right font-mono tabular-nums text-muted">
                         {row.transactionCount}
                       </td>
                     </tr>
@@ -240,8 +240,8 @@ const SortHeader = ({
       <button
         type="button"
         onClick={() => onSort(key)}
-        className={`inline-flex items-center gap-1 hover:text-slate-200 ${
-          isActive ? 'text-slate-200' : ''
+        className={`inline-flex items-center gap-1 hover-text-soft ${
+          isActive ? 'text-soft' : ''
         }`}
       >
         {label}
@@ -253,10 +253,10 @@ const SortHeader = ({
 
 function EmptyState(): JSX.Element {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-6">
-      <p className="text-sm text-slate-300">Procesa un Excel para ver la tabla de reintegros.</p>
+    <div className="rounded-lg border border-line bg-panel p-6">
+      <p className="text-sm text-muted">Procesa un Excel para ver la tabla de reintegros.</p>
       <a
-        className="mt-4 inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+        className="mt-4 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-medium text-inverse hover-bg-brand-hover"
         href="/uploads/new"
       >
         Subir Excel

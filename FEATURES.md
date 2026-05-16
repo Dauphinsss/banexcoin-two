@@ -105,7 +105,7 @@ Función pura `calculateRebates(input): RebateResult[]` con `decimal.js`. Reutil
 **Aceptación:**
 - No importa nada de Nest, Astro ni React
 - Recibe strings, devuelve strings (precisión decimal)
-- 15+ tests Vitest cubren: cada nivel, fronteras, promedio ponderado, configuración vacía
+- 15+ tests Vitest cubren: cada nivel, fronteras, T/C histórico auditado, configuración vacía
 
 **Dependencias:** —
 
@@ -232,16 +232,16 @@ Carga tiers activos del período, agrupa transacciones por usuario, llama a `cal
 
 **Dependencias:** F0.4, F2.1, F1.3
 
-### F2.3 · Promedio ponderado de tipo de cambio
+### F2.3 · Tipo de cambio histórico auditado
 
 - **Prio:** P1 · **Esfuerzo:** S · **Premio:** Innovación + Empresarial
 - **FLOW ref:** sección 4.6 (innovación #5)
 - **Módulo:** `packages/utils/src/tier-engine.ts`
 
-Cálculo: `Σ(amountBOB × exchangeRate) / Σ(amountBOB)` por usuario.
+Cálculo: `Σ(amountBOB) / Σ(amountUSDT)` por usuario. El `amountUSDT` sale de `Monto intercambio`, no de una consulta externa ni de una tasa del día.
 
 **Aceptación:**
-- Test específico con 3 transacciones a tasas distintas verifica el resultado
+- Test específico verifica que el resultado se deduce de los montos históricos BOB/USDT
 - El `RebateResult` incluye `avgExchangeRate` como string
 
 **Dependencias:** F0.4
@@ -699,7 +699,7 @@ Seed con 5 tiers + admin user. El Excel real se carga en la demo, no se hardcode
 | F1.3 ParseAgent Pago QR | ● | | | | |
 | F1.4 ParseAgent Extracto | | | | | ● |
 | F1.5 UploadDropzone | | | ● | ● | |
-| F2.3 promedio ponderado T/C | ● | | | | ● |
+| F2.3 T/C histórico auditado | ● | | | | ● |
 | F2.4 validación niveles | ● | | | | |
 | F3.1 ReconcileAgent | ● | | ● | | ● |
 | F4.3 PersistenceAgent | ● | | | | |

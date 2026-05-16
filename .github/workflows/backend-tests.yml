@@ -10,7 +10,7 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: file:./ci.db
+      DATABASE_URL: ${{ secrets.DATABASE_URL || vars.DATABASE_URL }}
       NODE_ENV: test
 
     steps:
@@ -32,6 +32,9 @@ jobs:
 
       - name: Generate Prisma client
         run: bun run db:generate
+
+      - name: Push database schema
+        run: bun run db:push
 
       - name: Build shared packages
         run: bun run build:shared

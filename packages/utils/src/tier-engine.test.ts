@@ -106,7 +106,7 @@ describe('calculateRebates', () => {
       expect(result[0]?.rebateBOB).toBe('15.00')
     })
 
-    it('convierte BOB a USDT usando el promedio ponderado de tipo de cambio', () => {
+    it('calcula el USDT desde el monto intercambio histórico del Excel', () => {
       const result = calculateRebates({
         transactions: [
           tx(1, '100', '10'),
@@ -115,25 +115,23 @@ describe('calculateRebates', () => {
         tiers: TIERS,
       })
       // Total: 1000 BOB → Bronce 1.5% = 15 BOB
-      // T/C ponderado: (100*10 + 900*20) / 1000 = 19000/1000 = 19
-      // Rebate USDT: 15 / 19 = 0.78947368
+      // Total USDT histórico: 10 + 45 = 55
+      // Rebate USDT: 55 * 1.5% = 0.825
       expect(result[0]?.totalSpentBOB).toBe('1000.00')
-      expect(result[0]?.avgExchangeRate).toBe('19.00000000')
+      expect(result[0]?.avgExchangeRate).toBe('18.18181818')
       expect(result[0]?.rebateBOB).toBe('15.00')
-      expect(result[0]?.rebateUSDT).toBe('0.78947368')
+      expect(result[0]?.rebateUSDT).toBe('0.82500000')
     })
 
-    it('no usa la tasa promedio simple cuando los montos son desiguales', () => {
-      // Si usáramos promedio simple sería (10+20)/2 = 15
-      // El ponderado debe dar distinto: 19 (porque la transacción grande pesa más)
+    it('deduce el tipo de cambio promedio como total BOB / total USDT', () => {
       const result = calculateRebates({
         transactions: [
-          tx(1, '100', '10'),
-          tx(1, '900', '20'),
+          tx(1, '100', '99', '10'),
+          tx(1, '900', '99', '45'),
         ],
         tiers: TIERS,
       })
-      expect(result[0]?.avgExchangeRate).not.toBe('15.00000000')
+      expect(result[0]?.avgExchangeRate).toBe('18.18181818')
     })
   })
 

@@ -58,27 +58,38 @@ export function LatestResults() {
   }, [])
 
   const totals = useMemo(() => {
-    const rebateBOB = state.rebates.reduce((sum, row) => sum + Number(row.rebateBOB), 0)
     const rebateUSDT = state.rebates.reduce((sum, row) => sum + Number(row.rebateUSDT), 0)
     const spentBOB = state.rebates.reduce((sum, row) => sum + Number(row.totalSpentBOB), 0)
     const transactions = state.rebates.reduce((sum, row) => sum + row.transactionCount, 0)
 
     return {
-      rebateBOB,
       rebateUSDT,
       averageTicket: transactions === 0 ? 0 : spentBOB / transactions,
     }
   }, [state.rebates])
 
   if (status === 'loading') {
-    return <div className="text-sm text-slate-400">Cargando resultados...</div>
+    return (
+      <div className="grid gap-4 md:grid-cols-4">
+        {['Reintegrado', 'Usuarios', 'Ticket promedio', 'Anomalias'].map((label) => (
+          <div key={label} className="rounded-lg border surface-card-quiet p-4">
+            <div className="h-3 w-24 rounded bg-panel-hover" />
+            <div className="mt-4 h-6 w-32 rounded bg-panel-hover" />
+          </div>
+        ))}
+      </div>
+    )
   }
 
   if (status === 'empty') {
     return (
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-6">
-        <p className="text-sm text-slate-300">Todavía no hay uploads procesados.</p>
-        <a className="mt-4 inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500" href="/uploads/new">
+      <div className="rounded-lg border surface-card p-6">
+        <p className="text-base font-medium text-main">Todavia no hay uploads procesados.</p>
+        <p className="mt-2 max-w-xl text-sm text-muted">
+          Sube el Excel mensual para activar el calculo de reintegros, conciliacion
+          y descargas operativas.
+        </p>
+        <a className="mt-5 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-medium text-inverse" href="/uploads/new">
           Subir Excel
         </a>
       </div>
@@ -86,7 +97,7 @@ export function LatestResults() {
   }
 
   if (status === 'error') {
-    return <div className="text-sm text-red-300">No se pudieron cargar los resultados.</div>
+    return <div className="text-sm text-danger">No se pudieron cargar los resultados.</div>
   }
 
   return (
@@ -95,29 +106,31 @@ export function LatestResults() {
         <Kpi label="Reintegrado" value={`${money(totals.rebateUSDT, 8)} USDT`} />
         <Kpi label="Usuarios" value={String(state.rebates.length)} />
         <Kpi label="Ticket promedio" value={`${money(totals.averageTicket)} BOB`} />
-        <Kpi label="Anomalías" value={String(state.stats?.total ?? state.anomalies.length)} />
+        <Kpi label="Anomalias" value={String(state.stats?.total ?? state.anomalies.length)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <section className="rounded-lg border surface-card p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-slate-100">Último procesamiento</h2>
-              <p className="mt-1 text-sm text-slate-400">{state.upload?.filename}</p>
+              <p className="text-xs uppercase tracking-widest text-faint">Archivo activo</p>
+              <h2 className="mt-1 text-base font-semibold text-main">Ultimo procesamiento</h2>
+              <p className="mt-1 text-sm text-muted">{state.upload?.filename}</p>
             </div>
-            <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-              {state.upload?.period ?? 'Sin período'}
+            <span className="rounded-md border border-success-muted bg-success-soft px-3 py-1 text-xs font-medium text-success">
+              {state.upload?.period ?? 'Sin periodo'}
             </span>
           </div>
-          <div className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 text-sm text-muted sm:grid-cols-3">
             <Metric label="Filas QR" value={String(state.upload?.rowCount ?? 0)} />
             <Metric label="Parse errors" value={String(state.upload?.parseErrorCount ?? 0)} />
-            <Metric label="Conciliación" value={`${state.stats?.reconciliationRate ?? '0.00'}%`} />
+            <Metric label="Conciliacion" value={`${state.stats?.reconciliationRate ?? '0.00'}%`} />
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-          <h2 className="text-base font-semibold text-slate-100">Anomalías</h2>
+        <section className="rounded-lg border surface-card p-5">
+          <p className="text-xs uppercase tracking-widest text-faint">Riesgo operativo</p>
+          <h2 className="mt-1 text-base font-semibold text-main">Anomalias</h2>
           <div className="mt-4 space-y-2 text-sm">
             <Metric label="Sin extracto" value={String(state.stats?.noExtract ?? 0)} />
             <Metric label="Sin QR" value={String(state.stats?.noQr ?? 0)} />
@@ -131,18 +144,19 @@ export function LatestResults() {
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">
-      <p className="text-xs uppercase tracking-widest text-slate-500">{label}</p>
-      <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{value}</p>
+    <div className="rounded-lg border surface-card p-4 transition-transform hover:-translate-y-0.5">
+      <div className="mb-4 h-1 w-10 rounded-full bg-brand" />
+      <p className="text-xs uppercase tracking-widest text-faint">{label}</p>
+      <p className="mt-2 font-mono text-xl font-semibold text-main md:text-2xl">{value}</p>
     </div>
   )
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md bg-slate-950/50 px-3 py-2">
-      <span className="text-slate-400">{label}</span>
-      <span className="font-mono text-slate-100">{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-md bg-panel-inset-strong px-3 py-2">
+      <span className="text-muted">{label}</span>
+      <span className="font-mono text-main">{value}</span>
     </div>
   )
 }

@@ -1,7 +1,5 @@
 import 'reflect-metadata'
-import { execSync } from 'node:child_process'
-import { existsSync, unlinkSync } from 'node:fs'
-import { join } from 'node:path'
+import 'dotenv/config'
 import { INestApplication, ValidationPipe } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import request from 'supertest'
@@ -9,8 +7,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { AppModule } from './app.module'
 import { PrismaService } from './prisma/prisma.service'
 
-const TEST_DB_FILE = join(__dirname, '..', 'prisma', 'test-e2e.db')
-const TEST_DB_URL = 'file:./test-e2e.db'
+const TEST_ACCOUNT_NUMBER = '990000001'
+const TEST_FILE_HASH = 'e2e-postgres-upload-hash'
+const TEST_TIER_NAMES = ['E2E Basico', 'E2E Bronce']
 
 describe('App e2e', () => {
   let app: INestApplication
@@ -20,17 +19,12 @@ describe('App e2e', () => {
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test'
-    process.env.DATABASE_URL = TEST_DB_URL
     process.env.UPLOAD_STORAGE_DIR = './data/test-uploads'
     process.env.MAX_UPLOAD_SIZE_MB = '50'
 
-    if (existsSync(TEST_DB_FILE)) unlinkSync(TEST_DB_FILE)
-
-    execSync('bunx prisma db push --schema prisma/schema.prisma --skip-generate', {
-      cwd: join(__dirname, '..'),
-      env: process.env,
-      stdio: 'pipe',
-    })
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is required for backend e2e tests.')
+    }
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -50,11 +44,13 @@ describe('App e2e', () => {
     await app.init()
     prisma = app.get(PrismaService)
 
+    await cleanupE2eData(prisma)
+
     await prisma.cashbackTier.createMany({
       data: [
         {
           level: 1,
-          name: 'Basico',
+          name: TEST_TIER_NAMES[0],
           minAmountBOB: '0',
           maxAmountBOB: '500',
           rebatePercent: '1.00',
@@ -63,7 +59,7 @@ describe('App e2e', () => {
         },
         {
           level: 2,
-          name: 'Bronce',
+          name: TEST_TIER_NAMES[1],
           minAmountBOB: '500.01',
           maxAmountBOB: '1000',
           rebatePercent: '1.50',
@@ -75,9 +71,9 @@ describe('App e2e', () => {
 
     const user = await prisma.userAccount.create({
       data: {
-        accountNumber: '10001',
-        username: 'victor',
-        displayName: 'Victor',
+        accountNumber: TEST_ACCOUNT_NUMBER,
+        username: 'e2e-victor',
+        displayName: 'E2E Victor',
         active: true,
       },
     })
@@ -88,7 +84,7 @@ describe('App e2e', () => {
         storagePath: './data/test-uploads/seed-e2e.xlsx',
         mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         fileSizeBytes: 1024,
-        fileHash: 'seed-e2e-upload-hash',
+        fileHash: TEST_FILE_HASH,
         period: '2025-05',
         status: 'DONE',
         rowCount: 2,
@@ -180,7 +176,7 @@ describe('App e2e', () => {
     })
     seededAnomalyId = anomaly.id
 
-    const tier = await prisma.cashbackTier.findFirstOrThrow({ where: { level: 1 } })
+    const tier = await prisma.cashbackTier.findFirstOrThrow({ where: { name: TEST_TIER_NAMES[0] } })
 
     const rebate = await prisma.monthlyRebate.create({
       data: {
@@ -218,8 +214,8 @@ describe('App e2e', () => {
   })
 
   afterAll(async () => {
+    if (prisma) await cleanupE2eData(prisma)
     await app?.close()
-    if (existsSync(TEST_DB_FILE)) unlinkSync(TEST_DB_FILE)
   })
 
   it('responde health con base de datos disponible', async () => {
@@ -241,22 +237,22 @@ describe('App e2e', () => {
       .get('/api/tiers?period=2025-04')
       .expect(200)
 
-    expect(response.body).toEqual([
+    expect(response.body).toEqual(expect.arrayContaining([
       expect.objectContaining({
         level: 1,
-        name: 'Basico',
+        name: TEST_TIER_NAMES[0],
         minAmountBOB: '0',
         maxAmountBOB: '500',
         rebatePercent: '1',
       }),
       expect.objectContaining({
         level: 2,
-        name: 'Bronce',
+        name: TEST_TIER_NAMES[1],
         minAmountBOB: '500.01',
         maxAmountBOB: '1000',
         rebatePercent: '1.5',
       }),
-    ])
+    ]))
   })
 
   it('valida tiers y reporta solapamientos sin persistir', async () => {
@@ -310,19 +306,19 @@ describe('App e2e', () => {
 
   it('lista transacciones QR por usuario dentro de un upload', async () => {
     const response = await request(app.getHttpServer())
-      .get(`/api/uploads/${seededUploadId}/users/10001/transactions`)
+      .get(`/api/uploads/${seededUploadId}/users/${TEST_ACCOUNT_NUMBER}/transactions`)
       .expect(200)
 
     expect(response.body).toHaveLength(2)
     expect(response.body).toEqual([
       expect.objectContaining({
         transactionId: 'tx-ok',
-        accountNumber: 10001,
+        accountNumber: Number(TEST_ACCOUNT_NUMBER),
         reconciledWithExtract: true,
       }),
       expect.objectContaining({
         transactionId: 'tx-anomaly',
-        accountNumber: 10001,
+        accountNumber: Number(TEST_ACCOUNT_NUMBER),
         reconciledWithExtract: false,
       }),
     ])
@@ -348,3 +344,22 @@ describe('App e2e', () => {
     expect(persisted.resolutionNote).toBe('Validated manually')
   })
 })
+
+async function cleanupE2eData(prisma: PrismaService): Promise<void> {
+  const upload = await prisma.upload.findUnique({
+    where: { fileHash: TEST_FILE_HASH },
+    select: { id: true },
+  })
+
+  if (upload) {
+    await prisma.upload.delete({ where: { id: upload.id } })
+  }
+
+  await prisma.userAccount.deleteMany({
+    where: { accountNumber: TEST_ACCOUNT_NUMBER },
+  })
+
+  await prisma.cashbackTier.deleteMany({
+    where: { name: { in: TEST_TIER_NAMES } },
+  })
+}

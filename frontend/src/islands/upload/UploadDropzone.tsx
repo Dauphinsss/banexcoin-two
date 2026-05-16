@@ -1,5 +1,6 @@
 import { useCallback, useState, type JSX } from 'react'
 import { useDropzone, type FileRejection } from 'react-dropzone'
+import { Check, FileUp, TriangleAlert, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { detectPeriod } from '@banex/utils'
 import { api, ApiCallError } from '../../lib/api'
@@ -167,30 +168,30 @@ const DropzoneEmpty = ({
         px-8 py-16 text-center cursor-pointer
         transition-all duration-150
         ${isDragActive
-          ? 'border-blue-500 bg-blue-500/5 scale-[1.01]'
-          : 'border-slate-700 hover:border-slate-500 bg-slate-900/40'}
+          ? 'border-brand bg-brand-soft scale-[1.01]'
+          : 'border-line-strong hover-border-line-hover bg-panel'}
       `}
     >
       <input {...inputProps} />
-      <div className="text-4xl text-slate-500">↑</div>
+      <FileUp className="size-10 text-faint" aria-hidden="true" />
       <div className="space-y-1">
-        <p className="text-slate-200 font-medium">
+        <p className="text-soft font-medium">
           Arrastra el reporte mensual de pagos QR
         </p>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Excel (.xlsx), máximo 50 MB. Procesamiento independiente del core Banexcoin.
         </p>
       </div>
       <button
         type="button"
-        className="mt-4 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
+        className="mt-4 px-4 py-2 rounded-md bg-brand hover-bg-brand-hover text-inverse text-sm font-medium"
       >
         Seleccionar archivo
       </button>
     </div>
 
     {errorMessage ? (
-      <div className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+      <div className="rounded-md border border-danger-soft bg-danger-soft px-4 py-3 text-sm text-danger">
         {errorMessage}
       </div>
     ) : null}
@@ -198,8 +199,8 @@ const DropzoneEmpty = ({
 )
 
 const AnalyzingState = ({ filename }: { filename: string }): JSX.Element => (
-  <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-8 text-center">
-    <p className="text-slate-300 text-sm">Analizando {filename}...</p>
+  <div className="rounded-xl border border-line-strong bg-panel p-8 text-center">
+    <p className="text-muted text-sm">Analizando {filename}...</p>
   </div>
 )
 
@@ -217,26 +218,26 @@ const PreviewState = ({
   const blocked = preview.missingHeaders.length > 0 || preview.totalRows === 0
 
   return (
-    <div className="space-y-4 rounded-xl border border-slate-700 bg-slate-900/40 p-6">
+    <div className="space-y-4 rounded-xl border border-line-strong bg-panel p-6">
       <header className="flex items-center justify-between">
         <div>
-          <p className="text-slate-100 font-medium">{file.name}</p>
-          <p className="text-xs text-slate-400 font-mono">
+          <p className="text-main font-medium">{file.name}</p>
+          <p className="text-xs text-muted font-mono">
             {(file.size / 1024 / 1024).toFixed(2)} MB
           </p>
         </div>
         <button
           type="button"
           onClick={onCancel}
-          className="text-slate-400 hover:text-slate-200 text-lg"
+          className="text-muted hover-text-soft"
           aria-label="Cancelar"
         >
-          ×
+          <X className="size-5" aria-hidden="true" />
         </button>
       </header>
 
       {preview.missingHeaders.length > 0 ? (
-        <div className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div className="rounded-md border border-danger-soft bg-danger-soft px-4 py-3 text-sm text-danger">
           <p className="font-medium">Faltan columnas obligatorias en la hoja "Pago QR":</p>
           <ul className="mt-1 list-disc list-inside font-mono text-xs">
             {preview.missingHeaders.map((h) => (
@@ -256,21 +257,21 @@ const PreviewState = ({
       </dl>
 
       {preview.periodWarning ? (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        <div className="rounded-md border border-warning-soft bg-warning-soft px-4 py-3 text-sm text-warning">
           {preview.periodWarning}
         </div>
       ) : null}
 
-      <details className="rounded-md border border-slate-700 bg-slate-950/50 p-3">
-        <summary className="cursor-pointer text-sm text-slate-300">
+      <details className="rounded-md border border-line-strong bg-panel-inset-strong p-3">
+        <summary className="cursor-pointer text-sm text-muted">
           Vista previa de las primeras {preview.previewRows.length} filas
         </summary>
         <div className="mt-3 overflow-x-auto">
           <table className="text-xs font-mono">
             <thead>
-              <tr className="text-slate-400">
+              <tr className="text-muted">
                 {preview.headers.slice(0, 8).map((h) => (
-                  <th key={h} className="px-2 py-1 text-left border-b border-slate-800">
+                  <th key={h} className="px-2 py-1 text-left border-b border-line">
                     {h}
                   </th>
                 ))}
@@ -278,9 +279,9 @@ const PreviewState = ({
             </thead>
             <tbody>
               {preview.previewRows.map((row, i) => (
-                <tr key={i} className="text-slate-300">
+                <tr key={i} className="text-muted">
                   {preview.headers.slice(0, 8).map((h) => (
-                    <td key={h} className="px-2 py-1 border-b border-slate-900">
+                    <td key={h} className="px-2 py-1 border-b border-app">
                       {formatCellValue(row[h])}
                     </td>
                   ))}
@@ -295,7 +296,7 @@ const PreviewState = ({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 rounded-md text-sm text-slate-300 hover:text-white"
+          className="px-4 py-2 rounded-md text-sm text-muted hover-text-inverse"
         >
           Cancelar
         </button>
@@ -303,7 +304,7 @@ const PreviewState = ({
           type="button"
           onClick={onConfirm}
           disabled={blocked}
-          className="px-5 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-5 py-2 rounded-md text-sm font-medium bg-brand hover-bg-brand-hover text-inverse disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Procesar {preview.totalRows.toLocaleString('es-BO')} transacciones
         </button>
@@ -319,9 +320,9 @@ const UploadingState = ({
   filename: string
   preview: Preview
 }): JSX.Element => (
-  <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-8 text-center space-y-2">
-    <p className="text-slate-100 font-medium">Subiendo {filename}…</p>
-    <p className="text-sm text-slate-400">
+  <div className="rounded-xl border border-line-strong bg-panel p-8 text-center space-y-2">
+    <p className="text-main font-medium">Subiendo {filename}…</p>
+    <p className="text-sm text-muted">
       {preview.totalRows.toLocaleString('es-BO')} transacciones en camino.
     </p>
   </div>
@@ -334,16 +335,16 @@ const SuccessState = ({
   uploadId: string
   onUploadAnother: () => void
 }): JSX.Element => (
-  <div className="rounded-xl border border-green-500/40 bg-green-500/5 p-8 text-center space-y-4">
-    <p className="text-green-300 text-2xl">✓</p>
+  <div className="rounded-xl border border-success-soft bg-success-faint p-8 text-center space-y-4">
+    <Check className="mx-auto size-8 text-success-strong" aria-hidden="true" />
     <div>
-      <p className="text-slate-100 font-medium">Archivo procesado correctamente.</p>
-      <p className="text-xs text-slate-400 font-mono mt-1">ID: {uploadId}</p>
+      <p className="text-main font-medium">Archivo procesado correctamente.</p>
+      <p className="text-xs text-muted font-mono mt-1">ID: {uploadId}</p>
     </div>
     <button
       type="button"
       onClick={onUploadAnother}
-      className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white"
+      className="px-4 py-2 rounded-md text-sm font-medium bg-brand hover-bg-brand-hover text-inverse"
     >
       Subir otro
     </button>
@@ -357,23 +358,23 @@ const DuplicateState = ({
   existingUploadId: string
   onTryAnother: () => void
 }): JSX.Element => (
-  <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-8 text-center space-y-4">
-    <p className="text-amber-300 text-2xl">⚠</p>
+  <div className="rounded-xl border border-warning-soft bg-warning-faint p-8 text-center space-y-4">
+    <TriangleAlert className="mx-auto size-8 text-warning-strong" aria-hidden="true" />
     <div>
-      <p className="text-slate-100 font-medium">Este archivo ya fue procesado anteriormente.</p>
-      <p className="text-xs text-slate-400 font-mono mt-1">ID existente: {existingUploadId}</p>
+      <p className="text-main font-medium">Este archivo ya fue procesado anteriormente.</p>
+      <p className="text-xs text-muted font-mono mt-1">ID existente: {existingUploadId}</p>
     </div>
     <div className="flex justify-center gap-3">
       <a
         href={`/uploads/${existingUploadId}`}
-        className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white"
+        className="px-4 py-2 rounded-md text-sm font-medium bg-brand hover-bg-brand-hover text-inverse"
       >
         Ver resultados existentes
       </a>
       <button
         type="button"
         onClick={onTryAnother}
-        className="px-4 py-2 rounded-md text-sm text-slate-300 hover:text-white"
+        className="px-4 py-2 rounded-md text-sm text-muted hover-text-inverse"
       >
         Subir otro archivo
       </button>
@@ -382,9 +383,9 @@ const DuplicateState = ({
 )
 
 const Stat = ({ label, value }: { label: string; value: string }): JSX.Element => (
-  <div className="rounded-md border border-slate-700 bg-slate-950/40 px-4 py-3">
-    <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-    <dd className="mt-1 font-mono tabular-nums text-slate-100">{value}</dd>
+  <div className="rounded-md border border-line-strong bg-panel-inset px-4 py-3">
+    <dt className="text-xs uppercase tracking-wide text-faint">{label}</dt>
+    <dd className="mt-1 font-mono tabular-nums text-main">{value}</dd>
   </div>
 )
 
