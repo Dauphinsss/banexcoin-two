@@ -1,6 +1,8 @@
 # BanexReintegra — Agents
 
-Mapa de todos los agentes del sistema: workers de BullMQ, gateway de eventos y el agente de IA opcional para explicación de anomalías.
+> **Anexo de [FLOW.md](FLOW.md).** Para entender cómo encajan estos agentes en el flujo completo del producto (upload → procesamiento → resultados), ver `FLOW.md` sección "Flujo end-to-end".
+
+Mapa de todos los agentes del sistema: workers de BullMQ, gateway de eventos y el agente de IA (Claude) para explicación de anomalías.
 
 ---
 

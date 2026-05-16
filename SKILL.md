@@ -1,12 +1,14 @@
 # BanexReintegra — Skill Sheet
 
-> Documento de referencia para el hackathon. Resume qué construimos, por qué cada decisión y cómo presentarlo.
+> **Anexo de [FLOW.md](FLOW.md)** — el flujo end-to-end del producto, la estrategia de premios y el pitch están en `FLOW.md`. Este documento cubre las decisiones técnicas y la planificación de las 72 horas.
 
 ---
 
 ## Qué es BanexReintegra
 
-Sistema de cashback para Banexcoin. Dado un Excel mensual con transacciones QR, calcula automáticamente el reintegro que le corresponde a cada usuario según el nivel de gasto, genera el archivo de BanexTransfer listo para ejecutar y detecta anomalías de conciliación contra el extracto bancario.
+Sistema de cashback para Banexcoin Bolivia (cliente: **Lorena Alejandra Grundy Castaños**). Dado un Excel mensual con transacciones QR, calcula automáticamente el reintegro que le corresponde a cada usuario según el nivel de gasto, genera el archivo de BanexTransfer listo para ejecutar y detecta anomalías de conciliación contra el extracto bancario.
+
+**Datos reales del período de prueba (abril-mayo 2025):** 5.325 transacciones, 239 usuarios únicos, Bs 1.023.899 (~73.921 USDT) de volumen total.
 
 ---
 
@@ -47,33 +49,42 @@ El `tier-engine` (núcleo del cálculo) vive en `packages/utils` como función p
 
 ---
 
-## Las 6 features que diferencian
+## Las 8 features que diferencian
 
-### 1. Conciliación automática
-Cruza `Pago QR` con `EXTRACTO DE PAGOS` por `Transacción Id`.
-La hoja `Servicios` del Excel original lo pide explícitamente: *"hay algunos datos que no coinciden, la idea es tener la alerta de los que no coinciden"*.
-Resultado: tres categorías de alerta (rojo, amarillo, naranja) en el reporte.
+### 1. Conciliación automática bidireccional
+Cruza `Pago QR` (5.325 filas) con `EXTRACTO DE PAGOS` (5.327 filas) por `Transacción Id` ↔ `Codigo de transacción`.
+La hoja `Servicios` del Excel lo pide explícitamente: *"hay algunos datos que no coinciden, la idea es tener la alerta de los que no coinciden"*.
+Tres categorías: 🔴 sin extracto, 🟡 sin QR, 🟠 monto difiere (tolerancia ±Bs 0.01).
 
 ### 2. Idempotencia por hash SHA-256
 Si el mismo archivo se sube dos veces, el sistema lo detecta y no duplica datos.
 Demuestra madurez de ingeniería sin costo de implementación significativo.
 
 ### 3. Promedio ponderado de tipo de cambio
-El tipo de cambio BOB/USDT varía transacción a transacción dentro del mes.
-El reintegro en USDT se calcula usando el promedio ponderado por monto, no la tasa del día de pago.
+El tipo de cambio BOB/USDT varía transacción a transacción dentro del mes (en los datos reales: rango 13.20–15.63).
+El reintegro en USDT se calcula con `Σ(amountBOB × rate) / Σ(amountBOB)` — no la tasa del día de pago.
 
-### 4. Simulador what-if
-Deslizadores para ajustar los rangos de niveles y ver en vivo:
-- Cuántos usuarios caerían en cada nivel.
-- Costo total para tesorería.
-Sin guardar nada en base de datos. Corre en el frontend usando `tier-engine`.
+### 4. Simulador what-if en el navegador
+Deslizadores para ajustar rangos de niveles y ver en vivo:
+- Cuántos de los 239 usuarios caen en cada nivel
+- Costo total para tesorería en USDT y BOB
+- Comparativa contra configuración actual
+Re-cálculo de las 5.325 transacciones en <100ms, en el cliente, con `decimal.js`. **Cero llamadas al backend.**
 
 ### 5. Audit trail completo
-Cada upload queda registrado. Cada reintegro tiene `paidOut` y `paidOutAt`.
-El archivo de BanexTransfer se regenera idempotentemente a partir del estado guardado.
+Cada upload queda registrado con su hash. Cada `MonthlyRebate` tiene `paidOut` y `paidOutAt`.
+Drilldown desde la tabla agregada hasta la transacción individual (`transactionId` único).
+El archivo de BanexTransfer se regenera idempotentemente desde el estado guardado.
 
 ### 6. Validación de exclusión mutua entre niveles
-Al configurar o editar niveles, el sistema valida que ningún monto pueda caer en dos niveles simultáneamente ni quedar sin nivel.
+Validación inline al editar: rangos no se solapan, no dejan huecos sin nivel. Versionado por `validFrom/validTo` para mantener histórico.
+
+### 7. Cuadre DEBE/HABER (replicando la hoja `Saldos`)
+El Excel original tiene una hoja `Saldos` con contabilidad de partida doble por usuario. Nuestro sistema **deriva automáticamente ese cuadre** y lo expone como reporte descargable. Demuestra que entendemos el modelo contable del cliente, no solo la fórmula del cashback.
+
+### 8. Agente de IA para explicación de anomalías (Claude)
+Botón "Explicar con IA ✦" en el panel de conciliación. Llama a Claude con un resumen de las anomalías y devuelve una hipótesis en lenguaje natural ("Las 23 transacciones sin extracto están concentradas en 12-15 de mayo, posible mantenimiento bancario").
+Una sola llamada por sesión → bajo costo, alto impacto en demo.
 
 ---
 

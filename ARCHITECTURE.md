@@ -1,5 +1,7 @@
 # BanexReintegra — Architecture
 
+> **Anexo de [FLOW.md](FLOW.md).** El flujo end-to-end, las personas y la estrategia de premios viven en `FLOW.md`. Este documento se centra en la estructura técnica: monorepo, modelo de datos, API, infra y dependencias.
+
 ---
 
 ## Estructura del monorepo
@@ -204,11 +206,12 @@ POST /uploads  (multipart)
 ### Uploads
 
 ```
-POST   /uploads                    # Subir Excel, encolar job
-GET    /uploads                    # Listar uploads con estado
-GET    /uploads/:id                # Detalle de un upload
-GET    /uploads/:id/report         # Descargar Excel de reintegros
-GET    /uploads/:id/banex-transfer # Descargar archivo BanexTransfer
+POST   /uploads                       # Subir Excel, encolar job
+GET    /uploads                       # Listar uploads con estado
+GET    /uploads/:id                   # Detalle de un upload
+GET    /uploads/:id/report            # Descargar Excel de reintegros (4 hojas)
+GET    /uploads/:id/banex-transfer    # Descargar archivo BanexTransfer
+GET    /uploads/:id/balance-sheet     # Descargar cuadre DEBE/HABER (replica hoja Saldos)
 ```
 
 ### Tiers
@@ -233,8 +236,9 @@ PATCH  /rebates/:id/mark-paid                        # Marcar como pagado
 ### Reconciliation
 
 ```
-GET    /reconciliation?uploadId=X  # Anomalías del upload
+GET    /reconciliation?uploadId=X        # Anomalías del upload
 GET    /reconciliation/stats?uploadId=X  # Conteo por tipo de anomalía
+POST   /reconciliation/explain           # Pide a Claude una explicación NL de las anomalías
 ```
 
 ---

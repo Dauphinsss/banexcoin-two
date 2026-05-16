@@ -1,5 +1,7 @@
 # BanexReintegra — Design
 
+> **Anexo de [FLOW.md](FLOW.md).** El user journey, casos borde y estrategia para "Mejor UI/UX" están en `FLOW.md`. Este documento define el sistema de diseño concreto: tokens, componentes, pantallas y el modelo de islands de Astro.
+
 Sistema de diseño completo: tokens, componentes, pantallas y flujos de usuario.
 
 ---
