@@ -396,7 +396,7 @@ interface JobFailedEvent {
 
 ### Cuándo usarlo
 
-- Solo si `ANTHROPIC_API_KEY` está configurado.
+- Solo si `GEMINI_API_KEY` está configurado.
 - Solo desde endpoint explícito, por ejemplo `POST /reconciliation/explain`.
 - Nunca dentro del job principal de procesamiento.
 
@@ -423,6 +423,7 @@ No inventes causas; menciona hipotesis solo si los datos las sugieren.
 ### Reglas
 
 - Enviar solo resumen agregado cuando sea posible, no filas completas.
+- Usar `@google/genai` con `models.generateContent` y `gemini-3-flash-preview`.
 - Si falla la API IA, devolver error controlado sin afectar conciliación.
 - No almacenar la respuesta salvo que se agregue un requerimiento de auditoría.
 

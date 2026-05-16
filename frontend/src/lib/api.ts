@@ -147,9 +147,11 @@ export const api = {
   async explainAnomalies(
     uploadId: string,
   ): Promise<{ available: boolean; cached: boolean; explanation: string }> {
-    const res = await fetch(
-      `${API_BASE}/api/reconciliation/explain?uploadId=${encodeURIComponent(uploadId)}`,
-    )
+    const res = await fetch(`${API_BASE}/api/reconciliation/explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadId }),
+    })
     return handleResponse(res)
   },
 

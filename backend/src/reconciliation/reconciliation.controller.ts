@@ -1,9 +1,13 @@
-import { Body, Controller, Get, Inject, Param, Patch, Query } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Query } from '@nestjs/common'
 import { ReconciliationService } from './reconciliation.service'
 import { AnomalyExplainerAgent } from './anomaly-explainer.agent'
 
 interface ResolveAnomalyBody {
   note?: string
+}
+
+interface ExplainAnomaliesBody {
+  uploadId?: string
 }
 
 @Controller('reconciliation')
@@ -18,9 +22,14 @@ export class ReconciliationController {
     return this.reconciliation.stats(uploadId)
   }
 
-  @Get('explain')
-  async explain(@Query('uploadId') uploadId: string) {
-    return this.explainer.explain(uploadId)
+  @Post('explain')
+  @HttpCode(200)
+  async explain(@Body() body: ExplainAnomaliesBody) {
+    if (!body.uploadId) {
+      throw new BadRequestException('uploadId es obligatorio.')
+    }
+
+    return this.explainer.explain(body.uploadId)
   }
 
   @Get('anomalies')
