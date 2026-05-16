@@ -1,5 +1,5 @@
 # --- ESTADIO DE COMPILACIÓN ---
-FROM oven/bun:1.1-alpine AS builder
+FROM oven/bun:alpine AS builder
 WORKDIR /app
 
 # Copiamos los archivos de dependencias de Bun
@@ -10,7 +10,7 @@ COPY . .
 RUN bun run build
 
 # --- ESTADIO DE PRODUCCIÓN ---
-FROM oven/bun:1.1-alpine AS runner
+FROM oven/bun:alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
