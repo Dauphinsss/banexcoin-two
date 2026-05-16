@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js'
-import type { DecimalString } from '@banex/types'
+import type { DecimalString } from '../../types/dist/index.js'
 
 /**
  * Configuración global de decimal.js para todo el motor financiero.

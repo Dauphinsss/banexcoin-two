@@ -24,7 +24,9 @@ export class ParserService {
     metadata: { filename: string; fileHash: string },
   ): Promise<ParseResult> {
     const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(buffer)
+    await workbook.xlsx.load(
+      buffer as unknown as Parameters<typeof workbook.xlsx.load>[0],
+    )
 
     const sheets = workbook.worksheets.map((ws) => ws.name)
 

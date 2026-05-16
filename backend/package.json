@@ -44,6 +44,7 @@
     "@nestjs/cli": "latest",
     "@nestjs/schematics": "latest",
     "@nestjs/testing": "latest",
+    "@types/express": "^5.0.3",
     "@types/multer": "^1.4.12",
     "@types/node": "latest",
     "@typescript-eslint/eslint-plugin": "latest",

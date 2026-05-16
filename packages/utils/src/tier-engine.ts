@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js'
-import type { DecimalString } from '@banex/types'
+import type { DecimalString } from '../../types/dist/index.js'
 import { D, bob, usdt, weightedAverage } from './money.js'
 
 export interface TierEngineTransaction {

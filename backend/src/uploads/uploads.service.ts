@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import type { CreateUploadResponse, UploadSummary } from '@banex/types'
+import type { CreateUploadResponse, UploadStatus, UploadSummary } from '@banex/types'
 import { PrismaService } from '../prisma/prisma.service'
 import { FileStorageService } from './storage/file-storage.service'
 import {
@@ -69,7 +69,7 @@ export class UploadsService {
 
     return {
       uploadId: upload.id,
-      status: upload.status,
+      status: upload.status as UploadStatus,
       wasDuplicate: false,
     }
   }
@@ -95,7 +95,7 @@ export class UploadsService {
       filename: upload.filename,
       fileHash: upload.fileHash,
       period: upload.period,
-      status: upload.status,
+      status: upload.status as UploadStatus,
       rowCount: upload.rowCount,
       rebateCount: upload._count.rebates,
       anomalyCount: upload._count.anomalies,
@@ -125,7 +125,7 @@ export class UploadsService {
       filename: upload.filename,
       fileHash: upload.fileHash,
       period: upload.period,
-      status: upload.status,
+      status: upload.status as UploadStatus,
       rowCount: upload.rowCount,
       rebateCount: upload._count.rebates,
       anomalyCount: upload._count.anomalies,
