@@ -61,6 +61,16 @@
     box-shadow: 0 0 0 5px rgb(var(--color-success) / 0.12);
   }
 
+  .skeleton-block {
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+    background-color: rgb(var(--color-panel-hover) / 0.72);
+  }
+
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 0.48; }
+    50% { opacity: 0.9; }
+  }
+
   .bg-app { background-color: rgb(var(--color-app)); }
   .bg-app-muted { background-color: rgb(var(--color-app-muted) / 0.6); }
   .bg-app-glass { background-color: rgb(var(--color-app-muted) / 0.95); }

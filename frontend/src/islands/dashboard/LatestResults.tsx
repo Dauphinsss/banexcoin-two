@@ -73,8 +73,8 @@ export function LatestResults() {
       <div className="grid gap-4 md:grid-cols-4">
         {['Reintegrado', 'Usuarios', 'Ticket promedio', 'Anomalias'].map((label) => (
           <div key={label} className="rounded-lg border surface-card-quiet p-4">
-            <div className="h-3 w-24 rounded bg-panel-hover" />
-            <div className="mt-4 h-6 w-32 rounded bg-panel-hover" />
+            <div className="h-3 w-24 rounded skeleton-block" />
+            <div className="mt-4 h-6 w-32 rounded skeleton-block" />
           </div>
         ))}
       </div>
