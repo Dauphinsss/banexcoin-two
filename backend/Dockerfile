@@ -2,23 +2,32 @@
 FROM oven/bun:alpine AS builder
 WORKDIR /app
 
-# Copiamos los archivos de dependencias de Bun
-COPY package*.json bun.lock ./
+# Copiamos todo el monorepo (contexto = la raíz del repositorio)
+COPY . .
+
+# Instalamos todas las dependencias
 RUN bun install --frozen-lockfile
 
-COPY . .
-RUN bun run build
+# Generamos el cliente de Prisma dentro de backend
+RUN bun run --cwd backend prisma:generate
+
+# Compilamos los paquetes compartidos (types, utils)
+RUN bun run build:shared || true
+
+# Compilamos el backend
+RUN bun run --cwd backend build
 
 # --- ESTADIO DE PRODUCCIÓN ---
 FROM oven/bun:alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY package*.json bun.lock ./
-# Instala solo las dependencias necesarias para producción
-RUN bun install --production --frozen-lockfile
+# Copiamos todo desde el builder.
+# En un monorepo, es la forma más segura y rápida de asegurar
+# que los paquetes locales (workspaces) y prisma funcionen.
+COPY --from=builder /app /app
 
-COPY --from=builder /app/dist ./dist
+WORKDIR /app/backend
 
 EXPOSE 3000
 
