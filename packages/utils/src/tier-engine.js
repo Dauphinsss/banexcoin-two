@@ -1,21 +1,22 @@
-import { D, bob, usdt, weightedAverage } from './money.js';
+import { D, bob, usdt } from './money.js';
 export const calculateRebates = (input) => {
     const groups = groupByUser(input.transactions);
     const sortedTiers = [...input.tiers].sort((a, b) => D(a.minAmountBOB).comparedTo(D(b.minAmountBOB)));
     const results = [];
     for (const [userId, userTxs] of groups) {
-        const totalSpent = sumBOB(userTxs);
-        const avgRate = avgExchangeRate(userTxs);
-        const tier = assignTier(totalSpent, sortedTiers);
+        const totalSpentBOB = sumBOB(userTxs);
+        const totalSpentUSDT = sumUSDT(userTxs);
+        const avgRate = avgExchangeRate(totalSpentBOB, totalSpentUSDT);
+        const tier = assignTier(totalSpentBOB, sortedTiers);
         const rebateBOB = tier
-            ? totalSpent.times(D(tier.rebatePercent)).dividedBy(100)
+            ? totalSpentBOB.times(D(tier.rebatePercent)).dividedBy(100)
             : D('0');
-        const rebateUSDT = tier && !D(avgRate).isZero()
-            ? rebateBOB.dividedBy(D(avgRate))
+        const rebateUSDT = tier
+            ? totalSpentUSDT.times(D(tier.rebatePercent)).dividedBy(100)
             : D('0');
         results.push({
             userId,
-            totalSpentBOB: bob(totalSpent),
+            totalSpentBOB: bob(totalSpentBOB),
             avgExchangeRate: avgRate,
             tierId: tier?.id ?? null,
             tierName: tier?.name ?? null,
@@ -47,10 +48,18 @@ const sumBOB = (transactions) => {
     }
     return total;
 };
-const avgExchangeRate = (transactions) => weightedAverage(transactions.map((tx) => ({
-    value: tx.exchangeRate,
-    weight: tx.amountBOB,
-})));
+const sumUSDT = (transactions) => {
+    let total = D('0');
+    for (const tx of transactions) {
+        total = total.plus(D(tx.amountUSDT));
+    }
+    return total;
+};
+const avgExchangeRate = (totalSpentBOB, totalSpentUSDT) => {
+    if (totalSpentUSDT.isZero())
+        return '0.00000000';
+    return totalSpentBOB.dividedBy(totalSpentUSDT).toFixed(8);
+};
 const assignTier = (totalSpent, sortedTiers) => {
     for (const tier of sortedTiers) {
         const min = D(tier.minAmountBOB);

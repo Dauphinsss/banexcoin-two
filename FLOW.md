@@ -114,7 +114,7 @@ La slide del hackathon define 5 categorías. Cada una requiere un mensaje espec�
 - **Idempotencia SHA-256** del archivo — subir dos veces el mismo Excel no duplica
 - **Audit trail** en `MonthlyRebate` con `paidOut`, `paidOutAt` y trazabilidad por transacción
 - **Conciliación automática** contra extracto bancario (compliance-ready)
-- **Promedio ponderado de tipo de cambio** (precisión financiera de banca real)
+- **Tipo de cambio histórico auditado** derivado de `Monto Pagado / Monto intercambio`
 - **Decimales DECIMAL(20,8)** — nunca `float`, nunca redondeo silencioso
 
 ### 4.3 Mejor Solución Social
@@ -159,7 +159,7 @@ La slide del hackathon define 5 categorías. Cada una requiere un mensaje espec�
 2. **Simulador what-if** que recalcula 5.325 transacciones **en el navegador** con `decimal.js` (sin tocar API) — el `tier-engine` es la misma función pura usada en backend y frontend
 3. **Agente Claude** que explica anomalías en lenguaje natural ("Detecté 23 transacciones sin extracto, todas del 12-15 de mayo, posiblemente por mantenimiento bancario")
 4. **Idempotencia por hash SHA-256** — operación segura contra reintentos
-5. **Promedio ponderado de tipo de cambio** intra-mes (precisión real de banca)
+5. **Tipo de cambio histórico auditado** intra-mes, deducido desde los montos reales del Excel
 6. **Cuadre DEBE/HABER por usuario** derivado automáticamente desde el Excel, replicando la hoja `Saldos` (demostramos que entendemos el modelo contable del cliente)
 
 ---
@@ -201,8 +201,8 @@ La slide del hackathon define 5 categorías. Cada una requiere un mensaje espec�
 │                                                   │                          │
 │                                                   ├─► TierAgent              │
 │                                                   │   (aplica tier-engine    │
-│                                                   │    con promedio          │
-│                                                   │    ponderado T/C)        │
+│                                                   │    con consumo BOB       │
+│                                                   │    + USDT histórico)     │
 │                                                   │                          │
 │                                                   ├─► ReconcileAgent         │
 │                                                   │   (cruza por             │
@@ -478,7 +478,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
   │   - Tier asignado: Oro (2.5%)
   │   - Rebate USDT: 46.69
   │   - Rebate BOB: 647.38
-  │   - T/C ponderado: 13.8636
+  │   - T/C histórico auditado: 13.8636
   │   - 187 transacciones individuales (tabla)
   │
   ▼
@@ -540,7 +540,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 ### 9.5 Tipo de cambio inconsistente
 
 - Si una transacción tiene `Precio: 0` o negativo → anomalía bloqueante
-- Persistir pero no incluir en cálculo de promedio ponderado
+- Persistir pero no incluir en cálculo de tipo de cambio auditado ni reintegro
 - Reporte de anomalías incluye estas filas como tipo `INVALID_RATE`
 
 ### 9.6 Reintento de job fallido
@@ -639,7 +639,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 
 > "BanexReintegra hace las cuatro cosas del brief y dos más:
 > 1. Carga del Excel con preview e idempotencia por hash
-> 2. Cálculo automático por niveles con promedio ponderado de tipo de cambio
+> 2. Cálculo automático por niveles con tipo de cambio histórico auditado
 > 3. Reportes en Excel y BanexTransfer listos para ejecutar
 > 4. Cuadre DEBE/HABER replicando la hoja Saldos
 > 5. **Conciliación automática contra el extracto bancario**

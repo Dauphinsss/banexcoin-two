@@ -1,6 +1,6 @@
 import { Decimal } from 'decimal.js'
 import type { DecimalString } from '../../types/dist/index.js'
-import { D, bob, usdt, weightedAverage } from './money.js'
+import { D, bob, usdt } from './money.js'
 
 export interface TierEngineTransaction {
   userId: number
@@ -39,8 +39,9 @@ export interface RebateResult {
  *
  * Reglas (ver FLOW.md sección 5 y CONVENTIONS.md sección 1):
  * - Todos los valores monetarios viajan como strings y se operan con decimal.js.
- * - El tipo de cambio aplicado al reintegro en USDT es el promedio ponderado
- *   por monto BOB del mes, no la tasa del día de pago.
+ * - El índice para categorizar usuarios es el consumo mensual total en BOB.
+ * - El reintegro en USDT se calcula sobre el consumo USDT histórico del Excel.
+ * - El tipo de cambio promedio auditado se deduce como totalBOB / totalUSDT.
  * - Un usuario cae en un único tier (rango cerrado: min <= total <= max).
  * - Si el total no cae en ningún tier, devuelve tierId=null y rebate 0.
  * - El input no se muta; la función es pura.
@@ -54,21 +55,22 @@ export const calculateRebates = (input: TierEngineInput): RebateResult[] => {
   const results: RebateResult[] = []
 
   for (const [userId, userTxs] of groups) {
-    const totalSpent = sumBOB(userTxs)
-    const avgRate = avgExchangeRate(userTxs)
-    const tier = assignTier(totalSpent, sortedTiers)
+    const totalSpentBOB = sumBOB(userTxs)
+    const totalSpentUSDT = sumUSDT(userTxs)
+    const avgRate = avgExchangeRate(totalSpentBOB, totalSpentUSDT)
+    const tier = assignTier(totalSpentBOB, sortedTiers)
 
     const rebateBOB = tier
-      ? totalSpent.times(D(tier.rebatePercent)).dividedBy(100)
+      ? totalSpentBOB.times(D(tier.rebatePercent)).dividedBy(100)
       : D('0')
 
-    const rebateUSDT = tier && !D(avgRate).isZero()
-      ? rebateBOB.dividedBy(D(avgRate))
+    const rebateUSDT = tier
+      ? totalSpentUSDT.times(D(tier.rebatePercent)).dividedBy(100)
       : D('0')
 
     results.push({
       userId,
-      totalSpentBOB: bob(totalSpent),
+      totalSpentBOB: bob(totalSpentBOB),
       avgExchangeRate: avgRate,
       tierId: tier?.id ?? null,
       tierName: tier?.name ?? null,
@@ -105,15 +107,21 @@ const sumBOB = (transactions: readonly TierEngineTransaction[]): Decimal => {
   return total
 }
 
+const sumUSDT = (transactions: readonly TierEngineTransaction[]): Decimal => {
+  let total = D('0')
+  for (const tx of transactions) {
+    total = total.plus(D(tx.amountUSDT))
+  }
+  return total
+}
+
 const avgExchangeRate = (
-  transactions: readonly TierEngineTransaction[],
-): DecimalString =>
-  weightedAverage(
-    transactions.map((tx) => ({
-      value: tx.exchangeRate,
-      weight: tx.amountBOB,
-    })),
-  )
+  totalSpentBOB: Decimal,
+  totalSpentUSDT: Decimal,
+): DecimalString => {
+  if (totalSpentUSDT.isZero()) return '0.00000000'
+  return totalSpentBOB.dividedBy(totalSpentUSDT).toFixed(8)
+}
 
 /**
  * Asigna el tier con rangos cerrados [min, max].
