@@ -1,46 +1,53 @@
-# BanexReintegra - Primera propuesta de base de datos
+# BanexReintegra - Propuesta de base de datos
 
-Esta propuesta toma como fuente principal `FLOW.md` y sus anexos `design.md` y `agents.md`.
-La idea es partir de un modelo que soporte bien:
+Esta propuesta toma como fuente principal `FLOW.md` y sus anexos `design.md` y `agents.md`, pero incorpora una decisión de modelado más robusta para un contexto bancario:
 
-- carga e idempotencia de archivos
-- procesamiento asíncrono por upload
-- persistencia auditable de transacciones, reintegros y anomalías
-- versionado de tiers por período
-- generación posterior de reportes sin recalcular
+- una entidad canónica de movimientos financieros
+- detalles especializados solo cuando la semántica lo exige
+- extractos persistidos como evidencia de conciliación
+- trazabilidad completa por upload, hoja y fila
 
-No es un contrato final. Es una base razonable para analizar antes de bajar a Prisma.
+La idea es evitar dos extremos frágiles:
+
+- una tabla distinta por cada hoja del Excel
+- una tabla genérica gigante llena de columnas nulas
 
 ## Criterios de diseño
 
-- El `Upload` es la unidad operativa principal.
-- Las transacciones QR y las del extracto se guardan por separado para conservar trazabilidad completa.
-- El reintegro mensual se persiste agregado por cuenta/usuario, pero mantiene relación con sus transacciones fuente.
-- Los tiers se versionan por vigencia, no se pisan.
+- El `Upload` sigue siendo la unidad operativa principal.
+- Los movimientos de negocio se normalizan en una sola tabla canónica: `LedgerTransaction`.
+- Los detalles propios de QR y transferencias viven en tablas complementarias.
+- Los extractos se persisten aparte como evidencia auditable de conciliación.
+- El reintegro mensual se persiste agregado por cuenta, pero conserva el vínculo con sus movimientos fuente.
+- Los tiers se versionan por periodo y no se pisan.
 - Las anomalías y errores de parseo quedan auditables por upload.
 
 ## Diagrama ER en Mermaid
 
 ```mermaid
 erDiagram
-    UPLOAD ||--o{ QR_TRANSACTION : contains
-    UPLOAD ||--o{ EXTRACT_TRANSACTION : contains
+    UPLOAD ||--o{ LEDGER_TRANSACTION : contains
+    UPLOAD ||--o{ BANK_EXTRACT_ENTRY : contains
     UPLOAD ||--o{ PARSE_ERROR : produces
     UPLOAD ||--o{ RECONCILIATION_ANOMALY : produces
     UPLOAD ||--o{ MONTHLY_REBATE : produces
     UPLOAD ||--o{ GENERATED_REPORT : generates
     UPLOAD ||--o| UPLOAD : supersedes
 
-    USER_ACCOUNT ||--o{ QR_TRANSACTION : owns
+    USER_ACCOUNT ||--o{ LEDGER_TRANSACTION : owns
     USER_ACCOUNT ||--o{ MONTHLY_REBATE : receives
+    USER_ACCOUNT ||--o{ TRANSFER_DETAIL : sends
+    USER_ACCOUNT ||--o{ TRANSFER_DETAIL : receives
+
+    LEDGER_TRANSACTION ||--o| QR_TRANSACTION_DETAIL : detailed_by
+    LEDGER_TRANSACTION ||--o| TRANSFER_DETAIL : detailed_by
+    LEDGER_TRANSACTION ||--o{ MONTHLY_REBATE_ITEM : contributes_to
+    LEDGER_TRANSACTION ||--o{ RECONCILIATION_ANOMALY : may_origin
+
+    BANK_EXTRACT_ENTRY ||--o{ RECONCILIATION_ANOMALY : may_origin
 
     CASHBACK_TIER ||--o{ MONTHLY_REBATE : applied_to
-
     MONTHLY_REBATE ||--o{ MONTHLY_REBATE_ITEM : detailed_by
-    QR_TRANSACTION ||--o{ MONTHLY_REBATE_ITEM : contributes_to
-
-    QR_TRANSACTION ||--o| RECONCILIATION_ANOMALY : may_origin
-    EXTRACT_TRANSACTION ||--o| RECONCILIATION_ANOMALY : may_origin
 
     UPLOAD {
       string id PK
@@ -52,7 +59,7 @@ erDiagram
       string period
       string status
       int row_count
-      int qr_row_count
+      int transaction_row_count
       int extract_row_count
       int parse_error_count
       int anomaly_count
@@ -74,30 +81,67 @@ erDiagram
       datetime updated_at
     }
 
-    QR_TRANSACTION {
+    LEDGER_TRANSACTION {
       string id PK
       string upload_id FK
       string user_account_id FK
+      string service_code
+      string service_name
+      string source_sheet
+      int source_row_number
       string transaction_id
-      datetime transacted_at
+      string reference_number
+      string status
+      string direction
+      string product_symbol
+      string blockchain
       decimal amount_bob
       decimal amount_usdt
-      decimal exchange_rate
       decimal fee_bob
       decimal fee_usdt
+      decimal net_amount_bob
+      decimal net_amount_usdt
+      decimal exchange_rate
+      datetime transacted_at
       boolean reconciled_with_extract
-      json raw_row
+      string raw_row
       datetime created_at
     }
 
-    EXTRACT_TRANSACTION {
+    QR_TRANSACTION_DETAIL {
+      string id PK
+      string ledger_transaction_id FK
+      string quote_number
+      string side_client
+      string currency_code
+      decimal paid_amount_bob
+      decimal exchanged_amount_usdt
+      datetime created_at_source
+      datetime updated_at_source
+      datetime created_at
+    }
+
+    TRANSFER_DETAIL {
+      string id PK
+      string ledger_transaction_id FK
+      string transfer_number
+      string sender_user_account_id FK
+      string receiver_user_account_id FK
+      string sender_alias
+      string receiver_alias
+      datetime created_at
+    }
+
+    BANK_EXTRACT_ENTRY {
       string id PK
       string upload_id FK
+      string extract_kind
+      string source_sheet
+      int source_row_number
       string transaction_id
       datetime transacted_at
       decimal amount_bob
-      string reference
-      json raw_row
+      string raw_row
       datetime created_at
     }
 
@@ -109,18 +153,19 @@ erDiagram
       string column_name
       string error_code
       string message
-      json raw_row
+      string raw_row
       datetime created_at
     }
 
     RECONCILIATION_ANOMALY {
       string id PK
       string upload_id FK
-      string qr_transaction_id FK
-      string extract_transaction_id FK
+      string ledger_transaction_id FK
+      string bank_extract_entry_id FK
       string transaction_id
+      string service_code
       string type
-      decimal qr_amount_bob
+      decimal ledger_amount_bob
       decimal extract_amount_bob
       decimal delta_bob
       boolean resolved
@@ -166,7 +211,7 @@ erDiagram
     MONTHLY_REBATE_ITEM {
       string id PK
       string monthly_rebate_id FK
-      string qr_transaction_id FK
+      string ledger_transaction_id FK
       decimal amount_bob
       decimal amount_usdt
       decimal exchange_rate
@@ -188,71 +233,100 @@ erDiagram
 
 ### 1. `Upload`
 
-Es el centro del proceso. Representa el archivo recibido, su hash, su estado y los conteos finales del procesamiento.
+Sigue siendo el centro del proceso. Representa el archivo recibido, su hash, su estado y los conteos finales del procesamiento.
 
 Campos importantes:
 
 - `file_hash` para idempotencia
 - `status` para `PENDING | PROCESSING | DONE | FAILED | SUPERSEDED`
-- `supersedes_upload_id` para el caso de reemplazo de período
-- `processed_at` para auditoría operativa
+- `supersedes_upload_id` para el caso de reemplazo de periodo
+- `processed_at` para auditoria operativa
 
 ### 2. `UserAccount`
 
-Agrupa al beneficiario desde la óptica operativa. El identificador más confiable parece ser `account_number`, mientras `username` o `external_id` pueden cambiar o venir incompletos.
+Agrupa al beneficiario desde la optica operativa. El identificador mas confiable sigue siendo `account_number`, mientras `username` o `external_id` pueden cambiar o venir incompletos.
 
-### 3. `QRTransaction`
+### 3. `LedgerTransaction`
 
-Guarda cada fila válida de `Pago QR`. Es la fuente del cálculo de reintegros.
+Es la tabla canonica de movimientos financieros del sistema. Aca entran `Pago QR`, `Cobro QR`, `Depositos`, `Retiros` y `Transfers`, todos diferenciados por `service_code`, `source_sheet` y su direccion financiera.
 
-Sugerencia de constraint:
+Ventajas:
 
-- unique compuesto en `upload_id + transaction_id`
+- evita una tabla por hoja
+- conserva una semantica comun para conciliacion y reportes
+- soporta nuevos codigos de servicio sin redisenar la base
+- mejora la trazabilidad porque cada fila queda ligada a `upload`, hoja y numero de fila
 
-Si después confirmamos que `transaction_id` es globalmente único, podríamos endurecerlo más.
+Constraint sugerido:
 
-### 4. `ExtractTransaction`
+- unique compuesto en `upload_id + service_code + transaction_id`
 
-Conviene separarla de `QRTransaction` porque su semántica es distinta: no participa en tiers, solo en conciliación. Esto simplifica trazabilidad y evita meter columnas nulas en una tabla única de transacciones.
+### 4. `QrTransactionDetail`
 
-### 5. `ParseError`
+No todos los movimientos necesitan campos QR, pero `Pago QR` y `Cobro QR` si traen semantica propia: `quote_number`, `side_client`, montos de intercambio, moneda y timestamps de origen. Por eso conviene separarlos en una tabla 1:1.
 
-Responde directo al flujo y a `PersistenceAgent`: guardar filas problemáticas sin abortar todo el job.
+### 5. `TransferDetail`
 
-Útil para:
+Las transferencias merecen detalle propio porque involucran dos cuentas internas y no una sola posicion operativa.
 
-- mostrar errores por hoja/fila
+Esto permite:
+
+- representar emisor y receptor con precision
+- reconstruir mejor BanexTransfer
+- evitar meter columnas ambiguas en la tabla canonica
+
+### 6. `BankExtractEntry`
+
+En un contexto bancario es mejor persistir el extracto como evidencia importada, no solo reconstruirlo con queries. Aunque el extracto se parezca a un reporte, si se usa para conciliar conviene guardarlo.
+
+Sirve para:
+
+- auditoria
+- reintentos idempotentes
+- conciliacion reproducible
+- soporte futuro a multiples clases de extracto
+
+### 7. `ParseError`
+
+Responde directo al flujo y a `PersistenceAgent`: guardar filas problematicas sin abortar todo el job.
+
+Util para:
+
+- mostrar errores por hoja y fila
 - exportarlos luego en reportes
-- reentrenar reglas de parsing más adelante
+- mejorar reglas de parsing mas adelante
 
-### 6. `ReconciliationAnomaly`
+### 8. `ReconciliationAnomaly`
 
 Representa la salida del `ReconcileAgent`.
+
+Ahora se amarra a:
+
+- `ledger_transaction` como movimiento canonico del sistema
+- `bank_extract_entry` como evidencia del extracto
 
 Tipos esperados:
 
 - `NO_EXTRACT`
-- `NO_QR`
+- `NO_LEDGER`
 - `AMOUNT_MISMATCH`
-- posible extensión futura: `INVALID_RATE`
+- posible extension futura: `INVALID_RATE`
 
-Dejé `resolved`, `resolution_note` y `resolved_at` porque el flujo ya contempla resolución manual desde UI.
-
-### 7. `CashbackTier`
+### 9. `CashbackTier`
 
 Modelo versionado por vigencia mensual.
 
 Idea central:
 
-- no actualizar tiers históricos
+- no actualizar tiers historicos
 - cerrar vigencia con `valid_to_period`
-- buscar tiers activos para el período procesado
+- buscar tiers activos para el periodo procesado
 
-### 8. `MonthlyRebate`
+### 10. `MonthlyRebate`
 
 Es el agregado mensual por usuario/cuenta para un upload.
 
-Lo pensé con doble semántica:
+Mantiene doble semantica:
 
 - resultado financiero auditable
 - objeto operativo que puede marcarse como exportado o pagado
@@ -261,20 +335,20 @@ Constraint sugerido:
 
 - unique compuesto en `upload_id + user_account_id`
 
-### 9. `MonthlyRebateItem`
+### 11. `MonthlyRebateItem`
 
-Esta tabla no siempre aparece en propuestas iniciales, pero acá vale mucho la pena.
-Nos da el puente entre el agregado mensual y cada transacción que lo compone.
+Esta tabla mantiene el puente entre el agregado mensual y cada movimiento que lo compone. Ahora debe apuntar a `LedgerTransaction`, no a una tabla QR especifica.
 
 Eso habilita:
 
-- drilldown real en auditoría
-- reconstrucción exacta del cálculo
+- drilldown real en auditoria
+- reconstruccion exacta del calculo
 - reportes explicables sin recalcular
 
-### 10. `GeneratedReport`
+### 12. `GeneratedReport`
 
-Es opcional, pero la incluyo como decisión abierta útil.
+Sigue siendo opcional.
+
 Si los reportes se generan on-demand y nunca se almacenan, esta tabla puede desaparecer.
 Si queremos trazabilidad de descargas o caching de archivos generados, sirve.
 
@@ -282,12 +356,13 @@ Si queremos trazabilidad de descargas o caching de archivos generados, sirve.
 
 - `upload.file_hash` unique
 - `user_account.account_number` unique
-- `qr_transaction (upload_id, transaction_id)` unique
-- `extract_transaction (upload_id, transaction_id)` index
+- `ledger_transaction (upload_id, service_code, transaction_id)` unique
+- `bank_extract_entry (upload_id, source_sheet, transaction_id)` index
 - `monthly_rebate (upload_id, user_account_id)` unique
-- índices por `upload_id` en tablas hijas
-- índice por `period` en `upload` y `monthly_rebate`
-- índice por `type, resolved` en `reconciliation_anomaly`
+- indices por `upload_id` en tablas hijas
+- indice por `period` en `upload` y `monthly_rebate`
+- indice por `service_code` en `ledger_transaction`
+- indice por `type, resolved` en `reconciliation_anomaly`
 
 ## Tipos y enums sugeridos
 
@@ -299,10 +374,15 @@ Si queremos trazabilidad de descargas o caching de archivos generados, sirve.
 - `FAILED`
 - `SUPERSEDED`
 
+### `ledger_transaction.direction`
+
+- `DEBIT`
+- `CREDIT`
+
 ### `reconciliation_anomaly.type`
 
 - `NO_EXTRACT`
-- `NO_QR`
+- `NO_LEDGER`
 - `AMOUNT_MISMATCH`
 - `INVALID_RATE`
 
@@ -315,25 +395,22 @@ Si queremos trazabilidad de descargas o caching de archivos generados, sirve.
 
 ## Decisiones abiertas para analizar
 
-1. `period` como `string YYYY-MM` o como `date`.
-   Mi recomendación inicial: `string YYYY-MM`, porque el negocio opera por mes y simplifica vigencias de tiers.
+1. `Transfers` dentro de la tabla canonica mas `TransferDetail`, o en tabla totalmente propia.
+   Mi recomendacion inicial: tabla canonica mas detalle 1:1.
 
-2. Si `UserAccount` representa una cuenta o una persona.
-   Mi recomendación inicial: cuenta operativa, porque el Excel y BanexTransfer parecen girar alrededor de la cuenta.
+2. Si `BankExtractEntry` debe existir solo para archivos realmente externos.
+   Mi recomendacion inicial: si participa en conciliacion, se persiste.
 
-3. Si `GeneratedReport` se persiste o no.
-   Mi recomendación inicial: no hacerlo en la primera versión, salvo que queramos auditoría de exportaciones.
+3. Si `service_name` debe persistirse o resolverse desde un catalogo.
+   Mi recomendacion inicial: persistirlo como snapshot y mas adelante, si hace falta, agregar un catalogo `ServiceType`.
 
-4. Si `Upload` debe permitir más de un `DONE` por período.
-   Mi recomendación inicial: sí, pero marcando el anterior como `SUPERSEDED` para conservar historial.
+4. Si conviene introducir una tabla de `ledger_batch` o `statement_batch`.
+   Solo la agregaria si luego importamos multiples extractos por periodo o por banco.
 
-5. Si conviene agregar una tabla `tier_config_set`.
-   Solo la sumaría si el versionado de tiers se vuelve más complejo o queremos agrupar explícitamente una "política" completa.
+## Recomendacion practica
 
-## Recomendación práctica
+Si seguimos esta direccion, el siguiente paso natural seria:
 
-Si te parece bien esta dirección, el siguiente paso natural sería convertir esto en:
-
-1. un `schema.prisma` inicial
-2. enums y constraints reales
-3. una versión simplificada si queremos llegar más rápido al hackathon
+1. ajustar `schema.prisma`
+2. crear una nueva migracion sobre la `init`, no editar la `init`
+3. adaptar parser, conciliacion y reportes para leer de `LedgerTransaction` y `BankExtractEntry`
