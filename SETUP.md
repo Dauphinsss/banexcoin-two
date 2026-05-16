@@ -10,10 +10,20 @@ Guía corta para levantar el proyecto y probarlo rápido.
 
 ## Variables de entorno
 
+Windows:
+
 ```powershell
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
+```
+
+macOS / Linux / Git Bash:
+
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
 ## Instalar y preparar
@@ -24,6 +34,13 @@ bun run db:push
 bun run db:seed
 bun run --cwd packages/types build
 bun run --cwd packages/utils build
+```
+
+Si alguien ya tenía una base local vieja, antes de eso conviene resetear:
+
+```powershell
+Remove-Item backend/prisma/dev.db -ErrorAction SilentlyContinue
+Remove-Item backend/data/uploads -Recurse -ErrorAction SilentlyContinue
 ```
 
 ## Arrancar
