@@ -6,6 +6,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "nest build",
+    "start:prod": "node --env-file=.env.production dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
   },
@@ -13,6 +14,7 @@
     "@nestjs/common": "latest",
     "@nestjs/core": "latest",
     "@nestjs/platform-express": "latest",
+    "dotenv": "latest",
     "reflect-metadata": "latest",
     "rxjs": "latest"
   },
