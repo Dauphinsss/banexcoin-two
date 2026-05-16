@@ -2,6 +2,8 @@
 
 Sistema de cashback automatizado para Banexcoin Bolivia.
 
+> **¿Quieres arrancar el sistema ya?** → [SETUP.md](SETUP.md)
+>
 > **Documentos guía** (en este orden, antes de tocar código):
 > 1. [FLOW.md](FLOW.md) — qué se construye y por qué (estrategia y demo)
 > 2. [FEATURES.md](FEATURES.md) — backlog descompuesto por etapas
