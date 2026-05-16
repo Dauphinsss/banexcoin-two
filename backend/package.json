@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "bun run --cwd .. build:shared",
     "dev": "nest start --watch",
     "start": "nest start",
+    "prestart:dev": "bun run --cwd .. build:shared",
     "start:dev": "nest start --watch",
+    "prebuild": "bun run --cwd .. build:shared",
     "build": "nest build",
     "start:prod": "node --env-file=.env.production dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\"",
