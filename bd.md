@@ -13,209 +13,209 @@ No es un contrato final. Es una base razonable para analizar antes de bajar a Pr
 
 ## Criterios de diseño
 
-- La `Carga` es la unidad operativa principal.
+- El `Upload` es la unidad operativa principal.
 - Las transacciones QR y las del extracto se guardan por separado para conservar trazabilidad completa.
 - El reintegro mensual se persiste agregado por cuenta/usuario, pero mantiene relación con sus transacciones fuente.
 - Los tiers se versionan por vigencia, no se pisan.
-- Las anomalías y errores de parseo quedan auditables por carga.
+- Las anomalías y errores de parseo quedan auditables por upload.
 
 ## Diagrama ER en Mermaid
 
 ```mermaid
 erDiagram
-    CARGA ||--o{ TRANSACCION_QR : contiene
-    CARGA ||--o{ TRANSACCION_EXTRACTO : contiene
-    CARGA ||--o{ ERROR_PARSEO : produce
-    CARGA ||--o{ ANOMALIA_CONCILIACION : produce
-    CARGA ||--o{ REINTEGRO_MENSUAL : produce
-    CARGA ||--o{ REPORTE_GENERADO : genera
-    CARGA ||--o| CARGA : reemplaza
+    UPLOAD ||--o{ QR_TRANSACTION : contains
+    UPLOAD ||--o{ EXTRACT_TRANSACTION : contains
+    UPLOAD ||--o{ PARSE_ERROR : produces
+    UPLOAD ||--o{ RECONCILIATION_ANOMALY : produces
+    UPLOAD ||--o{ MONTHLY_REBATE : produces
+    UPLOAD ||--o{ GENERATED_REPORT : generates
+    UPLOAD ||--o| UPLOAD : supersedes
 
-    CUENTA_USUARIO ||--o{ TRANSACCION_QR : posee
-    CUENTA_USUARIO ||--o{ REINTEGRO_MENSUAL : recibe
+    USER_ACCOUNT ||--o{ QR_TRANSACTION : owns
+    USER_ACCOUNT ||--o{ MONTHLY_REBATE : receives
 
-    NIVEL_CASHBACK ||--o{ REINTEGRO_MENSUAL : aplica_a
+    CASHBACK_TIER ||--o{ MONTHLY_REBATE : applied_to
 
-    REINTEGRO_MENSUAL ||--o{ DETALLE_REINTEGRO_MENSUAL : detalla
-    TRANSACCION_QR ||--o{ DETALLE_REINTEGRO_MENSUAL : aporta_a
+    MONTHLY_REBATE ||--o{ MONTHLY_REBATE_ITEM : detailed_by
+    QR_TRANSACTION ||--o{ MONTHLY_REBATE_ITEM : contributes_to
 
-    TRANSACCION_QR ||--o| ANOMALIA_CONCILIACION : puede_originar
-    TRANSACCION_EXTRACTO ||--o| ANOMALIA_CONCILIACION : puede_originar
+    QR_TRANSACTION ||--o| RECONCILIATION_ANOMALY : may_origin
+    EXTRACT_TRANSACTION ||--o| RECONCILIATION_ANOMALY : may_origin
 
-    CARGA {
+    UPLOAD {
       string id PK
-      string nombre_original
-      string ruta_almacenamiento
-      string tipo_mime
-      int tamano_archivo_bytes
-      string hash_archivo UK
-      string periodo
-      string estado
-      int cantidad_filas
-      int cantidad_filas_qr
-      int cantidad_filas_extracto
-      int cantidad_errores_parseo
-      int cantidad_anomalias
-      string mensaje_error
-      string carga_reemplazada_id FK
-      datetime procesado_en
-      datetime creado_en
-      datetime actualizado_en
+      string original_name
+      string storage_path
+      string mime_type
+      int file_size_bytes
+      string file_hash UK
+      string period
+      string status
+      int row_count
+      int qr_row_count
+      int extract_row_count
+      int parse_error_count
+      int anomaly_count
+      string error_message
+      string supersedes_upload_id FK
+      datetime processed_at
+      datetime created_at
+      datetime updated_at
     }
 
-    CUENTA_USUARIO {
+    USER_ACCOUNT {
       string id PK
-      string id_externo
-      string nombre_usuario
-      string numero_cuenta UK
-      string nombre_mostrado
-      boolean activo
-      datetime creado_en
-      datetime actualizado_en
+      string external_id
+      string username
+      string account_number UK
+      string display_name
+      boolean active
+      datetime created_at
+      datetime updated_at
     }
 
-    TRANSACCION_QR {
+    QR_TRANSACTION {
       string id PK
-      string carga_id FK
-      string cuenta_usuario_id FK
-      string transaccion_id
-      datetime transaccion_en
-      decimal monto_bob
-      decimal monto_usdt
-      decimal tipo_cambio
-      decimal comision_bob
-      decimal comision_usdt
-      boolean conciliado_con_extracto
-      json fila_cruda
-      datetime creado_en
+      string upload_id FK
+      string user_account_id FK
+      string transaction_id
+      datetime transacted_at
+      decimal amount_bob
+      decimal amount_usdt
+      decimal exchange_rate
+      decimal fee_bob
+      decimal fee_usdt
+      boolean reconciled_with_extract
+      json raw_row
+      datetime created_at
     }
 
-    TRANSACCION_EXTRACTO {
+    EXTRACT_TRANSACTION {
       string id PK
-      string carga_id FK
-      string transaccion_id
-      datetime transaccion_en
-      decimal monto_bob
-      string referencia
-      json fila_cruda
-      datetime creado_en
+      string upload_id FK
+      string transaction_id
+      datetime transacted_at
+      decimal amount_bob
+      string reference
+      json raw_row
+      datetime created_at
     }
 
-    ERROR_PARSEO {
+    PARSE_ERROR {
       string id PK
-      string carga_id FK
-      string nombre_hoja
-      int numero_fila
-      string nombre_columna
-      string codigo_error
-      string mensaje
-      json fila_cruda
-      datetime creado_en
+      string upload_id FK
+      string sheet_name
+      int row_number
+      string column_name
+      string error_code
+      string message
+      json raw_row
+      datetime created_at
     }
 
-    ANOMALIA_CONCILIACION {
+    RECONCILIATION_ANOMALY {
       string id PK
-      string carga_id FK
-      string transaccion_qr_id FK
-      string transaccion_extracto_id FK
-      string transaccion_id
-      string tipo
-      decimal monto_qr_bob
-      decimal monto_extracto_bob
+      string upload_id FK
+      string qr_transaction_id FK
+      string extract_transaction_id FK
+      string transaction_id
+      string type
+      decimal qr_amount_bob
+      decimal extract_amount_bob
       decimal delta_bob
-      boolean resuelto
-      string nota_resolucion
-      datetime resuelto_en
-      datetime creado_en
+      boolean resolved
+      string resolution_note
+      datetime resolved_at
+      datetime created_at
     }
 
-    NIVEL_CASHBACK {
+    CASHBACK_TIER {
       string id PK
-      int nivel
-      string nombre
-      decimal monto_minimo_bob
-      decimal monto_maximo_bob
-      decimal porcentaje_reintegro
-      string periodo_vigencia_desde
-      string periodo_vigencia_hasta
-      boolean activo
-      datetime creado_en
-      datetime actualizado_en
+      int level
+      string name
+      decimal min_amount_bob
+      decimal max_amount_bob
+      decimal rebate_percent
+      string valid_from_period
+      string valid_to_period
+      boolean active
+      datetime created_at
+      datetime updated_at
     }
 
-    REINTEGRO_MENSUAL {
+    MONTHLY_REBATE {
       string id PK
-      string carga_id FK
-      string cuenta_usuario_id FK
-      string nivel_cashback_id FK
-      string periodo
-      decimal total_consumido_bob
-      decimal total_consumido_usdt
-      decimal tipo_cambio_promedio
-      decimal porcentaje_reintegro
-      decimal reintegro_bob
-      decimal reintegro_usdt
-      string estado_pago
-      boolean exportado
-      boolean pagado
-      datetime pagado_en
-      datetime creado_en
-      datetime actualizado_en
+      string upload_id FK
+      string user_account_id FK
+      string tier_id FK
+      string period
+      decimal total_spent_bob
+      decimal total_spent_usdt
+      decimal avg_exchange_rate
+      decimal rebate_percent
+      decimal rebate_bob
+      decimal rebate_usdt
+      string payout_status
+      boolean exported
+      boolean paid_out
+      datetime paid_out_at
+      datetime created_at
+      datetime updated_at
     }
 
-    DETALLE_REINTEGRO_MENSUAL {
+    MONTHLY_REBATE_ITEM {
       string id PK
-      string reintegro_mensual_id FK
-      string transaccion_qr_id FK
-      decimal monto_bob
-      decimal monto_usdt
-      decimal tipo_cambio
-      datetime creado_en
+      string monthly_rebate_id FK
+      string qr_transaction_id FK
+      decimal amount_bob
+      decimal amount_usdt
+      decimal exchange_rate
+      datetime created_at
     }
 
-    REPORTE_GENERADO {
+    GENERATED_REPORT {
       string id PK
-      string carga_id FK
-      string tipo
-      string formato
-      string ruta_almacenamiento
-      string generado_por
-      datetime creado_en
+      string upload_id FK
+      string type
+      string format
+      string storage_path
+      string generated_by
+      datetime created_at
     }
 ```
 
 ## Lectura del modelo
 
-### 1. `Carga`
+### 1. `Upload`
 
 Es el centro del proceso. Representa el archivo recibido, su hash, su estado y los conteos finales del procesamiento.
 
 Campos importantes:
 
 - `file_hash` para idempotencia
-- `estado` para `PENDING | PROCESSING | DONE | FAILED | SUPERSEDED`
-- `carga_reemplazada_id` para el caso de reemplazo de período
+- `status` para `PENDING | PROCESSING | DONE | FAILED | SUPERSEDED`
+- `supersedes_upload_id` para el caso de reemplazo de período
 - `processed_at` para auditoría operativa
 
-### 2. `CuentaUsuario`
+### 2. `UserAccount`
 
 Agrupa al beneficiario desde la óptica operativa. El identificador más confiable parece ser `account_number`, mientras `username` o `external_id` pueden cambiar o venir incompletos.
 
-### 3. `TransaccionQR`
+### 3. `QRTransaction`
 
 Guarda cada fila válida de `Pago QR`. Es la fuente del cálculo de reintegros.
 
 Sugerencia de constraint:
 
-- unique compuesto en `carga_id + transaccion_id`
+- unique compuesto en `upload_id + transaction_id`
 
-Si después confirmamos que `transaccion_id` es globalmente único, podríamos endurecerlo más.
+Si después confirmamos que `transaction_id` es globalmente único, podríamos endurecerlo más.
 
-### 4. `TransaccionExtracto`
+### 4. `ExtractTransaction`
 
-Conviene separarla de `TransaccionQR` porque su semántica es distinta: no participa en tiers, solo en conciliación. Esto simplifica trazabilidad y evita meter columnas nulas en una tabla única de transacciones.
+Conviene separarla de `QRTransaction` porque su semántica es distinta: no participa en tiers, solo en conciliación. Esto simplifica trazabilidad y evita meter columnas nulas en una tabla única de transacciones.
 
-### 5. `ErrorParseo`
+### 5. `ParseError`
 
 Responde directo al flujo y a `PersistenceAgent`: guardar filas problemáticas sin abortar todo el job.
 
@@ -225,7 +225,7 @@ Responde directo al flujo y a `PersistenceAgent`: guardar filas problemáticas s
 - exportarlos luego en reportes
 - reentrenar reglas de parsing más adelante
 
-### 6. `AnomaliaConciliacion`
+### 6. `ReconciliationAnomaly`
 
 Representa la salida del `ReconcileAgent`.
 
@@ -238,7 +238,7 @@ Tipos esperados:
 
 Dejé `resolved`, `resolution_note` y `resolved_at` porque el flujo ya contempla resolución manual desde UI.
 
-### 7. `NivelCashback`
+### 7. `CashbackTier`
 
 Modelo versionado por vigencia mensual.
 
@@ -248,9 +248,9 @@ Idea central:
 - cerrar vigencia con `valid_to_period`
 - buscar tiers activos para el período procesado
 
-### 8. `ReintegroMensual`
+### 8. `MonthlyRebate`
 
-Es el agregado mensual por usuario/cuenta para una carga.
+Es el agregado mensual por usuario/cuenta para un upload.
 
 Lo pensé con doble semántica:
 
@@ -259,9 +259,9 @@ Lo pensé con doble semántica:
 
 Constraint sugerido:
 
-- unique compuesto en `carga_id + cuenta_usuario_id`
+- unique compuesto en `upload_id + user_account_id`
 
-### 9. `DetalleReintegroMensual`
+### 9. `MonthlyRebateItem`
 
 Esta tabla no siempre aparece en propuestas iniciales, pero acá vale mucho la pena.
 Nos da el puente entre el agregado mensual y cada transacción que lo compone.
@@ -272,7 +272,7 @@ Eso habilita:
 - reconstrucción exacta del cálculo
 - reportes explicables sin recalcular
 
-### 10. `ReporteGenerado`
+### 10. `GeneratedReport`
 
 Es opcional, pero la incluyo como decisión abierta útil.
 Si los reportes se generan on-demand y nunca se almacenan, esta tabla puede desaparecer.
@@ -280,18 +280,18 @@ Si queremos trazabilidad de descargas o caching de archivos generados, sirve.
 
 ## Constraints recomendados
 
-- `carga.hash_archivo` unique
-- `cuenta_usuario.numero_cuenta` unique
-- `transaccion_qr (carga_id, transaccion_id)` unique
-- `transaccion_extracto (carga_id, transaccion_id)` index
-- `reintegro_mensual (carga_id, cuenta_usuario_id)` unique
-- índices por `carga_id` en tablas hijas
-- índice por `periodo` en `carga` y `reintegro_mensual`
-- índice por `tipo, resuelto` en `anomalia_conciliacion`
+- `upload.file_hash` unique
+- `user_account.account_number` unique
+- `qr_transaction (upload_id, transaction_id)` unique
+- `extract_transaction (upload_id, transaction_id)` index
+- `monthly_rebate (upload_id, user_account_id)` unique
+- índices por `upload_id` en tablas hijas
+- índice por `period` en `upload` y `monthly_rebate`
+- índice por `type, resolved` en `reconciliation_anomaly`
 
 ## Tipos y enums sugeridos
 
-### `carga.estado`
+### `upload.status`
 
 - `PENDING`
 - `PROCESSING`
@@ -299,14 +299,14 @@ Si queremos trazabilidad de descargas o caching de archivos generados, sirve.
 - `FAILED`
 - `SUPERSEDED`
 
-### `anomalia_conciliacion.tipo`
+### `reconciliation_anomaly.type`
 
 - `NO_EXTRACT`
 - `NO_QR`
 - `AMOUNT_MISMATCH`
 - `INVALID_RATE`
 
-### `reintegro_mensual.estado_pago`
+### `monthly_rebate.payout_status`
 
 - `PENDING`
 - `EXPORTED`
@@ -318,13 +318,13 @@ Si queremos trazabilidad de descargas o caching de archivos generados, sirve.
 1. `period` como `string YYYY-MM` o como `date`.
    Mi recomendación inicial: `string YYYY-MM`, porque el negocio opera por mes y simplifica vigencias de tiers.
 
-2. Si `CuentaUsuario` representa una cuenta o una persona.
+2. Si `UserAccount` representa una cuenta o una persona.
    Mi recomendación inicial: cuenta operativa, porque el Excel y BanexTransfer parecen girar alrededor de la cuenta.
 
 3. Si `GeneratedReport` se persiste o no.
    Mi recomendación inicial: no hacerlo en la primera versión, salvo que queramos auditoría de exportaciones.
 
-4. Si `Carga` debe permitir más de un `DONE` por período.
+4. Si `Upload` debe permitir más de un `DONE` por período.
    Mi recomendación inicial: sí, pero marcando el anterior como `SUPERSEDED` para conservar historial.
 
 5. Si conviene agregar una tabla `tier_config_set`.
