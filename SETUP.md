@@ -65,12 +65,16 @@ El proyecto ya permite probar un flujo útil:
 - parseo de `Pago QR` y `EXTRACTO DE PAGOS`
 - cálculo de tiers/rebates
 - persistencia en SQLite
+- conciliación de anomalías y panel
+- reportes (Excel, BanexTransfer, Cuadre)
+- editor de niveles con validación inline e historial (F7.1)
+- simulador what-if con sliders por nivel y comparativa (F8.1)
+- explicación de anomalías con Claude (F9) — requiere `ANTHROPIC_API_KEY`
 
 Todavía no está listo:
 - BullMQ y workers
 - WebSocket de progreso
-- conciliación completa de anomalías
-- reportes finales
+- F10 (animaciones, dark mode, pitch deck)
 
 ## Prueba rápida
 
