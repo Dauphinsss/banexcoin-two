@@ -69,7 +69,7 @@ El proyecto ya permite probar un flujo útil:
 - reportes (Excel, BanexTransfer, Cuadre)
 - editor de niveles con validación inline e historial (F7.1)
 - simulador what-if con sliders por nivel y comparativa (F8.1)
-- explicación de anomalías con Claude (F9) — requiere `ANTHROPIC_API_KEY`
+- explicación de anomalías con Gemini (F9) — requiere `GEMINI_API_KEY`
 
 Todavía no está listo:
 - BullMQ y workers

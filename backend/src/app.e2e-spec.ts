@@ -21,6 +21,7 @@ describe('App e2e', () => {
     process.env.NODE_ENV = 'test'
     process.env.UPLOAD_STORAGE_DIR = './data/test-uploads'
     process.env.MAX_UPLOAD_SIZE_MB = '50'
+    process.env.GEMINI_API_KEY = ''
 
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL is required for backend e2e tests.')
@@ -342,6 +343,19 @@ describe('App e2e', () => {
     })
     expect(persisted.resolved).toBe(true)
     expect(persisted.resolutionNote).toBe('Validated manually')
+  })
+
+  it('explica anomalías con fallback controlado si IA no está configurada', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/reconciliation/explain')
+      .send({ uploadId: seededUploadId })
+      .expect(200)
+
+    expect(response.body).toEqual({
+      available: false,
+      cached: false,
+      explanation: 'La explicación con IA no está disponible: falta configurar GEMINI_API_KEY.',
+    })
   })
 })
 

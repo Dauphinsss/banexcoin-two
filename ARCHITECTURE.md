@@ -588,8 +588,12 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 MAX_UPLOAD_SIZE_MB=50
 RECONCILE_TOLERANCE_BOB=0.01
-ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
 ```
+
+`AnomalyExplainerAgent` usa `@google/genai` con `models.generateContent` y el
+modelo `gemini-3-flash-preview`, suficiente para una explicación breve y sin
+estado sobre un resumen agregado de anomalías.
 
 ### Variables frontend
 

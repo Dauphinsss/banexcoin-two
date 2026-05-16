@@ -157,7 +157,7 @@ La slide del hackathon define 5 categorías. Cada una requiere un mensaje espec�
 **Las 6 ideas:**
 1. **Conciliación bidireccional** Pago QR ↔ Extracto bancario con tolerancia configurable
 2. **Simulador what-if** que recalcula 5.325 transacciones **en el navegador** con `decimal.js` (sin tocar API) — el `tier-engine` es la misma función pura usada en backend y frontend
-3. **Agente Claude** que explica anomalías en lenguaje natural ("Detecté 23 transacciones sin extracto, todas del 12-15 de mayo, posiblemente por mantenimiento bancario")
+3. **Agente Gemini** que explica anomalías en lenguaje natural ("Detecté 23 transacciones sin extracto, todas del 12-15 de mayo, posiblemente por mantenimiento bancario")
 4. **Idempotencia por hash SHA-256** — operación segura contra reintentos
 5. **Tipo de cambio histórico auditado** intra-mes, deducido desde los montos reales del Excel
 6. **Cuadre DEBE/HABER por usuario** derivado automáticamente desde el Excel, replicando la hoja `Saldos` (demostramos que entendemos el modelo contable del cliente)
@@ -450,10 +450,10 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
   │
   ├─► Lista filtrable por tipo
   ├─► Click en una anomalía → contexto (fecha, usuario, monto)
-  └─► Botón "Explicar con IA ✦" → llama a Claude
+  └─► Botón "Explicar con IA ✦" → llama a Gemini
         │
         ▼
-   [Claude recibe resumen agregado y devuelve:]
+   [Gemini recibe resumen agregado y devuelve:]
    "Detecté 23 transacciones del 12-15 de mayo sin contraparte en el
     extracto bancario. Por la concentración temporal, podría tratarse
     de un período de mantenimiento del banco emisor del extracto.
@@ -605,7 +605,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 
 → Clic en "Explicar con IA ✦" en el panel de anomalías.
 
-→ Claude responde en pantalla con texto plausible.
+→ Gemini responde en pantalla con texto plausible.
 
 → Cambio a Simulador. Mover un deslizador. Gráfico se actualiza en vivo.
 
@@ -720,7 +720,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 | [FEATURES.md](FEATURES.md) | Backlog descompuesto por etapas del flow: 50+ features con prioridad, esfuerzo y categoría de premio que sirven. Punto de entrada para implementar. |
 | [SKILL.md](SKILL.md) | Decisiones de stack y planificación de 72 horas |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Estructura técnica detallada del monorepo, modelo de datos, API REST |
-| [agents.md](agents.md) | Mapa de los agentes backend (BullMQ workers, EventsGateway, AnomalyExplainerAgent con Claude) |
+| [agents.md](agents.md) | Mapa de los agentes backend (BullMQ workers, EventsGateway, AnomalyExplainerAgent con Gemini) |
 | [design.md](design.md) | Sistema de diseño completo: tokens, componentes, pantallas, modelo de islands Astro |
 
 **Regla de oro:** si algo de los anexos contradice este FLOW.md, gana FLOW.md y se actualiza el anexo.
