@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Build shared packages
+        run: bun run build:shared
+
       - name: Typecheck frontend
         run: bun run --cwd frontend typecheck
 
