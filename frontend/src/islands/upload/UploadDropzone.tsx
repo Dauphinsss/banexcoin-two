@@ -72,6 +72,11 @@ export default function UploadDropzone(): JSX.Element {
     [analyze],
   )
 
+  // Guard against server-side rendering: only render dropzone on client side
+  if (typeof window === 'undefined') {
+    // Server-side fallback UI
+    return <div className="w-full max-w-3xl mx-auto">Cargando...</div>;
+  }
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: ACCEPTED_TYPES,
