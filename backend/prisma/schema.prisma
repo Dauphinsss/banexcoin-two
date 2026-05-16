@@ -93,7 +93,7 @@ model QRTransaction {
   feeBOB                Decimal?                @default(0)
   feeUSDT               Decimal?                @default(0)
   reconciledWithExtract Boolean                 @default(false)
-  rawRow                Json
+  rawRow                String
   createdAt             DateTime                @default(now())
 
   anomaly               ReconciliationAnomaly?
@@ -118,7 +118,7 @@ model ExtractTransaction {
   transactedAt         DateTime?
   amountBOB            Decimal
   reference            String?
-  rawRow               Json
+  rawRow               String
   createdAt            DateTime               @default(now())
 
   anomaly              ReconciliationAnomaly?
@@ -228,7 +228,7 @@ model ParseError {
   columnName  String?
   errorCode   String?
   message     String
-  rawRow      Json?
+  rawRow      String?
   createdAt   DateTime @default(now())
 
   @@index([uploadId])
