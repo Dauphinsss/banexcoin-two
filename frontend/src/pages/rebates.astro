@@ -1,6 +1,7 @@
 ---
 import AppShell from '../layouts/AppShell.astro'
 import { RebatesTable } from '../islands/rebates/RebatesTable'
+import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
 ---
 
 <AppShell title="Reintegros" activePage="rebates">
@@ -12,6 +13,8 @@ import { RebatesTable } from '../islands/rebates/RebatesTable'
         monto a pagar y tipo de cambio promedio.
       </p>
     </div>
+
+    <DownloadsPanel client:visible />
 
     <RebatesTable client:load />
   </div>
