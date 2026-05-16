@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState, type JSX } from 'react'
 import { useDropzone, type FileRejection } from 'react-dropzone'
 import * as XLSX from 'xlsx'
 import { detectPeriod } from '@banex/utils'
@@ -332,24 +332,16 @@ const SuccessState = ({
   <div className="rounded-xl border border-green-500/40 bg-green-500/5 p-8 text-center space-y-4">
     <p className="text-green-300 text-2xl">✓</p>
     <div>
-      <p className="text-slate-100 font-medium">Archivo aceptado y encolado para procesamiento.</p>
+      <p className="text-slate-100 font-medium">Archivo procesado correctamente.</p>
       <p className="text-xs text-slate-400 font-mono mt-1">ID: {uploadId}</p>
     </div>
-    <div className="flex justify-center gap-3">
-      <a
-        href={`/uploads/${uploadId}`}
-        className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white"
-      >
-        Ver progreso
-      </a>
-      <button
-        type="button"
-        onClick={onUploadAnother}
-        className="px-4 py-2 rounded-md text-sm text-slate-300 hover:text-white"
-      >
-        Subir otro
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onUploadAnother}
+      className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white"
+    >
+      Subir otro
+    </button>
   </div>
 )
 
