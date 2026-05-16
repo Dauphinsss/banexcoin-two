@@ -1,6 +1,7 @@
 ---
 import AppShell from '../layouts/AppShell.astro'
 import { LatestResults } from '../islands/dashboard/LatestResults'
+import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
 ---
 
 <AppShell title="Dashboard" activePage="dashboard">
@@ -16,5 +17,7 @@ import { LatestResults } from '../islands/dashboard/LatestResults'
     </div>
 
     <LatestResults client:load />
+
+    <DownloadsPanel client:visible />
   </div>
 </AppShell>

@@ -106,4 +106,16 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/uploads/${uploadId}/users/${account}/transactions`)
     return handleResponse<QRTransactionDTO[]>(res)
   },
+
+  reportUrl(uploadId: string): string {
+    return `${API_BASE}/api/uploads/${encodeURIComponent(uploadId)}/report`
+  },
+
+  banexTransferUrl(uploadId: string): string {
+    return `${API_BASE}/api/uploads/${encodeURIComponent(uploadId)}/banex-transfer`
+  },
+
+  balanceSheetUrl(uploadId: string): string {
+    return `${API_BASE}/api/uploads/${encodeURIComponent(uploadId)}/balance-sheet`
+  },
 }

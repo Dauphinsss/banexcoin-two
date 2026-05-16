@@ -22,3 +22,11 @@ export {
   type PeriodDetectionResult,
   type PeriodWarning,
 } from './period.js'
+
+export {
+  validateTiers,
+  type TierValidationInput,
+  type TierValidationOutput,
+  type TierConflict,
+  type TierConflictType,
+} from './tier-validation.js'
