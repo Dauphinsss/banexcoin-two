@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Post,
   UploadedFile,
@@ -19,7 +20,9 @@ import { UploadExceptionFilter } from './filters/upload-exception.filter'
 @UseFilters(UploadExceptionFilter)
 export class UploadsController {
   constructor(
+    @Inject(UploadsService)
     private readonly uploads: UploadsService,
+    @Inject(ConfigService)
     config: ConfigService,
   ) {
     this.maxBytes = Number(config.get<string>('MAX_UPLOAD_SIZE_MB') ?? '50') * 1024 * 1024

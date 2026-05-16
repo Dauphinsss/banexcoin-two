@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { calculateRebates, type RebateResult, type TierEngineTier, type TierEngineTransaction } from '@banex/utils'
 import type { QRTransactionRaw } from '../../parser/parser.types'
 import { TiersService } from '../../tiers/tiers.service'
 
 @Injectable()
 export class TierAgent {
-  constructor(private readonly tiers: TiersService) {}
+  constructor(@Inject(TiersService) private readonly tiers: TiersService) {}
 
   async run(
     period: string,

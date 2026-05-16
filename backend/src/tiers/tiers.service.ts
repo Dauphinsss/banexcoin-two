@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import type { CashbackTierDTO } from '@banex/types'
 import { PrismaService } from '../prisma/prisma.service'
 
 @Injectable()
 export class TiersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async listActive(period?: string): Promise<CashbackTierDTO[]> {
     const tiers = await this.prisma.cashbackTier.findMany({

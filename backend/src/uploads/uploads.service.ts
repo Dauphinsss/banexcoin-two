@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { D } from '@banex/utils'
 import type {
@@ -33,15 +33,22 @@ export class UploadsService {
   private readonly maxBytes: number
 
   constructor(
+    @Inject(PrismaService)
     private readonly prisma: PrismaService,
+    @Inject(FileStorageService)
     private readonly storage: FileStorageService,
+    @Inject(ParserService)
     private readonly parser: ParserService,
+    @Inject(TierAgent)
     private readonly tierAgent: TierAgent,
+    @Inject(ReconcileAgent)
     private readonly reconcileAgent: ReconcileAgent,
+    @Inject(TiersService)
     private readonly tiers: TiersService,
-    config: ConfigService,
+    @Inject(ConfigService)
+    private readonly config: ConfigService,
   ) {
-    const maxMb = Number(config.get<string>('MAX_UPLOAD_SIZE_MB') ?? '50')
+    const maxMb = Number(this.config.get<string>('MAX_UPLOAD_SIZE_MB') ?? '50')
     this.maxBytes = maxMb * 1024 * 1024
   }
 

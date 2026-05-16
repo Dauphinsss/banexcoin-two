@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { promises as fs } from 'node:fs'
 import { resolve, join } from 'node:path'
@@ -17,7 +17,7 @@ export class FileStorageService {
   private readonly logger = new Logger(FileStorageService.name)
   private readonly baseDir: string
 
-  constructor(config: ConfigService) {
+  constructor(@Inject(ConfigService) config: ConfigService) {
     const configured = config.get<string>('UPLOAD_STORAGE_DIR') ?? './data/uploads'
     this.baseDir = resolve(configured)
   }

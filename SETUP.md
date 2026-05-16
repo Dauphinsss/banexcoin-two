@@ -102,6 +102,7 @@ bun run db:studio
 
 ```bash
 bun run --cwd backend test
+bun run --cwd backend test:e2e
 bun run --cwd packages/utils test
 bun run --cwd frontend test:e2e
 ```

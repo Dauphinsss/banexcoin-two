@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { D } from '@banex/utils'
 import type { AnomalyDTO, ReconciliationStats } from '@banex/types'
 import { PrismaService } from '../prisma/prisma.service'
 
 @Injectable()
 export class ReconciliationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async stats(uploadId: string): Promise<ReconciliationStats> {
     await this.ensureUpload(uploadId)

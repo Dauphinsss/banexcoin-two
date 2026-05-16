@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { D } from '@banex/utils'
 import type { AnomalyType } from '@banex/types'
@@ -16,7 +16,7 @@ export interface ReconciliationFinding {
 export class ReconcileAgent {
   private readonly toleranceBOB: ReturnType<typeof D>
 
-  constructor(config: ConfigService) {
+  constructor(@Inject(ConfigService) config: ConfigService) {
     this.toleranceBOB = D(config.get<string>('RECONCILE_TOLERANCE_BOB') ?? '0.01')
   }
 
