@@ -25,3 +25,5 @@ backend/prisma/migrations/migration_lock.toml
 # Archivos subidos por el usuario (UPLOAD_STORAGE_DIR)
 backend/data
 data/uploads
+
+.claude/
