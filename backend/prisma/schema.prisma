@@ -1,6 +1,6 @@
-// BanexReintegra — Prisma schema
+// BanexReintegra - Prisma schema
 //
-// Reglas (ver CONVENTIONS.md sección 1):
+// Reglas (ver CONVENTIONS.md seccion 1):
 // - Todos los montos monetarios usan Decimal
 // - Porcentajes: Decimal
 // - Identificadores externos (Excel) viajan como String
@@ -20,17 +20,19 @@ datasource db {
 // =========================================================================
 
 model UserAccount {
-  id            String          @id @default(cuid())
-  externalId    String?
-  username      String?
-  accountNumber String          @unique
-  displayName   String?
-  active        Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id                 String              @id @default(cuid())
+  externalId         String?
+  username           String?
+  accountNumber      String              @unique
+  displayName        String?
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
-  transactions  QRTransaction[]
-  rebates       MonthlyRebate[]
+  transactions       LedgerTransaction[]
+  senderTransfers    TransferDetail[]    @relation("TransferSender")
+  receiverTransfers  TransferDetail[]    @relation("TransferReceiver")
+  rebates            MonthlyRebate[]
 
   @@index([username])
   @@index([externalId])
@@ -50,7 +52,7 @@ model Upload {
   period              String?                // "2025-05"; nullable hasta que el parser lo infiera
   status              String                 @default("PENDING") // UploadStatus en packages/types
   rowCount            Int                    @default(0)
-  qrRowCount          Int                    @default(0)
+  transactionRowCount Int                    @default(0)
   extractRowCount     Int                    @default(0)
   parseErrorCount     Int                    @default(0)
   anomalyCount        Int                    @default(0)
@@ -63,8 +65,8 @@ model Upload {
   supersedesUpload    Upload?                @relation("UploadSupersession", fields: [supersedesUploadId], references: [id])
   supersededByUploads Upload[]               @relation("UploadSupersession")
 
-  qrTransactions      QRTransaction[]
-  extractTransactions ExtractTransaction[]
+  transactions        LedgerTransaction[]
+  extractEntries      BankExtractEntry[]
   rebates             MonthlyRebate[]
   anomalies           ReconciliationAnomaly[]
   parseErrors         ParseError[]
@@ -76,55 +78,110 @@ model Upload {
 }
 
 // =========================================================================
-// TRANSACCIONES QR
+// MOVIMIENTOS CANONICOS
 // =========================================================================
 
-model QRTransaction {
+model LedgerTransaction {
   id                    String                  @id @default(cuid())
   uploadId              String
   upload                Upload                  @relation(fields: [uploadId], references: [id], onDelete: Cascade)
-  userAccountId         String
-  userAccount           UserAccount             @relation(fields: [userAccountId], references: [id])
-  transactionId         String                  // "Transacción Id" — clave de conciliación
-  transactedAt          DateTime?
-  amountBOB             Decimal
-  amountUSDT            Decimal
-  exchangeRate          Decimal
+  userAccountId         String?
+  userAccount           UserAccount?            @relation(fields: [userAccountId], references: [id])
+  serviceCode           String
+  serviceName           String?
+  sourceSheet           String
+  sourceRowNumber       Int?
+  transactionId         String                  // Clave de conciliacion y trazabilidad operativa
+  referenceNumber       String?
+  status                String?
+  direction             String?                 // DEBIT | CREDIT
+  productSymbol         String?
+  blockchain            String?
+  amountBOB             Decimal?
+  amountUSDT            Decimal?
   feeBOB                Decimal?                @default(0)
   feeUSDT               Decimal?                @default(0)
+  netAmountBOB          Decimal?
+  netAmountUSDT         Decimal?
+  exchangeRate          Decimal?
+  transactedAt          DateTime?
   reconciledWithExtract Boolean                 @default(false)
   rawRow                String
   createdAt             DateTime                @default(now())
 
-  anomaly               ReconciliationAnomaly?
+  qrDetail              QrTransactionDetail?
+  transferDetail        TransferDetail?
   rebateItems           MonthlyRebateItem[]
+  anomalies             ReconciliationAnomaly[]
 
-  // Un transactionId puede repetirse entre uploads (mismo mes recargado),
-  // pero no dentro del mismo upload.
-  @@unique([uploadId, transactionId])
+  @@unique([uploadId, serviceCode, transactionId])
   @@index([transactionId])
   @@index([userAccountId])
+  @@index([serviceCode])
+  @@index([sourceSheet])
 }
 
 // =========================================================================
-// TRANSACCIONES DE EXTRACTO
+// DETALLE QR
 // =========================================================================
 
-model ExtractTransaction {
-  id                   String                 @id @default(cuid())
-  uploadId             String
-  upload               Upload                 @relation(fields: [uploadId], references: [id], onDelete: Cascade)
-  transactionId        String
-  transactedAt         DateTime?
-  amountBOB            Decimal
-  reference            String?
-  rawRow               String
-  createdAt            DateTime               @default(now())
+model QrTransactionDetail {
+  id                  String             @id @default(cuid())
+  ledgerTransactionId String             @unique
+  ledgerTransaction   LedgerTransaction  @relation(fields: [ledgerTransactionId], references: [id], onDelete: Cascade)
+  quoteNumber         String?
+  sideClient          String?
+  currencyCode        String?
+  paidAmountBOB       Decimal?
+  exchangedAmountUSDT Decimal?
+  createdAtSource     DateTime?
+  updatedAtSource     DateTime?
+  createdAt           DateTime           @default(now())
+}
 
-  anomaly              ReconciliationAnomaly?
+// =========================================================================
+// DETALLE DE TRANSFERENCIAS
+// =========================================================================
+
+model TransferDetail {
+  id                   String             @id @default(cuid())
+  ledgerTransactionId  String             @unique
+  ledgerTransaction    LedgerTransaction  @relation(fields: [ledgerTransactionId], references: [id], onDelete: Cascade)
+  transferNumber       String?
+  senderUserAccountId  String?
+  senderUserAccount    UserAccount?       @relation("TransferSender", fields: [senderUserAccountId], references: [id])
+  receiverUserAccountId String?
+  receiverUserAccount  UserAccount?       @relation("TransferReceiver", fields: [receiverUserAccountId], references: [id])
+  senderAlias          String?
+  receiverAlias        String?
+  createdAt            DateTime           @default(now())
+
+  @@index([senderUserAccountId])
+  @@index([receiverUserAccountId])
+}
+
+// =========================================================================
+// EXTRACTOS BANCARIOS / EVIDENCIA DE CONCILIACION
+// =========================================================================
+
+model BankExtractEntry {
+  id              String                  @id @default(cuid())
+  uploadId        String
+  upload          Upload                  @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  extractKind     String
+  sourceSheet     String
+  sourceRowNumber Int?
+  transactionId   String
+  transactedAt    DateTime?
+  amountBOB       Decimal
+  rawRow          String
+  createdAt       DateTime                @default(now())
+
+  anomalies       ReconciliationAnomaly[]
 
   @@index([uploadId])
   @@index([transactionId])
+  @@index([sourceSheet])
 }
 
 // =========================================================================
@@ -187,36 +244,40 @@ model MonthlyRebate {
 }
 
 // =========================================================================
-// ANOMALÍAS DE CONCILIACIÓN
+// ANOMALIAS DE CONCILIACION
 // =========================================================================
 
 model ReconciliationAnomaly {
-  id                   String                @id @default(cuid())
-  uploadId             String
-  upload               Upload                @relation(fields: [uploadId], references: [id], onDelete: Cascade)
-  qrTransactionId      String?               @unique
-  qrTransaction        QRTransaction?        @relation(fields: [qrTransactionId], references: [id])
-  extractTransactionId String?               @unique
-  extractTransaction   ExtractTransaction?   @relation(fields: [extractTransactionId], references: [id])
-  transactionId        String
-  type                 String                // AnomalyType en packages/types
-  qrAmountBOB          Decimal?
-  extractAmountBOB     Decimal?
-  deltaBOB             Decimal?
+  id                 String             @id @default(cuid())
+  uploadId           String
+  upload             Upload             @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  ledgerTransactionId String?
+  ledgerTransaction  LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
+  bankExtractEntryId String?
+  bankExtractEntry   BankExtractEntry?  @relation(fields: [bankExtractEntryId], references: [id])
+  transactionId      String
+  serviceCode        String?
+  type               String             // AnomalyType en packages/types
+  ledgerAmountBOB    Decimal?
+  extractAmountBOB   Decimal?
+  deltaBOB           Decimal?
 
-  resolved             Boolean               @default(false)
-  resolutionNote       String?
-  resolvedAt           DateTime?
+  resolved           Boolean            @default(false)
+  resolutionNote     String?
+  resolvedAt         DateTime?
 
-  createdAt            DateTime              @default(now())
+  createdAt          DateTime           @default(now())
 
   @@index([uploadId, type])
   @@index([transactionId])
+  @@index([serviceCode])
   @@index([type, resolved])
+  @@index([ledgerTransactionId])
+  @@index([bankExtractEntryId])
 }
 
 // =========================================================================
-// ERRORES DE PARSEO (auditoría de filas inválidas)
+// ERRORES DE PARSEO (auditoria de filas invalidas)
 // =========================================================================
 
 model ParseError {
@@ -239,18 +300,18 @@ model ParseError {
 // =========================================================================
 
 model MonthlyRebateItem {
-  id              String         @id @default(cuid())
-  monthlyRebateId String
-  monthlyRebate   MonthlyRebate  @relation(fields: [monthlyRebateId], references: [id], onDelete: Cascade)
-  qrTransactionId String
-  qrTransaction   QRTransaction  @relation(fields: [qrTransactionId], references: [id])
-  amountBOB       Decimal
-  amountUSDT      Decimal
-  exchangeRate    Decimal
-  createdAt       DateTime       @default(now())
+  id                  String             @id @default(cuid())
+  monthlyRebateId     String
+  monthlyRebate       MonthlyRebate      @relation(fields: [monthlyRebateId], references: [id], onDelete: Cascade)
+  ledgerTransactionId String
+  ledgerTransaction   LedgerTransaction  @relation(fields: [ledgerTransactionId], references: [id])
+  amountBOB           Decimal
+  amountUSDT          Decimal
+  exchangeRate        Decimal
+  createdAt           DateTime           @default(now())
 
   @@index([monthlyRebateId])
-  @@index([qrTransactionId])
+  @@index([ledgerTransactionId])
 }
 
 // =========================================================================
