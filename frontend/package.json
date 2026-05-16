@@ -10,6 +10,7 @@
     "check": "astro check",
     "typecheck": "astro check",
     "test:e2e": "playwright test",
+    "test:e2e:fullstack": "playwright test --config playwright.fullstack.config.ts",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui"
   },
