@@ -78,6 +78,9 @@ jobs:
       - name: Typecheck frontend
         run: bun run --cwd frontend typecheck
 
+      - name: Install Playwright browser
+        run: bunx playwright install --with-deps chromium
+
       - name: Start backend
         run: bun run --cwd backend start > backend.log 2>&1 &
 
