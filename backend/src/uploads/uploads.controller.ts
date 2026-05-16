@@ -54,4 +54,14 @@ export class UploadsController {
   async findOne(@Param('id') id: string) {
     return this.uploads.findById(id)
   }
+
+  @Get(':id/rebates')
+  async rebates(@Param('id') id: string) {
+    return this.uploads.listRebates(id)
+  }
+
+  @Get(':id/transactions-minimal')
+  async transactionsMinimal(@Param('id') id: string) {
+    return this.uploads.listMinimalTransactions(id)
+  }
 }

@@ -1,9 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { D } from '@banex/utils'
-import type { CreateUploadResponse, UploadStatus, UploadSummary } from '@banex/types'
+import type {
+  CreateUploadResponse,
+  MonthlyRebateDTO,
+  UploadStatus,
+  UploadSummary,
+} from '@banex/types'
 import type { QRTransactionRaw } from '../parser/parser.types'
 import { ParserService } from '../parser/parser.service'
+import { ReconcileAgent } from '../jobs/agents/reconcile.agent'
 import { TierAgent } from '../jobs/agents/tier.agent'
 import { TiersService } from '../tiers/tiers.service'
 import { PrismaService } from '../prisma/prisma.service'
@@ -31,6 +37,7 @@ export class UploadsService {
     private readonly storage: FileStorageService,
     private readonly parser: ParserService,
     private readonly tierAgent: TierAgent,
+    private readonly reconcileAgent: ReconcileAgent,
     private readonly tiers: TiersService,
     config: ConfigService,
   ) {
@@ -202,6 +209,60 @@ export class UploadsService {
     }))
   }
 
+  async listRebates(uploadId: string): Promise<MonthlyRebateDTO[]> {
+    await this.ensureUpload(uploadId)
+
+    const rebates = await this.prisma.monthlyRebate.findMany({
+      where: { uploadId },
+      orderBy: [{ rebateUSDT: 'desc' }],
+      include: {
+        userAccount: true,
+        tier: true,
+        _count: { select: { items: true } },
+      },
+    })
+
+    return rebates.map((rebate) => ({
+      id: rebate.id,
+      uploadId: rebate.uploadId,
+      userId: Number(rebate.userAccount.accountNumber),
+      username: rebate.userAccount.username ?? rebate.userAccount.accountNumber,
+      period: rebate.period,
+      totalSpentBOB: rebate.totalSpentBOB.toString(),
+      tierId: rebate.tier?.level ?? null,
+      tierName: rebate.tier?.name ?? null,
+      rebatePercent: rebate.rebatePercent.toString(),
+      rebateUSDT: rebate.rebateUSDT.toString(),
+      rebateBOB: rebate.rebateBOB.toString(),
+      avgExchangeRate: rebate.avgExchangeRate.toString(),
+      paidOut: rebate.paidOut,
+      paidOutAt: rebate.paidOutAt?.toISOString() ?? null,
+      transactionCount: rebate._count.items,
+    }))
+  }
+
+  async listMinimalTransactions(uploadId: string) {
+    await this.ensureUpload(uploadId)
+
+    const transactions = await this.prisma.qRTransaction.findMany({
+      where: { uploadId },
+      select: {
+        userAccount: { select: { accountNumber: true } },
+        amountBOB: true,
+        amountUSDT: true,
+        exchangeRate: true,
+      },
+      orderBy: { transactionId: 'asc' },
+    })
+
+    return transactions.map((transaction) => ({
+      userId: Number(transaction.userAccount.accountNumber),
+      amountBOB: transaction.amountBOB.toString(),
+      amountUSDT: transaction.amountUSDT.toString(),
+      exchangeRate: transaction.exchangeRate.toString(),
+    }))
+  }
+
   private async processUpload(
     uploadId: string,
     file: Express.Multer.File,
@@ -222,10 +283,20 @@ export class UploadsService {
     }
 
     const rebates = await this.tierAgent.run(period, qrRows)
+    const anomalies = this.reconcileAgent.run({
+      qrRows,
+      extractRows: parsed.extractRows,
+    })
     const activeTiers = await this.tiers.listActive(period)
     const tierIdByLevel = new Map(activeTiers.map((tier) => [tier.level, tier.id]))
 
     await this.prisma.$transaction(async (tx) => {
+      await tx.reconciliationAnomaly.deleteMany({ where: { uploadId } })
+      await tx.monthlyRebate.deleteMany({ where: { uploadId } })
+      await tx.parseError.deleteMany({ where: { uploadId } })
+      await tx.qRTransaction.deleteMany({ where: { uploadId } })
+      await tx.extractTransaction.deleteMany({ where: { uploadId } })
+
       const accountMap = new Map<string, { username: string | null; displayName: string | null }>()
 
       for (const row of qrRows) {
@@ -296,6 +367,56 @@ export class UploadsService {
         })
       }
 
+      const persistedQrRows = await tx.qRTransaction.findMany({
+        where: { uploadId },
+        select: { id: true, transactionId: true },
+      })
+      const persistedExtractRows = await tx.extractTransaction.findMany({
+        where: { uploadId },
+        select: { id: true, transactionId: true },
+      })
+      const qrIdByTransactionId = new Map(
+        persistedQrRows.map((row) => [row.transactionId, row.id]),
+      )
+      const extractIdByTransactionId = new Map(
+        persistedExtractRows.map((row) => [row.transactionId, row.id]),
+      )
+
+      if (anomalies.length > 0) {
+        await tx.reconciliationAnomaly.createMany({
+          data: anomalies.map((anomaly) => ({
+            uploadId,
+            transactionId: anomaly.transactionId,
+            type: anomaly.type,
+            qrTransactionId: qrIdByTransactionId.get(anomaly.transactionId) ?? null,
+            extractTransactionId: extractIdByTransactionId.get(anomaly.transactionId) ?? null,
+            qrAmountBOB: anomaly.qrAmountBOB,
+            extractAmountBOB: anomaly.extractAmountBOB,
+            deltaBOB: anomaly.deltaBOB,
+          })),
+        })
+      }
+
+      const anomalousQrIds = new Set(
+        anomalies
+          .filter((anomaly) => anomaly.type === 'NO_EXTRACT' || anomaly.type === 'AMOUNT_MISMATCH')
+          .map((anomaly) => anomaly.transactionId),
+      )
+      const reconciledTransactionIds = parsed.extractRows
+        .filter((row) => qrIdByTransactionId.has(row.transactionId))
+        .map((row) => row.transactionId)
+        .filter((transactionId) => !anomalousQrIds.has(transactionId))
+
+      if (reconciledTransactionIds.length > 0) {
+        await tx.qRTransaction.updateMany({
+          where: {
+            uploadId,
+            transactionId: { in: reconciledTransactionIds },
+          },
+          data: { reconciledWithExtract: true },
+        })
+      }
+
       const totalSpentUSDTByAccount = aggregateUSDT(qrRows)
 
       if (rebates.length > 0) {
@@ -313,6 +434,41 @@ export class UploadsService {
             rebateUSDT: rebate.rebateUSDT,
           })),
         })
+
+        const persistedRebates = await tx.monthlyRebate.findMany({
+          where: { uploadId },
+          select: { id: true, userAccountId: true },
+        })
+        const rebateIdByUserId = new Map(
+          persistedRebates.map((rebate) => [rebate.userAccountId, rebate.id]),
+        )
+        const persistedQrTransactions = await tx.qRTransaction.findMany({
+          where: { uploadId },
+          select: {
+            id: true,
+            userAccountId: true,
+            amountBOB: true,
+            amountUSDT: true,
+            exchangeRate: true,
+          },
+        })
+
+        if (persistedQrTransactions.length > 0) {
+          await tx.monthlyRebateItem.createMany({
+            data: persistedQrTransactions.flatMap((transaction) => {
+              const monthlyRebateId = rebateIdByUserId.get(transaction.userAccountId)
+              if (!monthlyRebateId) return []
+
+              return [{
+                monthlyRebateId,
+                qrTransactionId: transaction.id,
+                amountBOB: transaction.amountBOB,
+                amountUSDT: transaction.amountUSDT,
+                exchangeRate: transaction.exchangeRate,
+              }]
+            }),
+          })
+        }
       }
 
       if (parseErrors.length > 0) {
@@ -336,12 +492,20 @@ export class UploadsService {
           qrRowCount: qrRows.length,
           extractRowCount: parsed.extractRows.length,
           parseErrorCount: parseErrors.length,
-          anomalyCount: 0,
+          anomalyCount: anomalies.length,
           processedAt: new Date(),
           errorMessage: null,
         },
       })
     })
+  }
+
+  private async ensureUpload(uploadId: string): Promise<void> {
+    const upload = await this.prisma.upload.findUnique({
+      where: { id: uploadId },
+      select: { id: true },
+    })
+    if (!upload) throw new UploadNotFoundError(uploadId)
   }
 
   private validateFile(file: Express.Multer.File | undefined): void {

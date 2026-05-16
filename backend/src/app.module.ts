@@ -6,6 +6,7 @@ import { ParserModule } from './parser/parser.module'
 import { UploadsModule } from './uploads/uploads.module'
 import { TiersModule } from './tiers/tiers.module'
 import { JobsModule } from './jobs/jobs.module'
+import { ReconciliationModule } from './reconciliation/reconciliation.module'
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { JobsModule } from './jobs/jobs.module'
     UploadsModule,
     TiersModule,
     JobsModule,
+    ReconciliationModule,
   ],
 })
 export class AppModule {}

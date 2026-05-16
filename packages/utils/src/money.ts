@@ -21,10 +21,13 @@ Decimal.set({
  */
 export const D = (value: DecimalString | number | Decimal): Decimal => {
   if (value instanceof Decimal) return value
-  const dec = new Decimal(value)
-  if (dec.isNaN()) {
+  let dec: Decimal
+  try {
+    dec = new Decimal(value)
+  } catch {
     throw new Error(`Invalid decimal value: ${String(value)}`)
   }
+  if (dec.isNaN()) throw new Error(`Invalid decimal value: ${String(value)}`)
   return dec
 }
 
@@ -46,19 +49,13 @@ const numberFormatBOB = new Intl.NumberFormat('es-BO', {
   maximumFractionDigits: 2,
 })
 
-const numberFormatUSDT = new Intl.NumberFormat('es-BO', {
-  minimumFractionDigits: 8,
-  maximumFractionDigits: 8,
-})
-
 export const formatBOB = (value: DecimalString | Decimal): string => {
   const dec = D(value)
   return `Bs ${numberFormatBOB.format(dec.toNumber())}`
 }
 
 export const formatUSDT = (value: DecimalString | Decimal): string => {
-  const dec = D(value)
-  return `${numberFormatUSDT.format(dec.toNumber())} USDT`
+  return `${D(value).toFixed(8)} USDT`
 }
 
 export const formatPercent = (value: DecimalString | Decimal): string => {

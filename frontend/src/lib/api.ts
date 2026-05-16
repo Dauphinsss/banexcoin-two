@@ -1,4 +1,11 @@
-import type { CreateUploadResponse, UploadSummary } from '@banex/types'
+import type {
+  AnomalyDTO,
+  CashbackTierDTO,
+  CreateUploadResponse,
+  MonthlyRebateDTO,
+  ReconciliationStats,
+  UploadSummary,
+} from '@banex/types'
 
 const API_BASE = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
@@ -51,5 +58,36 @@ export const api = {
   async listUploads(): Promise<UploadSummary[]> {
     const res = await fetch(`${API_BASE}/api/uploads`)
     return handleResponse<UploadSummary[]>(res)
+  },
+
+  async listRebates(uploadId: string): Promise<MonthlyRebateDTO[]> {
+    const res = await fetch(`${API_BASE}/api/uploads/${uploadId}/rebates`)
+    return handleResponse<MonthlyRebateDTO[]>(res)
+  },
+
+  async listMinimalTransactions(uploadId: string) {
+    const res = await fetch(`${API_BASE}/api/uploads/${uploadId}/transactions-minimal`)
+    return handleResponse<Array<{
+      userId: number
+      amountBOB: string
+      amountUSDT: string
+      exchangeRate: string
+    }>>(res)
+  },
+
+  async listTiers(period?: string): Promise<CashbackTierDTO[]> {
+    const query = period ? `?period=${encodeURIComponent(period)}` : ''
+    const res = await fetch(`${API_BASE}/api/tiers${query}`)
+    return handleResponse<CashbackTierDTO[]>(res)
+  },
+
+  async reconciliationStats(uploadId: string): Promise<ReconciliationStats> {
+    const res = await fetch(`${API_BASE}/api/reconciliation/stats?uploadId=${encodeURIComponent(uploadId)}`)
+    return handleResponse<ReconciliationStats>(res)
+  },
+
+  async listAnomalies(uploadId: string): Promise<AnomalyDTO[]> {
+    const res = await fetch(`${API_BASE}/api/reconciliation/anomalies?uploadId=${encodeURIComponent(uploadId)}`)
+    return handleResponse<AnomalyDTO[]>(res)
   },
 }
