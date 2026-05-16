@@ -472,9 +472,9 @@ const SEED_EXTRACT_ENTRIES = [
     transactedAt: new Date('2025-04-15T13:38:23.000Z'),
   },
   {
-    amountBOB: '-2.00',
+    amountBOB: '-1.50',
     extractKind: 'PAYMENT',
-    rawRow: { fecha: '15/04/2025', hora: '13:58', importe: '-2', transaccionId: '6846097010' },
+    rawRow: { fecha: '15/04/2025', hora: '13:58', importe: '-1.5', transaccionId: '6846097010' },
     sourceRowNumber: 6,
     sourceSheet: 'EXTRACTO DE PAGOS',
     transactionId: '6846097010',
@@ -602,7 +602,7 @@ async function seedTransactionsScenario(): Promise<void> {
       transactionRowCount: SEED_TRANSACTIONS.length,
       extractRowCount: SEED_EXTRACT_ENTRIES.length,
       parseErrorCount: 0,
-      anomalyCount: 0,
+      anomalyCount: 1,
       processedAt: new Date('2025-05-16T18:00:00.000Z'),
     },
   })
@@ -704,6 +704,39 @@ async function seedTransactionsScenario(): Promise<void> {
       },
     })
   }
+
+  const matchedTransactionIds = ['207681530', '207692950']
+  await prisma.ledgerTransaction.updateMany({
+    where: {
+      uploadId: upload.id,
+      transactionId: { in: matchedTransactionIds },
+    },
+    data: { reconciledWithExtract: true },
+  })
+
+  const mismatchLedger = await prisma.ledgerTransaction.findFirstOrThrow({
+    where: { uploadId: upload.id, transactionId: '6846097010' },
+    select: { id: true },
+  })
+
+  const mismatchExtract = await prisma.bankExtractEntry.findFirstOrThrow({
+    where: { uploadId: upload.id, transactionId: '6846097010' },
+    select: { id: true },
+  })
+
+  await prisma.reconciliationAnomaly.create({
+    data: {
+      uploadId: upload.id,
+      ledgerTransactionId: mismatchLedger.id,
+      bankExtractEntryId: mismatchExtract.id,
+      transactionId: '6846097010',
+      serviceCode: 'S-001',
+      type: 'AMOUNT_MISMATCH',
+      ledgerAmountBOB: '2.00',
+      extractAmountBOB: '1.50',
+      deltaBOB: '0.50',
+    },
+  })
 
   const cashbackTier = await prisma.cashbackTier.findFirst({
     where: {
