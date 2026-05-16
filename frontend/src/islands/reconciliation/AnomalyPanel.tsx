@@ -18,6 +18,8 @@ export function AnomalyPanel(): JSX.Element {
   const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
   const [resolving, setResolving] = useState<string | null>(null)
   const [resolveNote, setResolveNote] = useState('')
+  const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [aiText, setAiText] = useState<string>('')
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(
     null,
   )
@@ -78,6 +80,26 @@ export function AnomalyPanel(): JSX.Element {
     }
   }
 
+  const handleExplain = async (): Promise<void> => {
+    if (!upload) return
+    setAiStatus('loading')
+    setAiText('')
+    try {
+      const result = await api.explainAnomalies(upload.id)
+      setAiText(result.explanation)
+      setAiStatus(result.available ? 'done' : 'error')
+    } catch (error) {
+      const message =
+        error instanceof ApiCallError
+          ? error.payload.message
+          : error instanceof Error
+            ? error.message
+            : 'No se pudo generar la explicación.'
+      setAiText(message)
+      setAiStatus('error')
+    }
+  }
+
   const exportCSV = (): void => {
     const csv = buildAnomaliesCSV(filtered)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -109,6 +131,21 @@ export function AnomalyPanel(): JSX.Element {
           </div>
           <button
             type="button"
+            onClick={() => void handleExplain()}
+            disabled={aiStatus === 'loading' || (stats?.total ?? 0) === 0}
+            className="h-10 px-4 rounded-md border border-blue-500/40 bg-blue-500/10 text-sm text-blue-100 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {aiStatus === 'loading' ? (
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-transparent" />
+                Analizando...
+              </span>
+            ) : (
+              'Explicar con IA ✦'
+            )}
+          </button>
+          <button
+            type="button"
             onClick={exportCSV}
             disabled={filtered.length === 0}
             className="h-10 px-4 rounded-md border border-line-strong bg-panel-solid text-sm text-soft hover-bg-chart-track disabled:opacity-40 disabled:cursor-not-allowed"
@@ -117,6 +154,32 @@ export function AnomalyPanel(): JSX.Element {
           </button>
         </div>
       </div>
+
+      {aiStatus === 'done' || aiStatus === 'error' ? (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm animate-[fadeIn_400ms_ease-out] ${
+            aiStatus === 'error'
+              ? 'border-red-500/40 bg-red-500/10 text-red-200'
+              : 'border-blue-500/40 bg-blue-500/10 text-blue-100'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-blue-300/70">
+                {aiStatus === 'error' ? 'IA no disponible' : 'Explicación de IA ✦'}
+              </p>
+              <p className="mt-1 leading-relaxed">{aiText}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAiStatus('idle')}
+              className="text-current opacity-60 hover:opacity-100"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {feedback ? (
         <div

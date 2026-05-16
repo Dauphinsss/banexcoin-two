@@ -7,7 +7,10 @@
       "PowerShell(pip install openpyxl --quiet 2>&1)",
       "Bash(bun run *)",
       "Bash(bunx tsc *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(echo \"exit: $?\")",
+      "Read(//c/c/Users/markv/OneDrive/Escritorio/cochatech/packages/utils/**)",
+      "Read(//c/c/Users/markv/OneDrive/Escritorio/cochatech/packages/utils/src/**)"
     ]
   }
 }

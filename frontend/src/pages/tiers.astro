@@ -1,6 +1,6 @@
 ---
 import AppShell from '../layouts/AppShell.astro'
-import { TiersList } from '../islands/tiers/TiersList'
+import { TiersEditor } from '../islands/tiers/TiersEditor'
 ---
 
 <AppShell title="Niveles" activePage="tiers">
@@ -12,6 +12,6 @@ import { TiersList } from '../islands/tiers/TiersList'
       </p>
     </div>
 
-    <TiersList client:load />
+    <TiersEditor client:load />
   </div>
 </AppShell>

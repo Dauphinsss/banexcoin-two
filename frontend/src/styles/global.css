@@ -111,3 +111,24 @@
   .hover-border-success-soft:hover { border-color: rgb(var(--color-success) / 0.8); }
   .hover-border-violet-soft:hover { border-color: rgb(var(--color-violet) / 0.8); }
   .focus-border-brand:focus { border-color: rgb(var(--color-brand-hover)); }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
