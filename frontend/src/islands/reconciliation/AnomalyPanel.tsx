@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
+import { CircleCheck, X } from 'lucide-react'
 import type { AnomalyDTO, ReconciliationStats, UploadSummary } from '@banex/types'
 import { api, ApiCallError } from '../../lib/api'
 
@@ -131,8 +132,9 @@ export function AnomalyPanel(): JSX.Element {
               type="button"
               onClick={() => setFeedback(null)}
               className="text-current opacity-60 hover:opacity-100"
+              aria-label="Cerrar mensaje"
             >
-              ×
+              <X className="size-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -181,13 +183,16 @@ export function AnomalyPanel(): JSX.Element {
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {row.resolved ? (
-                      <span className="text-success-strong text-xs">
-                        ✓ Resuelta
+                      <span className="inline-flex items-start gap-1 text-success-strong text-xs">
+                        <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                        <span>
+                          Resuelta
                         {row.resolvedNote ? (
                           <span className="block font-mono text-faint text-[11px] truncate max-w-[200px]" title={row.resolvedNote}>
                             "{row.resolvedNote}"
                           </span>
                         ) : null}
+                        </span>
                       </span>
                     ) : (
                       <span className="text-warning text-xs">Pendiente</span>

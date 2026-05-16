@@ -1,4 +1,5 @@
 import { useEffect, useState, type JSX } from 'react'
+import { ArrowRight, BarChart3, Scale, Send, type LucideIcon } from 'lucide-react'
 import type { UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
 
@@ -80,21 +81,21 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
           title="Reporte Excel"
           description="4 hojas: reintegros, resumen por nivel, anomalías y errores de parseo."
           accent="blue"
-          icon="📊"
+          icon={BarChart3}
         />
         <DownloadCard
           href={api.banexTransferUrl(upload.id)}
           title="BanexTransfer"
           description="Archivo listo para cargar transferencias masivas en el formato interno de Banexcoin."
           accent="green"
-          icon="↗"
+          icon={Send}
         />
         <DownloadCard
           href={api.balanceSheetUrl(upload.id)}
           title="Cuadre DEBE/HABER"
           description="Réplica de la hoja Saldos del Excel original: balance por usuario y por servicio."
           accent="purple"
-          icon="⚖"
+          icon={Scale}
         />
       </div>
 
@@ -119,13 +120,13 @@ const DownloadCard = ({
   title,
   description,
   accent,
-  icon,
+  icon: Icon,
 }: {
   href: string
   title: string
   description: string
   accent: 'blue' | 'green' | 'purple'
-  icon: string
+  icon: LucideIcon
 }): JSX.Element => (
   <a
     href={href}
@@ -133,11 +134,14 @@ const DownloadCard = ({
     className={`block rounded-md border ${accentColors[accent]} bg-panel-inset px-4 py-3 transition-colors`}
   >
     <div className="flex items-start gap-3">
-      <span className="text-xl shrink-0">{icon}</span>
+      <Icon className="size-5 shrink-0 text-brand" aria-hidden="true" />
       <div className="min-w-0">
         <p className="font-medium text-main">{title}</p>
         <p className="mt-1 text-xs text-muted leading-relaxed">{description}</p>
-        <p className="mt-2 text-xs text-brand">Descargar →</p>
+        <p className="mt-2 inline-flex items-center gap-1 text-xs text-brand">
+          Descargar
+          <ArrowRight className="size-3.5" aria-hidden="true" />
+        </p>
       </div>
     </div>
   </a>

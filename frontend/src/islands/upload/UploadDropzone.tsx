@@ -1,5 +1,6 @@
 import { useCallback, useState, type JSX } from 'react'
 import { useDropzone, type FileRejection } from 'react-dropzone'
+import { Check, FileUp, TriangleAlert, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { detectPeriod } from '@banex/utils'
 import { api, ApiCallError } from '../../lib/api'
@@ -172,7 +173,7 @@ const DropzoneEmpty = ({
       `}
     >
       <input {...inputProps} />
-      <div className="text-4xl text-faint">↑</div>
+      <FileUp className="size-10 text-faint" aria-hidden="true" />
       <div className="space-y-1">
         <p className="text-soft font-medium">
           Arrastra el reporte mensual de pagos QR
@@ -228,10 +229,10 @@ const PreviewState = ({
         <button
           type="button"
           onClick={onCancel}
-          className="text-muted hover-text-soft text-lg"
+          className="text-muted hover-text-soft"
           aria-label="Cancelar"
         >
-          ×
+          <X className="size-5" aria-hidden="true" />
         </button>
       </header>
 
@@ -335,7 +336,7 @@ const SuccessState = ({
   onUploadAnother: () => void
 }): JSX.Element => (
   <div className="rounded-xl border border-success-soft bg-success-faint p-8 text-center space-y-4">
-    <p className="text-success-strong text-2xl">✓</p>
+    <Check className="mx-auto size-8 text-success-strong" aria-hidden="true" />
     <div>
       <p className="text-main font-medium">Archivo procesado correctamente.</p>
       <p className="text-xs text-muted font-mono mt-1">ID: {uploadId}</p>
@@ -358,7 +359,7 @@ const DuplicateState = ({
   onTryAnother: () => void
 }): JSX.Element => (
   <div className="rounded-xl border border-warning-soft bg-warning-faint p-8 text-center space-y-4">
-    <p className="text-warning-strong text-2xl">⚠</p>
+    <TriangleAlert className="mx-auto size-8 text-warning-strong" aria-hidden="true" />
     <div>
       <p className="text-main font-medium">Este archivo ya fue procesado anteriormente.</p>
       <p className="text-xs text-muted font-mono mt-1">ID existente: {existingUploadId}</p>

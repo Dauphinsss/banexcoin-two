@@ -1,4 +1,5 @@
 import { useEffect, useState, type JSX } from 'react'
+import { Check, CircleCheck, TriangleAlert, X } from 'lucide-react'
 import type { MonthlyRebateDTO, QRTransactionDTO } from '@banex/types'
 import { api, ApiCallError } from '../../lib/api'
 import {
@@ -96,10 +97,10 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
           <button
             type="button"
             onClick={onClose}
-            className="text-muted hover-text-soft text-2xl leading-none px-2"
+            className="text-muted hover-text-soft px-2"
             aria-label="Cerrar"
           >
-            ×
+            <X className="size-5" aria-hidden="true" />
           </button>
         </header>
 
@@ -146,7 +147,12 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
             <span>{rebate.transactionCount} transacciones · período {rebate.period}</span>
             <span className={rebate.paidOut ? 'text-success-strong' : ''}>
               {rebate.paidOut
-                ? `✓ Pagado el ${formatDateTime(rebate.paidOutAt)}`
+                ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Check className="size-3.5" aria-hidden="true" />
+                    Pagado el {formatDateTime(rebate.paidOutAt)}
+                  </span>
+                )
                 : 'Pendiente de pago'}
             </span>
           </div>
@@ -193,9 +199,9 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
                       </td>
                       <td className="px-3 py-2 text-center">
                         {tx.reconciledWithExtract ? (
-                          <span className="text-success-strong" title="Conciliada con extracto">✓</span>
+                          <CircleCheck className="mx-auto size-4 text-success-strong" aria-label="Conciliada con extracto" />
                         ) : (
-                          <span className="text-warning-strong" title="Sin conciliar">⚠</span>
+                          <TriangleAlert className="mx-auto size-4 text-warning-strong" aria-label="Sin conciliar" />
                         )}
                       </td>
                     </tr>
@@ -266,9 +272,10 @@ const TransactionModal = ({
         <button
           type="button"
           onClick={onClose}
-          className="text-muted hover-text-soft text-xl leading-none"
+          className="text-muted hover-text-soft"
+          aria-label="Cerrar"
         >
-          ×
+          <X className="size-5" aria-hidden="true" />
         </button>
       </header>
       <dl className="grid grid-cols-1 gap-2 text-sm">
@@ -283,8 +290,18 @@ const TransactionModal = ({
           label="Conciliada"
           value={
             transaction.reconciledWithExtract
-              ? '✓ Sí'
-              : '⚠ No'
+              ? (
+                <span className="inline-flex items-center gap-1 text-success-strong">
+                  <CircleCheck className="size-4" aria-hidden="true" />
+                  Sí
+                </span>
+              )
+              : (
+                <span className="inline-flex items-center gap-1 text-warning-strong">
+                  <TriangleAlert className="size-4" aria-hidden="true" />
+                  No
+                </span>
+              )
           }
         />
         {transaction.extractMismatch ? (
@@ -301,7 +318,7 @@ const ModalField = ({
   mono = false,
 }: {
   label: string
-  value: string
+  value: JSX.Element | string
   mono?: boolean
 }): JSX.Element => (
   <div className="flex justify-between gap-4 border-b border-line pb-1.5">
