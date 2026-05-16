@@ -5,7 +5,7 @@ on:
     branches: [ "main" ] # El despliegue correrá cada vez que envíes cambios a la rama main
 
 env:
-  AWS_REGION: sa-east-1                    # Si tu servidor está en otra región (ej: us-west-2), cámbialo aquí
+  AWS_REGION: sa-east-1                      # Configurado para São Paulo (tu servidor)
   ECR_REPOSITORY: mi-nest-backend            # El nombre exacto que le diste a tu repositorio en AWS ECR
   EC2_USER: ubuntu                           # Usuario por defecto para servidores Ubuntu en AWS
 
@@ -33,8 +33,8 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: latest
       run: |
-        # Usamos ./back para decirle a Docker que compile solo lo que está en esa carpeta
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./back
+        # Corregido: Apunta a tu carpeta ./backend
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
     - name: Deploy to EC2 via SSH
