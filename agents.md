@@ -13,6 +13,8 @@ Mapa de agentes internos, workers y servicios especializados del sistema. En est
 3. **Idempotencia.** Reintentar un job no debe duplicar transacciones ni reintegros.
 4. **Errores observables.** Fallas se registran, actualizan `Upload.status` y se emiten por WebSocket.
 5. **Independencia del core Banexcoin.** Los agentes solo operan con archivos cargados y datos persistidos localmente.
+6. **Verificación frontend obligatoria.** Después de cualquier cambio en `frontend/`, ejecutar los tests Playwright con `bun run --cwd frontend test:e2e`. Si fallan, corregir el código o estabilizar los tests antes de dar el cambio por terminado.
+7. **Commits en inglés.** Los commits deben escribirse en inglés.
 
 ---
 
