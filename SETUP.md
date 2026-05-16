@@ -16,12 +16,13 @@
 6. [Redis (opcional)](#6-redis-opcional)
 7. [Arrancar en desarrollo](#7-arrancar-en-desarrollo)
 8. [Verificar que funciona](#8-verificar-que-funciona)
-9. [Cargar el Excel de prueba](#9-cargar-el-excel-de-prueba)
-10. [Tests automatizados](#10-tests-automatizados)
-11. [Comandos útiles del día a día](#11-comandos-útiles-del-día-a-día)
-12. [Resetear el sistema](#12-resetear-el-sistema)
-13. [Troubleshooting](#13-troubleshooting)
-14. [Estructura del repo](#14-estructura-del-repo)
+9. [Estado actual](#9-estado-actual)
+10. [Cargar el Excel de prueba](#10-cargar-el-excel-de-prueba)
+11. [Tests automatizados](#11-tests-automatizados)
+12. [Comandos útiles del día a día](#12-comandos-útiles-del-día-a-día)
+13. [Resetear el sistema](#13-resetear-el-sistema)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Estructura del repo](#15-estructura-del-repo)
 
 ---
 
@@ -252,7 +253,37 @@ Abre <http://localhost:4321> en el navegador. Debes ver:
 
 ---
 
-## 9. Cargar el Excel de prueba
+## 9. Estado actual
+
+Hoy el proyecto está funcional hasta **F1 Ingesta**.
+
+Ya está implementado:
+- `F0` completo: monorepo, SQLite, Prisma, seed y `tier-engine`.
+- `F1.1` upload por `POST /api/uploads`.
+- `F1.2` idempotencia por hash SHA-256.
+- `F1.3` parser de la hoja `Pago QR`.
+- `F1.4` parser de la hoja `EXTRACTO DE PAGOS`.
+- `F1.5` dropzone con preview en frontend.
+- `F1.6` detección automática de período.
+
+Todavía no está conectado el pipeline completo de procesamiento:
+- No hay `TierAgent` ejecutándose al subir el archivo.
+- No hay `ReconcileAgent` corriendo automáticamente.
+- No hay BullMQ/Workers/WebSocket de progreso activos en el flujo.
+- Por eso, un upload válido queda en `PENDING` y no avanza a `DONE`.
+
+Qué puedes probar hoy con confianza:
+- Health check del backend.
+- Preview del Excel en `/uploads/new`.
+- Validación de headers.
+- Detección de período.
+- Upload al backend.
+- Detección de duplicados por hash.
+- Tests del parser y del `tier-engine`.
+
+---
+
+## 10. Cargar el Excel de prueba
 
 El archivo `Reportes Banexcoin Bolivia Hackaton 2026.xlsx` que vino con la ficha está en la raíz del repo.
 
@@ -297,7 +328,7 @@ Verás un archivo `<hash-sha256>.xlsx`. Ese es el archivo persistido.
 
 ---
 
-## 10. Tests automatizados
+## 11. Tests automatizados
 
 ### Suite completa
 
@@ -336,7 +367,7 @@ Re-ejecuta los tests cada vez que guardes un archivo.
 
 ---
 
-## 11. Comandos útiles del día a día
+## 12. Comandos útiles del día a día
 
 ### Desarrollo
 
@@ -384,7 +415,7 @@ bun run build          # build estático
 
 ---
 
-## 12. Resetear el sistema
+## 13. Resetear el sistema
 
 Si quieres empezar de cero (DB nueva, archivos limpios):
 
@@ -410,7 +441,7 @@ bun run dev
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### `Cannot find module '@banex/types'` o `@banex/utils`
 
@@ -516,7 +547,7 @@ Ejecuta PowerShell como administrador y reintenta. O usa Windows Terminal con WS
 
 ---
 
-## 14. Estructura del repo
+## 15. Estructura del repo
 
 ```
 banexcoin-two/
