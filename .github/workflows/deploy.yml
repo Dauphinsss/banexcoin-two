@@ -3,11 +3,10 @@ name: Deploy NestJS to EC2
 on:
   push:
     branches: [ "main" ] # El despliegue correrá cada vez que envíes cambios a la rama main
-
 env:
   AWS_REGION: sa-east-1                      # Configurado para São Paulo (tu servidor)
   ECR_REPOSITORY: mi-nest-backend            # El nombre exacto que le diste a tu repositorio en AWS ECR
-  EC2_USER: ubuntu                           # Usuario por defecto para servidores Ubuntu en AWS
+  EC2_USER: ubuntu                           # Usuario por 
 
 jobs:
   build-and-ship:
