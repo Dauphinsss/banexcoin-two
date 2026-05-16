@@ -9,11 +9,13 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "bun run --cwd backend prisma:generate",
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
+    "db:generate": "bun run --cwd backend prisma:generate",
     "db:push": "bun run --cwd backend prisma:push",
     "db:migrate": "bun run --cwd backend prisma:migrate",
     "db:studio": "bun run --cwd backend prisma:studio",

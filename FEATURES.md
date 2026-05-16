@@ -69,17 +69,17 @@ Estructura `apps/{api,web}` + `packages/{types,utils,ui}` con `turbo.json` y `pn
 - `pnpm dev` levanta web y api en paralelo
 - `packages/types` se importa desde ambos apps
 
-### F0.2 · Docker Compose local
+### F0.2 · SQLite local + Redis opcional
 
 - **Prio:** P0 · **Esfuerzo:** S · **Premio:** Empresarial
 - **FLOW ref:** sección 5 (master flow)
 - **Módulo:** `docker-compose.yml`
 
-Postgres 16 + Redis 7-alpine + healthchecks. Persiste volumen de DB localmente.
+SQLite local para desarrollo sin Docker. Redis 7-alpine queda opcional para workers BullMQ.
 
 **Aceptación:**
-- `docker compose up -d` arranca Postgres en 5432 y Redis en 6379
-- `pnpm db:push` aplica el schema Prisma
+- `bun run db:push` crea `backend/prisma/dev.db`
+- `docker compose up -d redis` arranca Redis en 6379 cuando se necesiten workers
 
 ### F0.3 · Prisma schema y primera migración
 
@@ -90,7 +90,7 @@ Postgres 16 + Redis 7-alpine + healthchecks. Persiste volumen de DB localmente.
 Modelos: `User`, `Upload`, `QRTransaction`, `CashbackTier`, `MonthlyRebate`, `Anomaly`, `ParseError`.
 
 **Aceptación:**
-- Todas las columnas monetarias son `Decimal @db.Decimal(20,8)`
+- Todas las columnas monetarias son `Decimal`
 - Constraints: `Upload.fileHash unique`, `MonthlyRebate @@unique([userId, period])`
 - `prisma migrate dev` genera la migración inicial
 
@@ -682,7 +682,7 @@ Seed con 5 tiers + admin user. El Excel real se carga en la demo, no se hardcode
 - **FLOW ref:** sección 13 (roadmap mes 1)
 - **Módulo:** `apps/api/src/health/health.controller.ts`
 
-`GET /health` con estado de Postgres, Redis y workers BullMQ.
+`GET /health` con estado de SQLite, Redis y workers BullMQ.
 
 **Aceptación:**
 - Devuelve 200 si todo OK, 503 si algo cae

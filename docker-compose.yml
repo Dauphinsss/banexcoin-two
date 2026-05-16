@@ -1,24 +1,6 @@
 name: banex-reintegra
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: banex-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: banex_reintegra
-      POSTGRES_USER: banex
-      POSTGRES_PASSWORD: banex_local_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U banex -d banex_reintegra"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   redis:
     image: redis:7-alpine
     container_name: banex-redis
@@ -35,7 +17,5 @@ services:
       retries: 10
 
 volumes:
-  postgres_data:
-    name: banex_postgres_data
   redis_data:
     name: banex_redis_data

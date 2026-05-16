@@ -16,10 +16,10 @@ Sistema de cashback automatizado para Banexcoin Bolivia.
 
 - **Frontend:** Astro 4 + React Islands + Tailwind v4
 - **Backend:** NestJS + Prisma + BullMQ
-- **Base de datos:** PostgreSQL 16
+- **Base de datos:** SQLite local con Prisma
 - **Cola:** Redis 7
 - **Monorepo:** Bun workspaces + Turborepo
-- **Precisión decimal:** `decimal.js` + `Decimal(20,8)` en Postgres
+- **Precisión decimal:** `decimal.js` + `Decimal` en Prisma
 
 ---
 
@@ -28,7 +28,7 @@ Sistema de cashback automatizado para Banexcoin Bolivia.
 ### 1. Requisitos
 
 - [Bun](https://bun.sh) >= 1.1
-- [Docker](https://www.docker.com/) (para Postgres + Redis)
+- [Docker](https://www.docker.com/) opcional, solo si se usa Redis local con BullMQ
 - Node 20+ (Bun ya lo cubre)
 
 ### 2. Variables de entorno
@@ -39,28 +39,23 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-### 3. Infraestructura local
-
-```bash
-bun run infra:up        # levanta postgres + redis en docker
-```
-
-Verificar:
-```bash
-docker compose ps       # ambos containers "healthy"
-```
-
-### 4. Dependencias
+### 3. Dependencias
 
 ```bash
 bun install             # instala todo el monorepo
 ```
 
-### 5. Base de datos
+### 4. Base de datos
 
 ```bash
-bun run db:push         # aplica el schema Prisma
+bun run db:push         # crea/sincroniza backend/prisma/dev.db
 bun run db:seed         # carga los 5 niveles de cashback iniciales
+```
+
+### 5. Infraestructura local opcional
+
+```bash
+bun run infra:up        # levanta Redis en Docker si usas BullMQ
 ```
 
 ### 6. Desarrollo
@@ -107,9 +102,9 @@ banexcoin-two/
 | `bun run build` | Build de todo el monorepo |
 | `bun run test` | Tests en todos los workspaces |
 | `bun run typecheck` | Type-check en todos los workspaces |
-| `bun run infra:up` | Postgres + Redis con Docker |
+| `bun run infra:up` | Redis con Docker para BullMQ |
 | `bun run infra:down` | Apaga la infra |
-| `bun run db:push` | Aplica schema Prisma a Postgres |
+| `bun run db:push` | Aplica schema Prisma a SQLite |
 | `bun run db:seed` | Carga niveles de cashback iniciales |
 | `bun run db:studio` | Abre Prisma Studio en navegador |
 
@@ -118,8 +113,8 @@ banexcoin-two/
 ## Cimientos terminados (F0)
 
 - ✅ **F0.1** Monorepo Bun + Turborepo con workspaces.
-- ✅ **F0.2** Docker Compose con Postgres 16 y Redis 7 con healthchecks.
-- ✅ **F0.3** Prisma schema completo (User, Upload, QRTransaction, CashbackTier, MonthlyRebate, Anomaly, ParseError) con `Decimal(20,8)` en todos los montos.
+- ✅ **F0.2** SQLite local para datos y Docker Compose opcional para Redis 7.
+- ✅ **F0.3** Prisma schema completo (User, Upload, QRTransaction, CashbackTier, MonthlyRebate, Anomaly, ParseError) con `Decimal` en todos los montos.
 - ✅ **F0.4** `tier-engine` puro en `packages/utils` con tests Vitest (asignación de niveles, promedio ponderado, casos borde, volumen 5.000 filas).
 
 **Siguiente etapa:** [F1 Ingesta](FEATURES.md#f1--ingesta) — upload, parser, idempotencia.

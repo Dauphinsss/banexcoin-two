@@ -6,12 +6,15 @@ dist
 .env.*
 !.env.example
 *.log
+*.tsbuildinfo
 coverage
 .DS_Store
 .idea
 .vscode/settings.json
 
 # Prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal
 backend/prisma/migrations/migration_lock.toml
 !backend/prisma/migrations/
 
