@@ -1,156 +1,227 @@
-# BanexReintegra — Agents
+# BanexReintegra - Agents
 
 > **Anexo de [FLOW.md](FLOW.md).** Para entender cómo encajan estos agentes en el flujo completo del producto (upload → procesamiento → resultados), ver `FLOW.md` sección "Flujo end-to-end".
 
-Mapa de todos los agentes del sistema: workers de BullMQ, gateway de eventos y el agente de IA (Claude) para explicación de anomalías.
+Mapa de agentes internos, workers y servicios especializados del sistema. En este proyecto, "agente" significa una unidad con responsabilidad única que puede ser ejecutada por un worker, un servicio NestJS o un endpoint bajo demanda.
+
+---
+
+## Principios de agentes
+
+1. **Una responsabilidad por agente.** Parsear, calcular, conciliar, persistir y reportar son pasos separados.
+2. **Contratos tipados.** Cada agente recibe DTOs o estructuras normalizadas; no comparte estado mutable global.
+3. **Idempotencia.** Reintentar un job no debe duplicar transacciones ni reintegros.
+4. **Errores observables.** Fallas se registran, actualizan `Upload.status` y se emiten por WebSocket.
+5. **Independencia del core Banexcoin.** Los agentes solo operan con archivos cargados y datos persistidos localmente.
 
 ---
 
 ## Mapa general
 
-```
-                        ┌─────────────────────────────────┐
-                        │           NestJS API             │
-                        │                                  │
-  HTTP POST /uploads ──►│  UploadsController               │
-                        │       │                          │
-                        │       ▼                          │
-                        │  UploadsService                  │
-                        │   ├─ valida MIME                 │
-                        │   ├─ calcula SHA-256             │
-                        │   ├─ guarda Upload{PENDING}      │
-                        │   └─ encola job ─────────────────┼──► BullMQ (Redis)
-                        │                                  │          │
-                        │  EventsGateway (Socket.IO) ◄─────┼──────────┤
-                        │       │                          │          │
-                        └───────┼──────────────────────────┘          │
-                                │                                      │
-                         WS emit a cliente                             ▼
-                                                          ┌─────────────────────┐
-                                                          │  ProcessUploadAgent │
-                                                          │  (BullMQ Worker)    │
-                                                          │                     │
-                                                          │  1. ParseAgent      │
-                                                          │  2. TierAgent       │
-                                                          │  3. ReconcileAgent  │
-                                                          │  4. ReportAgent     │
-                                                          └─────────────────────┘
+```text
+Frontend Astro
+  │
+  │ POST /uploads
+  ▼
+UploadsController
+  │
+  ▼
+UploadsService
+  ├─ valida archivo
+  ├─ calcula SHA-256
+  ├─ crea o reutiliza Upload
+  └─ encola process-upload
+       │
+       ▼
+BullMQ uploads queue
+       │
+       ▼
+ProcessUploadAgent
+  ├─ ParseAgent
+  ├─ TierAgent
+  ├─ ReconcileAgent
+  ├─ PersistenceAgent
+  └─ EventsGateway
+       │
+       ├─ job:progress
+       ├─ job:done
+       └─ job:failed
+
+ReportAgent se ejecuta bajo demanda desde endpoints de descarga.
+AnomalyExplainerAgent es opcional y se ejecuta bajo demanda.
 ```
 
 ---
 
-## Agentes de procesamiento (BullMQ Workers)
+## ProcessUploadAgent
 
-### ProcessUploadAgent — orquestador
-
+**Tipo:** BullMQ Worker
 **Cola:** `uploads`
-**Archivo:** `apps/api/src/jobs/process-upload.job.ts`
+**Archivo objetivo:** `backend/src/jobs/process-upload.processor.ts`
+**Responsabilidad:** orquestar el procesamiento completo de un upload.
 
-Recibe el `uploadId`, orquesta los agentes secundarios en secuencia y emite eventos de progreso.
+### Contrato
+
+```typescript
+interface ProcessUploadJobData {
+  uploadId: string
+}
+```
+
+### Flujo
 
 ```typescript
 @Processor('uploads')
 export class ProcessUploadAgent extends WorkerHost {
-  async process(job: Job<{ uploadId: string }>) {
+  async process(job: Job<ProcessUploadJobData>) {
     const { uploadId } = job.data
 
-    await this.emit(job, 5, 'Leyendo archivo...')
-    const rows = await this.parseAgent.run(uploadId)
+    await this.emit(job, uploadId, 5, 'Leyendo archivo y validando estructura')
+    const parsed = await this.parseAgent.run(uploadId)
 
-    await this.emit(job, 30, 'Calculando reintegros...')
-    const rebates = await this.tierAgent.run(uploadId, rows)
+    await this.emit(job, uploadId, 45, 'Calculando consumo mensual por usuario')
+    const rebates = await this.tierAgent.run(uploadId, parsed)
 
-    await this.emit(job, 65, 'Conciliando con extracto bancario...')
-    const anomalies = await this.reconcileAgent.run(uploadId, rows)
+    await this.emit(job, uploadId, 80, 'Conciliando contra extracto bancario')
+    const anomalies = await this.reconcileAgent.run(uploadId, parsed)
 
-    await this.emit(job, 90, 'Guardando resultados...')
-    await this.persistenceAgent.run(uploadId, rebates, anomalies)
+    await this.emit(job, uploadId, 95, 'Guardando resultados')
+    await this.persistenceAgent.run(uploadId, parsed, rebates, anomalies)
 
-    await this.emit(job, 100, 'Listo')
-    await this.eventsGateway.emitDone(uploadId, rebates.length, anomalies.length)
-  }
-
-  private emit(job: Job, percent: number, message: string) {
-    job.updateProgress(percent)
-    return this.eventsGateway.emitProgress(job.id, percent, message)
+    await this.emit(job, uploadId, 100, 'Proceso completado')
+    this.eventsGateway.emitDone({
+      jobId: String(job.id),
+      uploadId,
+      rebateCount: rebates.length,
+      anomalyCount: anomalies.length,
+      parseErrorCount: parsed.parseErrors.length,
+    })
   }
 }
 ```
 
-**Estados que emite por WebSocket:**
+### Reglas
 
-| % | Mensaje |
-|---|---|
-| 5 | "Leyendo archivo..." |
-| 30 | "Calculando reintegros..." |
-| 65 | "Conciliando con extracto bancario..." |
-| 90 | "Guardando resultados..." |
-| 100 | "Listo" |
+- Marcar `Upload.status = PROCESSING` al iniciar.
+- Marcar `DONE` solo después de persistir todo.
+- Marcar `FAILED` con `errorMessage` si cualquier agente falla.
+- No hacer parsing, cálculos ni escritura directa dentro del orquestador.
 
 ---
 
-### ParseAgent
+## ParseAgent
 
-**Responsabilidad única:** convertir las hojas del Excel en estructuras tipadas. No toca la base de datos.
+**Tipo:** servicio NestJS interno
+**Archivo objetivo:** `backend/src/jobs/agents/parse.agent.ts`
+**Responsabilidad:** convertir Excel/CSV en filas tipadas y errores de parseo.
 
-**Archivo:** `apps/api/src/jobs/agents/parse.agent.ts`
+### Entradas
 
-**Hojas que procesa:**
+- `uploadId`.
+- Archivo asociado al upload, guardado temporalmente o en almacenamiento local controlado.
 
-| Hoja | Propósito | Columnas clave |
-|---|---|---|
-| `Pago QR` | Transacciones de pago | `Creado por`, `Número de Cuenta`, `Monto intercambio`, `Monto Pagado`, `Precio`, `Transacción Id` |
-| `EXTRACTO DE PAGOS` | Extracto bancario para conciliación | `Transacción Id`, `Monto`, `Fecha` |
-| `Cobro QR` | Cobros de comercios (info extra) | — |
-| `Transfers` | Formato BanexTransfer (referencia) | — |
-
-**Contrato:**
+### Salida
 
 ```typescript
-interface ParseAgent {
-  run(uploadId: string): Promise<ParseResult>
-}
-
 interface ParseResult {
+  period: string | null
   qrRows: QRTransactionRaw[]
   extractRows: ExtractRowRaw[]
-  period: string              // "2025-05" inferido de las fechas
-  parseErrors: ParseError[]   // filas que no pudieron parsearse
+  parseErrors: ParseError[]
+  metadata: {
+    fileName: string
+    fileHash: string
+    sheets: string[]
+    rowCount: number
+  }
+}
+
+interface QRTransactionRaw {
+  rowNumber: number
+  transactionId: string
+  userExternalId?: string
+  username?: string
+  accountNumber: string
+  amountUSDT: string
+  amountBOB: string
+  exchangeRate: string
+  transactedAt?: string
+  raw: Record<string, unknown>
+}
+
+interface ExtractRowRaw {
+  rowNumber: number
+  transactionId: string
+  amountBOB: string
+  transactedAt?: string
+  raw: Record<string, unknown>
+}
+
+interface ParseError {
+  sheetName: string
+  rowNumber: number
+  message: string
+  raw?: Record<string, unknown>
 }
 ```
 
-**Reglas de validación que aplica:**
-- Header de `Pago QR` debe tener exactamente las columnas esperadas (falla el job si no).
-- `Transacción Id` no puede ser vacío ni duplicado dentro del mismo archivo.
-- `Monto intercambio` y `Monto Pagado` deben ser numéricos positivos.
-- Filas con errores se coleccionan en `parseErrors` y se guardan; no abortan el job.
+### Hojas esperadas
+
+| Hoja | Uso | Obligatoria |
+|---|---|---|
+| `Pago QR` | Fuente principal de transacciones QR | Sí |
+| `EXTRACTO DE PAGOS` | Conciliación bancaria | No, pero recomendada |
+| `Cobro QR` | Contexto adicional si existe | No |
+| `Transfers` | Referencia para salida BanexTransfer | No |
+
+### Validaciones
+
+- `Pago QR` debe incluir `Transacción Id`, cuenta/usuario, monto Bs., monto USDT y tipo de cambio.
+- `Transacción Id` no puede estar vacío.
+- Duplicados dentro del mismo archivo se registran como error de parseo.
+- Montos y tipo de cambio deben ser positivos.
+- Filas inválidas no abortan todo el job salvo que falten headers críticos.
 
 ---
 
-### TierAgent
+## TierAgent
 
-**Responsabilidad única:** aplicar el `tier-engine` a las filas parseadas y producir `RebateResult[]`. No toca la base de datos directamente.
+**Tipo:** servicio NestJS interno
+**Archivo objetivo:** `backend/src/jobs/agents/tier.agent.ts`
+**Responsabilidad:** aplicar niveles de cashback y producir reintegros mensuales.
 
-**Archivo:** `apps/api/src/jobs/agents/tier.agent.ts`
+### Contrato
 
 ```typescript
 interface TierAgent {
-  run(uploadId: string, rows: QRTransactionRaw[]): Promise<RebateResult[]>
+  run(uploadId: string, parsed: ParseResult): Promise<RebateResult[]>
 }
 ```
 
-Internamente:
-1. Carga los `CashbackTier[]` activos para el período desde Prisma.
-2. Llama a `calculateRebates()` de `packages/utils` con los datos normalizados.
-3. Devuelve los resultados sin persistir (eso lo hace `PersistenceAgent`).
+### Flujo
+
+1. Determina el período del `ParseResult` o del upload.
+2. Carga `CashbackTier[]` activos para ese período.
+3. Normaliza las transacciones QR válidas.
+4. Llama al motor puro `calculateRebates()`.
+5. Devuelve resultados sin persistir.
+
+### Reglas
+
+- No debe escribir en base de datos.
+- No debe depender de HTTP ni de WebSocket.
+- Debe trabajar con strings Decimal.
+- Si no hay tiers activos, devuelve resultados con `tierId = null` y `rebatePercent = 0`.
 
 ---
 
-### ReconcileAgent
+## ReconcileAgent
 
-**Responsabilidad única:** cruzar `qrRows` con `extractRows` y clasificar anomalías.
+**Tipo:** servicio NestJS interno
+**Archivo objetivo:** `backend/src/jobs/agents/reconcile.agent.ts`
+**Responsabilidad:** cruzar pagos QR contra extracto bancario.
 
-**Archivo:** `apps/api/src/jobs/agents/reconcile.agent.ts`
+### Contrato
 
 ```typescript
 type AnomalyType = 'NO_EXTRACT' | 'NO_QR' | 'AMOUNT_MISMATCH'
@@ -158,158 +229,207 @@ type AnomalyType = 'NO_EXTRACT' | 'NO_QR' | 'AMOUNT_MISMATCH'
 interface Anomaly {
   transactionId: string
   type: AnomalyType
-  qrAmount?: string
-  extractAmount?: string
-  delta?: string
+  qrAmountBOB?: string
+  extractAmountBOB?: string
+  deltaBOB?: string
+  qrRowNumber?: number
+  extractRowNumber?: number
 }
 
 interface ReconcileAgent {
-  run(uploadId: string, rows: ParseResult): Promise<Anomaly[]>
+  run(uploadId: string, parsed: ParseResult): Promise<Anomaly[]>
 }
 ```
 
-**Algoritmo:**
+### Algoritmo
 
+```text
+qrById = Map(transactionId, qrRow)
+extractById = Map(transactionId, extractRow)
+
+for each qrRow:
+  if extract missing:
+    anomaly NO_EXTRACT
+  else if abs(qr.amountBOB - extract.amountBOB) > tolerance:
+    anomaly AMOUNT_MISMATCH
+
+for each extractRow:
+  if qr missing:
+    anomaly NO_QR
 ```
-SET qrIds   = { txId → amountBOB }  (del ParseResult)
-SET extIds  = { txId → amount }     (del ParseResult)
 
-Para cada id en qrIds:
-  Si no está en extIds     → Anomaly{ type: NO_EXTRACT }
-  Si está y monto difiere  → Anomaly{ type: AMOUNT_MISMATCH, delta }
+### Configuración
 
-Para cada id en extIds que no esté en qrIds:
-  → Anomaly{ type: NO_QR }
-```
-
-Tolerancia de diferencia configurable vía variable de entorno `RECONCILE_TOLERANCE_BOB` (default: `0.01`).
+| Variable | Default | Uso |
+|---|---|---|
+| `RECONCILE_TOLERANCE_BOB` | `0.01` | Diferencia permitida en Bs. |
 
 ---
 
-### PersistenceAgent
+## PersistenceAgent
 
-**Responsabilidad única:** escribir en Postgres los resultados de los otros agentes en una sola transacción.
+**Tipo:** servicio NestJS interno
+**Archivo objetivo:** `backend/src/jobs/agents/persistence.agent.ts`
+**Responsabilidad:** escribir resultados en PostgreSQL de forma transaccional.
 
-**Archivo:** `apps/api/src/jobs/agents/persistence.agent.ts`
+### Contrato
 
 ```typescript
 interface PersistenceAgent {
   run(
     uploadId: string,
+    parsed: ParseResult,
     rebates: RebateResult[],
     anomalies: Anomaly[],
-    parseErrors: ParseError[]
   ): Promise<void>
 }
 ```
 
-Usa `prisma.$transaction([...])` para garantizar que o todo se guarda o nada. Si falla, el job queda en estado `FAILED` y BullMQ reintenta automáticamente.
+### Escrituras
+
+- Upsert de `UserAccount` por cuenta.
+- Inserción de `QRTransaction` por `uploadId + transactionId`.
+- Inserción o reemplazo controlado de `MonthlyRebate` por `uploadId + userAccountId`.
+- Inserción de `ReconciliationAnomaly`.
+- Inserción de `ParseError`.
+- Actualización de `Upload`: período, conteos, estado final.
+
+### Reglas
+
+- Usar una transacción Prisma.
+- No enviar eventos WebSocket.
+- No generar archivos de reporte.
+- Debe ser seguro ante reintentos del mismo job.
 
 ---
 
-### ReportAgent (bajo demanda, no en cola)
+## ReportAgent
 
-**Responsabilidad única:** generar los archivos de salida desde los datos ya persistidos.
+**Tipo:** servicio bajo demanda
+**Archivo objetivo:** `backend/src/reports/report.agent.ts`
+**Responsabilidad:** generar archivos descargables desde datos persistidos.
 
-**Archivo:** `apps/api/src/reports/report.agent.ts`
-
-Dos generadores:
-
-**A) Excel de reintegros** (`exceljs`)
-- Hoja 1 "Reintegros": una fila por `MonthlyRebate` con todas las columnas
-- Hoja 2 "Resumen por nivel": agregados (count, total USDT, total BOB, % del total) por nivel
-- Hoja 3 "Anomalías": listado con tipo, `transactionId` y delta
-- Hoja 4 "Errores de parseo": filas que no pudieron leerse
-
-**B) Archivo BanexTransfer** (CSV o Excel según especificación de Banexcoin)
-```
-Nro | Cuenta Origen | Cuenta Destino | Monto USDT | Monto BOB | T/C promedio | Referencia
-```
-
-Ambos generadores son idempotentes: siempre leen desde `MonthlyRebate` y nunca modifican estado.
-
----
-
-## EventsGateway (Socket.IO)
-
-**Archivo:** `apps/api/src/events/events.gateway.ts`
+### Generadores
 
 ```typescript
-@WebSocketGateway({ namespace: '/jobs', cors: true })
-export class EventsGateway {
-  @WebSocketServer() server: Server
-
-  emitProgress(jobId: string, percent: number, message: string) {
-    this.server.emit('job:progress', { jobId, percent, message })
-  }
-
-  emitDone(uploadId: string, rebateCount: number, anomalyCount: number) {
-    this.server.emit('job:done', { uploadId, rebateCount, anomalyCount })
-  }
-
-  emitFailed(jobId: string, error: string) {
-    this.server.emit('job:failed', { jobId, error })
-  }
+interface ReportAgent {
+  generateRebatesExcel(uploadId: string): Promise<Buffer>
+  generateBanexTransfer(uploadId: string): Promise<Buffer>
+  generateAnomaliesExcel(uploadId: string): Promise<Buffer>
 }
 ```
 
-El island React `JobProgress.tsx` (Astro `client:load`) escucha en `src/lib/socket.ts` y actualiza el estado local cuando recibe `job:done`. Como Astro no tiene un proveedor de TanStack Query global, cada island que necesita datos frescos llama a `fetch` directamente o usa el hook `useQuery` si tiene el `QueryClientProvider` montado localmente.
+### Excel de reintegros
+
+Hojas:
+
+- `Reintegros`.
+- `Resumen por nivel`.
+- `Anomalias`.
+- `Errores de parseo`.
+
+### BanexTransfer
+
+Columnas mínimas:
+
+```text
+Nro | Cuenta Origen | Cuenta Destino | Monto USDT | Monto Bs | T/C promedio | Referencia
+```
+
+### Reglas
+
+- No modifica estado.
+- Es idempotente.
+- Lee desde `MonthlyRebate`, no desde el archivo original.
+- Formatea USDT con 8 decimales y Bs. con 2 decimales.
 
 ---
 
-## Agente de IA opcional — AnomalyExplainerAgent
+## EventsGateway
 
-**Cuándo usarlo:** si hay tiempo en el Día 3 y se quiere impresionar en el pitch.
+**Tipo:** Socket.IO Gateway
+**Namespace:** `/jobs`
+**Archivo objetivo:** `backend/src/events/events.gateway.ts`
+**Responsabilidad:** notificar progreso al frontend.
 
-**Qué hace:** dado un conjunto de anomalías, llama a la API de Claude para generar una explicación en lenguaje natural del patrón detectado.
-
-**Archivo:** `apps/api/src/reconciliation/anomaly-explainer.agent.ts`
+### Eventos
 
 ```typescript
-import Anthropic from '@anthropic-ai/sdk'
+interface JobProgressEvent {
+  jobId: string
+  uploadId: string
+  percent: number
+  message: string
+}
 
-export class AnomalyExplainerAgent {
-  private client = new Anthropic()
+interface JobDoneEvent {
+  jobId: string
+  uploadId: string
+  rebateCount: number
+  anomalyCount: number
+  parseErrorCount: number
+}
 
-  async explain(anomalies: Anomaly[]): Promise<string> {
-    const summary = this.buildSummary(anomalies)
-
-    const message = await this.client.messages.create({
-      model: 'claude-opus-4-7',
-      max_tokens: 300,
-      messages: [{
-        role: 'user',
-        content: `Eres un analista financiero de Banexcoin. 
-Analiza estas anomalías de conciliación y explica en 2-3 oraciones qué patrón observas y qué podría haberlo causado.
-Responde en español, tono profesional, sin tecnicismos.
-
-Anomalías:
-${summary}`
-      }]
-    })
-
-    return (message.content[0] as { text: string }).text
-  }
-
-  private buildSummary(anomalies: Anomaly[]): string {
-    const byType = {
-      NO_EXTRACT: anomalies.filter(a => a.type === 'NO_EXTRACT').length,
-      NO_QR: anomalies.filter(a => a.type === 'NO_QR').length,
-      AMOUNT_MISMATCH: anomalies.filter(a => a.type === 'AMOUNT_MISMATCH').length,
-    }
-    return JSON.stringify(byType, null, 2)
-  }
+interface JobFailedEvent {
+  jobId: string
+  uploadId: string
+  error: string
 }
 ```
 
-**Dónde aparece en la UI:** botón "Explicar con IA" en el panel de anomalías. Resultado en un tooltip o modal.
+### Reglas
+
+- No exponer filas completas ni datos financieros por socket.
+- El frontend debe poder recuperar estado vía REST si no recibió eventos.
+- En producción, CORS debe limitarse al dominio del frontend.
 
 ---
 
-## Configuración de BullMQ
+## AnomalyExplainerAgent
+
+**Tipo:** agente IA opcional bajo demanda
+**Archivo objetivo:** `backend/src/reconciliation/anomaly-explainer.agent.ts`
+**Responsabilidad:** resumir patrones de anomalías en lenguaje natural.
+
+### Cuándo usarlo
+
+- Solo si `ANTHROPIC_API_KEY` está configurado.
+- Solo desde endpoint explícito, por ejemplo `POST /reconciliation/explain`.
+- Nunca dentro del job principal de procesamiento.
+
+### Contrato
 
 ```typescript
-// apps/api/src/jobs/bull.config.ts
+interface AnomalyExplainerAgent {
+  explain(input: {
+    uploadId: string
+    anomalies: Anomaly[]
+  }): Promise<string>
+}
+```
+
+### Prompt recomendado
+
+```text
+Eres un analista financiero de Banexcoin Bolivia.
+Explica en 2-3 oraciones el patron observado en estas anomalias de conciliacion.
+Usa tono profesional, claro y sin tecnicismos.
+No inventes causas; menciona hipotesis solo si los datos las sugieren.
+```
+
+### Reglas
+
+- Enviar solo resumen agregado cuando sea posible, no filas completas.
+- Si falla la API IA, devolver error controlado sin afectar conciliación.
+- No almacenar la respuesta salvo que se agregue un requerimiento de auditoría.
+
+---
+
+## BullMQ
+
+### Configuración recomendada
+
+```typescript
 export const bullConfig = {
   connection: {
     host: process.env.REDIS_HOST ?? 'localhost',
@@ -324,21 +444,59 @@ export const bullConfig = {
 }
 ```
 
-**Reintentos:** 3 intentos con backoff exponencial (2s, 4s, 8s). Si los 3 fallan, el job queda en `FAILED` y se notifica al cliente.
+### Concurrencia
 
-**Concurrencia:** 1 job a la vez por defecto (los Excel de 5.000 filas son rápidos, <2s, no vale la pena paralelizar y arriesgarse a deadlocks en Postgres).
+Recomendado iniciar con concurrencia `1` para evitar conflictos de escritura y facilitar depuración. Subirla solo después de tener constraints e idempotencia verificadas.
 
 ---
 
-## Resumen de agentes
+## Estados del upload
 
-| Agente | Tipo | Disparo | Persiste? |
+| Estado | Responsable | Descripción |
+|---|---|---|
+| `PENDING` | `UploadsService` | Archivo aceptado y job encolado |
+| `PROCESSING` | `ProcessUploadAgent` | Worker inició procesamiento |
+| `DONE` | `PersistenceAgent` | Resultados persistidos correctamente |
+| `FAILED` | `ProcessUploadAgent` | Falló algún paso y se guardó `errorMessage` |
+
+---
+
+## Eventos de progreso
+
+| % | Agente | Mensaje |
+|---|---|---|
+| 5 | ProcessUploadAgent | Leyendo archivo y validando estructura |
+| 25 | ParseAgent | Normalizando transacciones QR |
+| 45 | TierAgent | Calculando consumo mensual por usuario |
+| 65 | TierAgent | Aplicando niveles de reintegro |
+| 80 | ReconcileAgent | Conciliando contra extracto bancario |
+| 95 | PersistenceAgent | Guardando resultados |
+| 100 | ProcessUploadAgent | Proceso completado |
+
+---
+
+## Testing por agente
+
+| Agente | Tests mínimos |
+|---|---|
+| `ParseAgent` | headers faltantes, filas inválidas, duplicados, montos negativos |
+| `TierAgent` | fronteras de niveles, tier superior sin tope, tiers vacíos |
+| `ReconcileAgent` | `NO_EXTRACT`, `NO_QR`, `AMOUNT_MISMATCH`, tolerancia |
+| `PersistenceAgent` | transacción rollback, reintento idempotente |
+| `ReportAgent` | formato de columnas, decimales, salida reproducible |
+| `EventsGateway` | payloads sin datos sensibles |
+
+---
+
+## Resumen
+
+| Agente | Tipo | Disparo | Persiste |
 |---|---|---|---|
-| `ProcessUploadAgent` | BullMQ Worker | HTTP POST /uploads | No (orquesta) |
-| `ParseAgent` | Servicio interno | Llamado por ProcessUpload | No |
-| `TierAgent` | Servicio interno | Llamado por ProcessUpload | No |
-| `ReconcileAgent` | Servicio interno | Llamado por ProcessUpload | No |
-| `PersistenceAgent` | Servicio interno | Llamado por ProcessUpload | **Sí** |
-| `ReportAgent` | Servicio interno | HTTP GET /uploads/:id/report | No |
-| `EventsGateway` | WebSocket | Llamado por ProcessUpload | No |
-| `AnomalyExplainerAgent` | IA (Claude API) | HTTP GET /reconciliation/explain | No |
+| `ProcessUploadAgent` | BullMQ Worker | Job `process-upload` | Estado de upload |
+| `ParseAgent` | Servicio interno | Worker | No |
+| `TierAgent` | Servicio interno | Worker | No |
+| `ReconcileAgent` | Servicio interno | Worker | No |
+| `PersistenceAgent` | Servicio interno | Worker | Sí |
+| `ReportAgent` | Servicio bajo demanda | Endpoint de descarga | No |
+| `EventsGateway` | Socket.IO Gateway | Worker | No |
+| `AnomalyExplainerAgent` | IA opcional | Endpoint explícito | No |

@@ -1,491 +1,663 @@
-# BanexReintegra — Architecture
+# BanexReintegra - Architecture
+
+Arquitectura objetivo para el sistema independiente de reintegros de Banexcoin Bolivia. Está alineada con la ficha técnica: carga manual de reportes, procesamiento mensual, clasificación por niveles, cálculo de cashback en USDT/Bs., generación de reportes operativos y preparación de archivos BanexTransfer.
 
 > **Anexo de [FLOW.md](FLOW.md).** El flujo end-to-end, las personas y la estrategia de premios viven en `FLOW.md`. Este documento se centra en la estructura técnica: monorepo, modelo de datos, API, infra y dependencias.
 
 ---
 
-## Estructura del monorepo
+## Estado actual del repositorio
 
+El repositorio actual contiene un esqueleto funcional inicial:
+
+```text
+banexcoin-two/
+  backend/                 # NestJS base
+    src/app.module.ts      # Modulo raiz vacio
+    src/main.ts            # Bootstrap basico en PORT
+    package.json
+    .env.example           # PORT=3000
+  frontend/                # Astro + React + Tailwind v4 base
+    astro.config.mjs       # React + @tailwindcss/vite
+    src/styles/global.css  # @import "tailwindcss"
+    package.json
+    .env.example           # PUBLIC_API_URL=http://localhost:3000
+  ficha tecnica.pdf
+  Reportes Banexcoin Bolivia Hackaton 2026.xlsx
+  design.md
+  ARCHITECTURE.md
+  agents.md
 ```
-banexreintegra/
-├── apps/
-│   ├── web/                        # Astro 4 + React Islands
-│   │   ├── src/
-│   │   │   ├── pages/              # File-based routing de Astro
-│   │   │   │   ├── index.astro     # Dashboard ejecutivo
-│   │   │   │   ├── uploads/
-│   │   │   │   │   └── index.astro # Historial + nueva subida
-│   │   │   │   ├── rebates/
-│   │   │   │   │   └── index.astro # Tabla de reintegros
-│   │   │   │   ├── tiers/
-│   │   │   │   │   └── index.astro # Configuración de niveles
-│   │   │   │   ├── reconciliation/
-│   │   │   │   │   └── index.astro # Anomalías de conciliación
-│   │   │   │   └── simulator/
-│   │   │   │       └── index.astro # Simulador what-if
-│   │   │   ├── layouts/
-│   │   │   │   └── DashboardLayout.astro  # Sidebar + topbar
-│   │   │   ├── islands/            # Componentes React hidratados
-│   │   │   │   ├── upload/
-│   │   │   │   │   ├── UploadDropzone.tsx  # client:load
-│   │   │   │   │   └── JobProgress.tsx     # client:load (WebSocket)
-│   │   │   │   ├── rebates/
-│   │   │   │   │   ├── RebatesTable.tsx    # client:load (TanStack)
-│   │   │   │   │   └── UserDrawer.tsx      # client:load
-│   │   │   │   ├── tiers/
-│   │   │   │   │   └── TiersEditor.tsx     # client:load
-│   │   │   │   ├── dashboard/
-│   │   │   │   │   ├── KpiCards.tsx        # client:load (counter anim)
-│   │   │   │   │   └── Charts.tsx          # client:visible (Recharts)
-│   │   │   │   ├── reconciliation/
-│   │   │   │   │   └── AnomalyPanel.tsx    # client:load
-│   │   │   │   └── simulator/
-│   │   │   │       └── WhatIfSimulator.tsx # client:load (puro, sin API)
-│   │   │   ├── components/         # Componentes Astro estáticos
-│   │   │   │   ├── Sidebar.astro
-│   │   │   │   ├── Topbar.astro
-│   │   │   │   └── ui/             # shadcn/ui wrappers
-│   │   │   └── lib/
-│   │   │       ├── api.ts          # fetch helpers hacia NestJS
-│   │   │       └── socket.ts       # Socket.IO client (usado por islands)
-│   │
-│   └── api/                        # NestJS
-│       └── src/
-│           ├── uploads/            # Módulo: recibir y parsear archivos
-│           ├── tiers/              # Módulo: CRUD niveles de cashback
-│           ├── rebates/            # Módulo: consultar y exportar reintegros
-│           ├── reconciliation/     # Módulo: cruzar QR vs extracto
-│           ├── reports/            # Módulo: generar Excel y BanexTransfer
-│           ├── jobs/               # BullMQ workers
-│           └── events/             # Gateway Socket.IO
-│
-├── packages/
-│   ├── types/                      # DTOs y tipos compartidos front↔back
-│   │   └── src/
-│   │       ├── upload.ts
-│   │       ├── qr-transaction.ts
-│   │       ├── cashback-tier.ts
-│   │       ├── monthly-rebate.ts
-│   │       └── reconciliation.ts
-│   │
-│   ├── utils/                      # Lógica de negocio pura (sin frameworks)
-│   │   └── src/
-│   │       ├── tier-engine.ts      # calculateRebates() — núcleo del cashback
-│   │       ├── money.ts            # decimal.js wrappers
-│   │       ├── excel-parser.ts     # Normalización de hojas Excel
-│   │       └── reconcile.ts        # Cruce QR vs extracto
-│   │
-│   └── ui/                         # Componentes shadcn compartidos
-│
-├── docker-compose.yml
-├── turbo.json
-└── pnpm-workspace.yaml
+
+La documentación describe la arquitectura de implementación recomendada. Las carpetas y módulos mencionados deben crearse progresivamente sobre este esqueleto.
+
+---
+
+## Decisiones de stack
+
+### Backend: NestJS
+
+NestJS encaja porque permite módulos por feature, inyección de dependencias explícita, validación con DTOs, workers de BullMQ y WebSocket para progreso en tiempo real. Para este proyecto se debe evitar un `AppModule` monolítico y separar responsabilidades desde el inicio.
+
+### Frontend: Astro + React Islands
+
+Astro permite enviar HTML ligero y montar React solo donde existe interacción: dropzone, progreso por socket, tablas, editor de niveles y simulador. Esto reduce complejidad frente a una SPA completa y funciona bien para una herramienta de hackathon con dashboards y flujos operativos.
+
+### Persistencia: PostgreSQL + Prisma
+
+PostgreSQL aporta constraints, transacciones y tipos `Decimal`. Prisma da una DX rápida para el hackathon y migraciones versionadas. Los cálculos monetarios no deben usar `Float`.
+
+### Jobs: BullMQ + Redis
+
+El procesamiento de archivos no debe bloquear el request HTTP. BullMQ permite progreso, reintentos y aislamiento de errores.
+
+---
+
+## Arquitectura objetivo
+
+```text
+                         Frontend Astro
+  ┌────────────────────────────────────────────────────────────┐
+  │ Pages .astro                                               │
+  │  ├─ Dashboard / Uploads / Rebates / Tiers / Reconciliation │
+  │  └─ React Islands                                          │
+  │     ├─ UploadDropzone                                      │
+  │     ├─ JobProgress (Socket.IO)                             │
+  │     ├─ RebatesTable                                        │
+  │     ├─ TiersEditor                                         │
+  │     └─ WhatIfSimulator                                     │
+  └───────────────┬──────────────────────────────┬─────────────┘
+                  │ HTTP REST                    │ WebSocket /jobs
+                  ▼                              ▼
+                         Backend NestJS
+  ┌────────────────────────────────────────────────────────────┐
+  │ Controllers + DTOs + ValidationPipe                         │
+  │  ├─ uploads                                                 │
+  │  ├─ tiers                                                   │
+  │  ├─ rebates                                                 │
+  │  ├─ reconciliation                                          │
+  │  ├─ reports                                                 │
+  │  ├─ events                                                  │
+  │  └─ jobs                                                    │
+  └───────────────┬──────────────────────────────┬─────────────┘
+                  │                              │
+                  ▼                              ▼
+            PostgreSQL                      Redis / BullMQ
 ```
 
 ---
 
-## Modelo de datos (Prisma)
+## Estructura recomendada
+
+### Backend
+
+```text
+backend/src/
+  main.ts
+  app.module.ts
+  common/
+    filters/http-exception.filter.ts
+    interceptors/logging.interceptor.ts
+    pipes/parse-period.pipe.ts
+  config/
+    app.config.ts
+    validation.schema.ts
+  prisma/
+    prisma.module.ts
+    prisma.service.ts
+  uploads/
+    dto/create-upload.dto.ts
+    uploads.controller.ts
+    uploads.module.ts
+    uploads.service.ts
+  tiers/
+    dto/create-tier.dto.ts
+    dto/update-tier.dto.ts
+    tiers.controller.ts
+    tiers.module.ts
+    tiers.service.ts
+  rebates/
+    rebates.controller.ts
+    rebates.module.ts
+    rebates.service.ts
+  reconciliation/
+    reconciliation.controller.ts
+    reconciliation.module.ts
+    reconciliation.service.ts
+    anomaly-explainer.agent.ts
+  reports/
+    reports.controller.ts
+    reports.module.ts
+    report.agent.ts
+  jobs/
+    bull.config.ts
+    jobs.module.ts
+    process-upload.processor.ts
+    agents/
+      parse.agent.ts
+      tier.agent.ts
+      reconcile.agent.ts
+      persistence.agent.ts
+  events/
+    events.gateway.ts
+    events.module.ts
+  domain/
+    money.ts
+    tier-engine.ts
+    reconcile.ts
+    excel-parser.ts
+```
+
+### Frontend
+
+```text
+frontend/src/
+  env.d.ts
+  styles/global.css
+  layouts/AppShell.astro
+  components/
+    Sidebar.astro
+    Topbar.astro
+    StatCard.astro
+  pages/
+    index.astro
+    uploads/index.astro
+    rebates/index.astro
+    tiers/index.astro
+    reconciliation/index.astro
+    simulator/index.astro
+  islands/
+    upload/UploadDropzone.tsx
+    upload/JobProgress.tsx
+    rebates/RebatesTable.tsx
+    tiers/TiersEditor.tsx
+    reconciliation/AnomalyPanel.tsx
+    simulator/WhatIfSimulator.tsx
+  lib/
+    api.ts
+    socket.ts
+    money.ts
+    stores.ts
+```
+
+---
+
+## Modulos NestJS
+
+### `AppModule`
+
+Responsabilidad: composición del sistema. Debe importar módulos, no declarar lógica.
+
+Recomendado:
+
+- `ConfigModule.forRoot({ isGlobal: true, validationSchema })`.
+- `PrismaModule` como módulo compartido.
+- `UploadsModule`, `TiersModule`, `RebatesModule`, `ReconciliationModule`, `ReportsModule`, `JobsModule`, `EventsModule`.
+- Evitar dependencias circulares. Si dos módulos necesitan reaccionar entre sí, usar eventos o mover lógica compartida a `domain/`.
+
+### `UploadsModule`
+
+Recibe archivos, valida formato y registra uploads.
+
+Flujo:
+
+1. Recibe `multipart/form-data`.
+2. Valida extensión y MIME.
+3. Calcula SHA-256 para idempotencia.
+4. Guarda `Upload` con estado `PENDING`.
+5. Encola job `process-upload` con `uploadId`.
+6. Devuelve `{ uploadId, jobId, status }`.
+
+### `JobsModule`
+
+Orquesta el procesamiento asíncrono con BullMQ.
+
+Reglas:
+
+- Workers con constructor injection.
+- Job idempotente por `uploadId`.
+- Reintentos configurados con backoff exponencial.
+- Si falla, actualizar `Upload.status = FAILED` y emitir `job:failed`.
+
+### `TiersModule`
+
+Administra reglas de niveles.
+
+Reglas:
+
+- Validar rangos sin solapamiento.
+- Guardar vigencia con `validFrom` y `validTo`.
+- No eliminar físicamente niveles usados en históricos; desactivar o cerrar vigencia.
+
+### `RebatesModule`
+
+Consulta resultados ya calculados.
+
+Reglas:
+
+- Paginación obligatoria.
+- Filtros por `uploadId`, período, nivel, usuario/cuenta y estado de pago.
+- No recalcular en endpoints de lectura.
+
+### `ReconciliationModule`
+
+Consulta anomalías y expone explicación opcional con IA.
+
+Reglas:
+
+- Endpoint de anomalías no debe depender de IA.
+- El agente IA es opcional y falla de manera aislada.
+- La tolerancia se configura con `RECONCILE_TOLERANCE_BOB`.
+
+### `ReportsModule`
+
+Genera archivos desde datos persistidos.
+
+Reglas:
+
+- Idempotente: leer y generar en memoria.
+- No guardar archivos generados permanentemente salvo requerimiento explícito.
+- Excel de reintegros y BanexTransfer deben ser reproducibles por `uploadId`.
+
+---
+
+## Modelo de datos recomendado
 
 ```prisma
-model User {
-  id           Int             @id @default(autoincrement())
-  externalId   String          @unique          // ID del sistema Banexcoin
-  username     String          @unique          // "Creado por" del Excel
-  accountId    Int             @unique          // "Número de Cuenta"
+enum UploadStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+enum AnomalyType {
+  NO_EXTRACT
+  NO_QR
+  AMOUNT_MISMATCH
+}
+
+model Upload {
+  id              String          @id @default(cuid())
+  originalName    String
+  fileHash        String          @unique
+  period          String?
+  status          UploadStatus    @default(PENDING)
+  rowCount        Int             @default(0)
+  parseErrorCount Int             @default(0)
+  errorMessage    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  transactions    QRTransaction[]
+  rebates         MonthlyRebate[]
+  anomalies       ReconciliationAnomaly[]
+}
+
+model UserAccount {
+  id           String          @id @default(cuid())
+  externalId   String?
+  username     String?
+  accountNumber String         @unique
+  createdAt    DateTime        @default(now())
   transactions QRTransaction[]
   rebates      MonthlyRebate[]
 }
 
-model Upload {
-  id              String        @id @default(cuid())
-  filename        String
-  fileHash        String        @unique          // SHA-256 → idempotencia
-  period          String                          // "2025-05"
-  status          UploadStatus                   // PENDING | PROCESSING | DONE | FAILED
-  rowCount        Int           @default(0)
-  errorMessage    String?
-  createdAt       DateTime      @default(now())
-  transactions    QRTransaction[]
-  rebates         MonthlyRebate[]
-}
-
 model QRTransaction {
-  id                    String   @id @default(cuid())
-  uploadId              String
-  upload                Upload   @relation(fields: [uploadId], references: [id])
-  userId                Int
-  user                  User     @relation(fields: [userId], references: [id])
-  transactionId         String   @unique          // "Transacción Id" — clave de conciliación
-  status                String
-  amountUSDT            Decimal  @db.Decimal(20, 8)   // "Monto intercambio"
-  amountBOB             Decimal  @db.Decimal(20, 8)   // "Monto Pagado"
-  exchangeRate          Decimal  @db.Decimal(20, 8)   // "Precio"
-  commission            Decimal  @db.Decimal(20, 8)
-  transactedAt          DateTime
-  reconciledWithExtract Boolean  @default(false)
-  extractMismatch       String?                       // descripción si difiere
+  id             String      @id @default(cuid())
+  uploadId       String
+  userAccountId  String
+  transactionId  String
+  amountUSDT     Decimal     @db.Decimal(20, 8)
+  amountBOB      Decimal     @db.Decimal(20, 2)
+  exchangeRate   Decimal     @db.Decimal(20, 8)
+  transactedAt   DateTime?
+  rawRow          Json
+  upload         Upload      @relation(fields: [uploadId], references: [id])
+  userAccount    UserAccount @relation(fields: [userAccountId], references: [id])
+
+  @@unique([uploadId, transactionId])
+  @@index([transactionId])
+  @@index([userAccountId])
 }
 
 model CashbackTier {
-  id              Int       @id @default(autoincrement())
-  name            String                          // "Nivel 1", "Bronce", etc.
+  id              String    @id @default(cuid())
+  name            String
+  level           Int
   minAmountBOB    Decimal   @db.Decimal(20, 2)
-  maxAmountBOB    Decimal?  @db.Decimal(20, 2)   // null = sin tope superior
-  rebatePercent   Decimal   @db.Decimal(5, 2)    // 1.00, 1.50, 2.00 ...
+  maxAmountBOB    Decimal?  @db.Decimal(20, 2)
+  rebatePercent   Decimal   @db.Decimal(6, 3)
   active          Boolean   @default(true)
-  validFrom       DateTime
-  validTo         DateTime?
+  validFromPeriod String
+  validToPeriod   String?
+  createdAt       DateTime  @default(now())
+
+  @@index([active, validFromPeriod])
 }
 
 model MonthlyRebate {
-  id              String    @id @default(cuid())
+  id              String      @id @default(cuid())
   uploadId        String
-  upload          Upload    @relation(fields: [uploadId], references: [id])
-  userId          Int
-  user            User      @relation(fields: [userId], references: [id])
-  period          String                           // "2025-05"
-  totalSpentBOB   Decimal   @db.Decimal(20, 2)
-  tierId          Int
-  rebatePercent   Decimal   @db.Decimal(5, 2)
-  rebateUSDT      Decimal   @db.Decimal(20, 8)
-  rebateBOB       Decimal   @db.Decimal(20, 2)
-  avgExchangeRate Decimal   @db.Decimal(20, 8)   // promedio ponderado del mes
-  paidOut         Boolean   @default(false)
+  userAccountId   String
+  period          String
+  tierId          String?
+  totalSpentBOB   Decimal     @db.Decimal(20, 2)
+  totalSpentUSDT  Decimal     @db.Decimal(20, 8)
+  avgExchangeRate Decimal     @db.Decimal(20, 8)
+  rebatePercent   Decimal     @db.Decimal(6, 3)
+  rebateUSDT      Decimal     @db.Decimal(20, 8)
+  rebateBOB       Decimal     @db.Decimal(20, 2)
+  paidOut         Boolean     @default(false)
   paidOutAt       DateTime?
+  upload          Upload      @relation(fields: [uploadId], references: [id])
+  userAccount     UserAccount @relation(fields: [userAccountId], references: [id])
 
-  @@unique([userId, period])                       // un solo reintegro por mes por usuario
+  @@unique([uploadId, userAccountId])
+  @@index([period])
+}
+
+model ReconciliationAnomaly {
+  id            String      @id @default(cuid())
+  uploadId      String
+  transactionId String
+  type          AnomalyType
+  qrAmountBOB   Decimal?    @db.Decimal(20, 2)
+  extractAmountBOB Decimal? @db.Decimal(20, 2)
+  deltaBOB      Decimal?    @db.Decimal(20, 2)
+  rawContext    Json?
+  resolved      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  upload        Upload      @relation(fields: [uploadId], references: [id])
+
+  @@index([uploadId, type])
+}
+
+model ParseError {
+  id        String   @id @default(cuid())
+  uploadId  String
+  sheetName String
+  rowNumber Int
+  message   String
+  rawRow    Json?
+  createdAt DateTime @default(now())
 }
 ```
 
 ---
 
-## Flujo de datos principal
+## Flujo principal de datos
 
-```
-Usuario sube Excel
+```text
+Usuario sube Excel/CSV
+  │
+  ▼
+POST /uploads
+  ├─ Validar archivo
+  ├─ Calcular SHA-256
+  ├─ Reusar Upload si el hash ya existe
+  ├─ Guardar Upload PENDING
+  └─ Encolar process-upload
        │
        ▼
-POST /uploads  (multipart)
+Worker BullMQ
+  ├─ ParseAgent: hojas y filas normalizadas
+  ├─ TierAgent: consumo mensual + nivel + cashback
+  ├─ ReconcileAgent: Pago QR vs EXTRACTO DE PAGOS
+  ├─ PersistenceAgent: transaccion Postgres
+  └─ EventsGateway: progreso/done/failed
        │
-       ├── Validar MIME + extensión
-       ├── Calcular SHA-256
-       ├── Verificar idempotencia (¿hash ya existe?)
-       └── Persistir Upload{status: PENDING}
-              │
-              ▼
-       Encolar job BullMQ
-       "process-upload" (jobId = uploadId)
-              │
-              ▼ (worker asíncrono)
-       excel-parser.ts
-       ├── Leer hoja "Pago QR"
-       ├── Validar headers
-       ├── Normalizar filas → QRTransactionRaw[]
-       └── Upsert Users + insertar QRTransactions
-              │
-              ▼
-       tier-engine.ts  ← función pura, testeable aislada
-       ├── Agrupar transacciones por usuario
-       ├── Sumar totalSpentBOB por usuario
-       ├── Calcular avg exchange rate (promedio ponderado)
-       ├── Asignar nivel según CashbackTiers activos
-       └── Calcular rebateUSDT y rebateBOB
-              │
-              ▼
-       Persistir MonthlyRebates[]
-       Actualizar Upload{status: DONE}
-              │
-              ▼ (Socket.IO)
-       Emit "upload:done" → cliente actualiza UI
+       ▼
+Frontend actualiza JobProgress y habilita reportes
 ```
 
 ---
 
-## API REST
+## API REST objetivo
 
 ### Uploads
 
-```
-POST   /uploads                       # Subir Excel, encolar job
+```text
+POST   /uploads                       # Subir Excel/CSV, registrar hash y encolar job
 GET    /uploads                       # Listar uploads con estado
 GET    /uploads/:id                   # Detalle de un upload
-GET    /uploads/:id/report            # Descargar Excel de reintegros (4 hojas)
-GET    /uploads/:id/banex-transfer    # Descargar archivo BanexTransfer
-GET    /uploads/:id/balance-sheet     # Descargar cuadre DEBE/HABER (replica hoja Saldos)
+GET    /uploads/:id/status            # Estado recuperable si se perdio WebSocket
 ```
 
 ### Tiers
 
-```
-GET    /tiers                      # Listar niveles activos
-POST   /tiers                      # Crear nivel
-PATCH  /tiers/:id                  # Editar nivel
-DELETE /tiers/:id                  # Desactivar nivel
-POST   /tiers/validate             # Validar exclusión mutua (simulador)
+```text
+GET    /tiers?period=YYYY-MM
+POST   /tiers
+PATCH  /tiers/:id
+POST   /tiers/validate
+POST   /tiers/simulate
 ```
 
 ### Rebates
 
-```
-GET    /rebates?uploadId=X&tier=Y&search=Z&page=N   # Tabla paginada
-GET    /rebates/:id                                  # Detalle de un reintegro
-GET    /rebates/summary?uploadId=X                   # Agregados para KPIs
-PATCH  /rebates/:id/mark-paid                        # Marcar como pagado
+```text
+GET    /rebates?uploadId=&period=&tier=&search=&page=&limit=
+GET    /rebates/:id
+PATCH  /rebates/:id/mark-paid
+GET    /rebates/summary?uploadId=
 ```
 
 ### Reconciliation
 
+```text
+GET    /reconciliation?uploadId=&type=&resolved=
+GET    /reconciliation/stats?uploadId=
+PATCH  /reconciliation/:id/resolve
+POST   /reconciliation/explain
 ```
-GET    /reconciliation?uploadId=X        # Anomalías del upload
-GET    /reconciliation/stats?uploadId=X  # Conteo por tipo de anomalía
-POST   /reconciliation/explain           # Pide a Claude una explicación NL de las anomalías
+
+### Reports
+
+```text
+GET    /reports/uploads/:id/rebates.xlsx          # Excel de reintegros con resumen, anomalías y errores
+GET    /reports/uploads/:id/banex-transfer.csv    # Archivo operativo para pagos masivos internos
+GET    /reports/uploads/:id/anomalies.xlsx        # Reporte filtrable de conciliación
+GET    /reports/uploads/:id/balance-sheet.xlsx    # Cuadre DEBE/HABER inspirado en hoja Saldos
 ```
 
 ---
 
 ## Eventos WebSocket
 
-```
-Cliente se conecta al namespace /jobs
+Namespace: `/jobs`.
 
-Servidor emite:
-  "job:progress"  { jobId, percent, message }
-  "job:done"      { jobId, uploadId, rebateCount, anomalyCount }
-  "job:failed"    { jobId, error }
+```text
+job:progress  { jobId, uploadId, percent, message }
+job:done      { jobId, uploadId, rebateCount, anomalyCount, parseErrorCount }
+job:failed    { jobId, uploadId, error }
 ```
+
+Reglas:
+
+- El cliente debe poder reconectar y consultar `/uploads/:id/status` si perdió eventos.
+- El backend no debe emitir datos sensibles por socket; solo progreso y conteos.
+- `jobId` debe ser estable, preferiblemente igual a `uploadId`.
 
 ---
 
-## tier-engine — interfaz pública
+## Calculo de reintegros
+
+Entrada del motor puro:
 
 ```typescript
-// packages/utils/src/tier-engine.ts
-
 export interface TierEngineInput {
-  transactions: {
-    userId: number
-    amountBOB: string       // string para decimal.js, no float
+  transactions: Array<{
+    userAccountId: string
+    amountBOB: string
     amountUSDT: string
     exchangeRate: string
-  }[]
-  tiers: {
-    id: number
+  }>
+  tiers: Array<{
+    id: string
+    level: number
     minAmountBOB: string
     maxAmountBOB: string | null
     rebatePercent: string
-  }[]
+  }>
 }
+```
 
+Salida:
+
+```typescript
 export interface RebateResult {
-  userId: number
+  userAccountId: string
   totalSpentBOB: string
+  totalSpentUSDT: string
   avgExchangeRate: string
-  tierId: number | null     // null si no cae en ningún nivel
+  tierId: string | null
   rebatePercent: string
   rebateUSDT: string
   rebateBOB: string
 }
-
-export function calculateRebates(input: TierEngineInput): RebateResult[]
 ```
 
-La función no toca base de datos ni HTTP. Recibe strings, devuelve strings. Testeable con cualquier runner.
+Invariantes:
+
+1. El total mensual por usuario se calcula sumando `amountBOB` de sus pagos QR válidos.
+2. El nivel se decide por `totalSpentBOB` y tiers vigentes del período.
+3. `rebateBOB = totalSpentBOB * rebatePercent / 100`.
+4. `rebateUSDT = rebateBOB / avgExchangeRate`.
+5. `avgExchangeRate` debe ser ponderado por monto BOB.
+6. Todas las operaciones usan Decimal/string; nunca `number` para dinero.
 
 ---
 
-## Generador de BanexTransfer
+## Conciliacion
 
-El archivo de salida sigue el formato interno de Banexcoin para transferencias masivas:
+Entradas:
 
+- Hoja `Pago QR`: transacciones fuente del cashback.
+- Hoja `EXTRACTO DE PAGOS`: movimientos bancarios para control.
+
+Algoritmo:
+
+```text
+qrById = Map(transactionId, amountBOB)
+extractById = Map(transactionId, amountBOB)
+
+for each transactionId in qrById:
+  if missing in extractById -> NO_EXTRACT
+  else if abs(qrAmount - extractAmount) > tolerance -> AMOUNT_MISMATCH
+
+for each transactionId in extractById:
+  if missing in qrById -> NO_QR
 ```
-Nro | Cuenta Origen | Cuenta Destino | Monto USDT | Monto BOB | T/C | Ref
- 1  | 10001 (tesorería) | 20045 | 1.45000000 | 10.15 | 6.99... | REINTEGRO-2025-05
- 2  | 10001 | 20089 | 0.87000000 | 6.08 | 6.98... | REINTEGRO-2025-05
-```
 
-Se regenera idempotentemente desde `MonthlyRebate[]`. Nunca se guarda en disco permanentemente.
+La tolerancia por defecto es `0.01` Bs. y se configura con `RECONCILE_TOLERANCE_BOB`.
 
 ---
 
-## Conciliación automática
+## Reportes
 
+### Excel de reintegros
+
+Hojas mínimas:
+
+1. `Reintegros`: usuario, cuenta, consumo Bs., consumo USDT, nivel, porcentaje, reintegro USDT, reintegro Bs., T/C promedio.
+2. `Resumen por nivel`: cantidad de usuarios, total consumo, total reintegro.
+3. `Anomalias`: tipo, transacción, delta, contexto.
+4. `Errores de parseo`: hoja, fila, mensaje.
+
+### BanexTransfer
+
+Formato operativo mínimo:
+
+```text
+Nro | Cuenta Origen | Cuenta Destino | Monto USDT | Monto Bs | T/C promedio | Referencia
 ```
-Pago QR (5.325 filas)          EXTRACTO DE PAGOS (5.327 filas)
-     │                                   │
-     └──────── JOIN por transactionId ───┘
-                        │
-              ┌─────────┴──────────┐
-              │                    │
-         Coinciden            No coinciden
-              │                    │
-         ✅ OK            ┌────────┴────────┐
-                          │                 │
-                   Solo en QR       Solo en extracto   Ambos pero monto ≠
-                   (🔴 rojo)         (🟡 amarillo)       (🟠 naranja)
-```
+
+Referencia sugerida: `REINTEGRO-{period}-{uploadIdShort}`.
 
 ---
 
-## Infra y despliegue
+## Configuracion y seguridad
 
-### Local (desarrollo)
+### Variables backend
 
-```yaml
-# docker-compose.yml
-services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: banexreintegra
-      POSTGRES_PASSWORD: banex_local
-    ports: ["5432:5432"]
-
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
-
-  api:
-    build: ./apps/api
-    environment:
-      DATABASE_URL: postgresql://postgres:banex_local@postgres/banexreintegra
-      REDIS_URL: redis://redis:6379
-    ports: ["3001:3001"]
-    depends_on: [postgres, redis]
-
-  web:
-    build: ./apps/web
-    environment:
-      PUBLIC_API_URL: http://localhost:3001
-    ports: ["3000:3000"]
-    depends_on: [api]
-```
-
-### Producción (hackatón)
-
-| Servicio | Plataforma | Por qué |
-|---|---|---|
-| `apps/web` | Vercel | Deploy en 1 click desde GitHub, CDN global |
-| `apps/api` | Railway | Soporta Dockerfile, variables de entorno simples |
-| PostgreSQL | Railway (plugin) | Mismo proyecto, misma red privada |
-| Redis | Railway (plugin) | Igual |
-
-Variables de entorno necesarias en producción:
-```
-DATABASE_URL=
-REDIS_URL=
-JWT_SECRET=
+```text
+PORT=3000
+DATABASE_URL=postgresql://...
+REDIS_HOST=localhost
+REDIS_PORT=6379
 MAX_UPLOAD_SIZE_MB=50
+RECONCILE_TOLERANCE_BOB=0.01
+ANTHROPIC_API_KEY=
 ```
+
+### Variables frontend
+
+```text
+PUBLIC_API_URL=http://localhost:3000
+```
+
+### Bootstrap NestJS recomendado
+
+- `ValidationPipe` global con `whitelist`, `forbidNonWhitelisted` y `transform`.
+- CORS restringido a origen del frontend en producción.
+- Logger contextual.
+- Filtro global de excepciones.
+- `app.enableShutdownHooks()` para cerrar Prisma, Redis y workers.
 
 ---
 
-## Dependencias clave
+## Testing
 
-### apps/api
-```json
-{
-  "@nestjs/core": "^10",
-  "@nestjs/platform-express": "^10",
-  "@nestjs/swagger": "^7",
-  "@nestjs/websockets": "^10",
-  "@nestjs/platform-socket.io": "^10",
-  "bullmq": "^5",
-  "prisma": "^5",
-  "@prisma/client": "^5",
-  "exceljs": "^4",
-  "papaparse": "^5",
-  "decimal.js": "^10",
-  "class-validator": "^0.14",
-  "class-transformer": "^0.5",
-  "multer": "^1",
-  "crypto": "node built-in"
-}
-```
+Prioridad de tests:
 
-### apps/web
-```json
-{
-  "astro": "^4",
-  "@astrojs/react": "^3",
-  "@astrojs/tailwind": "^5",
-  "react": "^18",
-  "react-dom": "^18",
-  "@tanstack/react-query": "^5",
-  "@tanstack/react-table": "^8",
-  "socket.io-client": "^4",
-  "react-dropzone": "^14",
-  "xlsx": "^0.18",
-  "recharts": "^2",
-  "framer-motion": "^11",
-  "decimal.js": "^10",
-  "tailwindcss": "^3",
-  "class-variance-authority": "^0.7",
-  "clsx": "^2"
-}
-```
-
-**Integraciones Astro necesarias en `astro.config.mjs`:**
-```javascript
-import { defineConfig } from 'astro/config'
-import react from '@astrojs/react'
-import tailwind from '@astrojs/tailwind'
-
-export default defineConfig({
-  integrations: [react(), tailwind()],
-  output: 'static',            // SSG; cambiar a 'server' si necesitas SSR
-})
-```
-
-**Regla de hidratación por tipo de island:**
-| Island | Directiva | Razón |
-|---|---|---|
-| `UploadDropzone` | `client:load` | Interacción inmediata al entrar |
-| `JobProgress` | `client:load` | WebSocket activo desde el primer render |
-| `RebatesTable` | `client:load` | TanStack Table necesita DOM |
-| `Charts` | `client:visible` | Solo hidrata cuando entra al viewport |
-| `WhatIfSimulator` | `client:load` | Necesita estado React para deslizadores |
-| `KpiCards` | `client:load` | Animación de counter al montar |
-
-### packages/utils
-```json
-{
-  "decimal.js": "^10"
-}
-```
+1. `tier-engine`: fronteras de niveles, nivel superior sin tope, tiers vacíos, promedio ponderado.
+2. `reconcile`: los tres tipos de anomalía y tolerancia.
+3. `excel-parser`: headers faltantes, filas inválidas, duplicados, montos negativos.
+4. `uploads.service`: idempotencia por hash y encolado.
+5. E2E mínimo: `POST /uploads` con archivo de prueba y consulta de estado.
 
 ---
 
-## Tests
+## Plan de implementacion por fases
 
-```
-packages/utils/
-  tier-engine.test.ts      # 15+ casos: cada nivel, fronteras, promedio ponderado
-  reconcile.test.ts        # casos de cada tipo de anomalía
-  money.test.ts            # operaciones con decimal.js
+### Fase 1 - Base funcional
 
-apps/api/
-  uploads/uploads.service.spec.ts
-  rebates/rebates.service.spec.ts
+- Configurar NestJS con módulos, ConfigModule, Prisma y ValidationPipe.
+- Crear Prisma schema y migración inicial.
+- Implementar upload, hash e idempotencia.
+- Implementar parser mínimo para hoja `Pago QR`.
 
-# Runner: Vitest (compatible con ESM y monorepo Turborepo)
-```
+### Fase 2 - Motor de negocio
 
-Casos obligatorios en `tier-engine.test.ts`:
-- Usuario con 0 transacciones
-- Usuario exactamente en el mínimo de un nivel
-- Usuario exactamente en el máximo de un nivel
-- Usuario un centavo por debajo de subir de nivel
-- Tipo de cambio variable: 3 transacciones con tasas distintas → verificar promedio ponderado
-- Nivel sin tope superior (el más alto)
-- Configuración de tiers vacía (sin niveles activos)
+- Implementar `tier-engine` puro.
+- Implementar CRUD/validación de tiers.
+- Procesar job BullMQ y persistir reintegros.
+- Emitir progreso por Socket.IO.
+
+### Fase 3 - UI operativa
+
+- Crear `AppShell` Astro.
+- Implementar upload con progreso.
+- Implementar tabla de reintegros y dashboard.
+- Implementar descarga de reportes.
+
+### Fase 4 - Diferenciadores
+
+- Conciliación contra extracto.
+- Simulador what-if.
+- Explicación IA opcional de anomalías.
+- Marcado de pagos y auditoría extendida.
 
 ---
 
-## Invariantes de negocio
+## Riesgos y mitigaciones
 
-1. Los rangos de niveles no se solapan. Un monto cae en exactamente un nivel o en ninguno.
-2. El reintegro en USDT se calcula como `(totalSpentBOB × rebatePercent) / avgExchangeRate`.
-3. `avgExchangeRate` es la media ponderada: `Σ(amountBOB × exchangeRate) / Σ(amountBOB)`.
-4. Un usuario tiene máximo un `MonthlyRebate` por período (constraint `@@unique([userId, period])`).
-5. El mismo archivo (mismo SHA-256) no genera un segundo upload. Devuelve el upload existente.
-6. Los montos monetarios nunca se guardan como `Float`. Siempre `DECIMAL(20,8)` en Postgres y `string` en tránsito.
+| Riesgo | Mitigación |
+|---|---|
+| Excel con columnas variables | Parser con aliases y errores por fila |
+| Duplicados por carga repetida | SHA-256 único + `@@unique([uploadId, transactionId])` |
+| Errores por floating point | Decimal/string en dominio y DB |
+| Jobs largos bloqueando HTTP | BullMQ worker separado |
+| Pérdida de eventos WebSocket | Endpoint de estado por upload |
+| Rangos de tiers mal configurados | Validación antes de guardar y simulación |

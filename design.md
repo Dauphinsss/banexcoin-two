@@ -1,589 +1,458 @@
-# BanexReintegra — Design
+# BanexReintegra - Design
 
 > **Anexo de [FLOW.md](FLOW.md).** El user journey, casos borde y estrategia para "Mejor UI/UX" están en `FLOW.md`. Este documento define el sistema de diseño concreto: tokens, componentes, pantallas y el modelo de islands de Astro.
 
-Sistema de diseño completo: tokens, componentes, pantallas y flujos de usuario.
+Sistema de diseño y experiencia para una herramienta operativa de Banexcoin Bolivia. El producto debe permitir cargar reportes mensuales de pagos QR, calcular reintegros en USDT/Bs., detectar inconsistencias y generar archivos listos para BanexTransfer sin integrarse directamente al core actual de Banexcoin.
 
 ---
 
-## Design tokens
+## Principios de producto
 
-### Colores
-
-```css
-/* Marca */
---color-brand-500: #1A56DB;   /* azul Banexcoin — CTAs primarios */
---color-brand-400: #3F83F8;   /* hover de primarios */
---color-brand-600: #1C3FAA;   /* pressed de primarios */
---color-brand-50:  #EBF5FF;   /* fondos de highlight */
-
-/* Éxito / Reintegro */
---color-green-500: #0E9F6E;
---color-green-400: #31C48D;
---color-green-600: #057A55;
---color-green-50:  #F3FAF7;
-
-/* Anomalías */
---color-red-500:    #EF4444;  /* NO_EXTRACT */
---color-amber-500:  #F59E0B;  /* NO_QR */
---color-orange-500: #F97316;  /* AMOUNT_MISMATCH */
-
-/* Neutros */
---color-gray-50:  #F9FAFB;
---color-gray-100: #F3F4F6;
---color-gray-200: #E5E7EB;
---color-gray-400: #9CA3AF;
---color-gray-600: #4B5563;
---color-gray-800: #1F2937;
---color-gray-900: #111827;
-
-/* Superficies dark mode */
---surface-base:  #111827;
---surface-card:  #1F2937;
---surface-input: #374151;
---surface-hover: #2D3748;
-```
-
-### Niveles — identidad visual
-
-```
-Nivel 1  Básico   #94A3B8  gris plata   Shield
-Nivel 2  Bronce   #D97706  bronce       ShieldCheck
-Nivel 3  Plata    #CBD5E1  plata        Star
-Nivel 4  Oro      #EAB308  oro          StarFill
-Nivel 5  Platino  #818CF8  violeta      Crown
-```
-
-### Tipografía
-
-```css
-/* Fuente */
---font-sans: 'Inter', system-ui, sans-serif;
---font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-
-/* Escala */
---text-xs:   0.75rem  / 1rem;
---text-sm:   0.875rem / 1.25rem;
---text-base: 1rem     / 1.5rem;
---text-lg:   1.125rem / 1.75rem;
---text-xl:   1.25rem  / 1.75rem;
---text-2xl:  1.5rem   / 2rem;
---text-3xl:  1.875rem / 2.25rem;
-
-/* Regla de uso */
-/* Dinero y cifras → font-mono tabular-nums (los decimales se alinean) */
-/* Headings       → font-semibold tracking-tight                        */
-/* Labels/badges  → font-medium text-xs uppercase tracking-wide         */
-```
-
-### Espaciado y radio
-
-```css
---radius-sm: 0.375rem;   /* inputs, badges pequeños */
---radius-md: 0.5rem;     /* cards, botones */
---radius-lg: 0.75rem;    /* modals, panels */
---radius-xl: 1rem;       /* dropzone, hero cards */
-```
+1. **Operativo antes que decorativo.** Cada pantalla debe reducir trabajo manual, evitar errores de Excel y dejar claro qué acción sigue.
+2. **Confianza financiera.** Montos, tipos de cambio, porcentajes y estados deben verse verificables. Nada de cifras ambiguas ni redondeos escondidos.
+3. **Independiente por diseño.** El usuario trabaja con archivos cargados manualmente. La interfaz nunca debe sugerir conexión directa con sistemas internos de Banexcoin.
+4. **Auditable.** Cada upload, cálculo, anomalía y archivo exportado debe poder rastrearse por período, usuario y fuente.
+5. **Escalable para lotes masivos.** La UX debe soportar miles de filas con búsqueda, filtros, virtualización y estados de procesamiento claros.
 
 ---
 
-## Componentes
+## Dirección visual
+
+La estética recomendada es **terminal financiero premium**: fondo oscuro sobrio, superficies con baja saturación, acentos Banexcoin en azul y verde, tablas densas pero legibles y microinteracciones precisas. Debe sentirse como una mesa de control de tesorería, no como un dashboard genérico de SaaS.
+
+### Paleta
+
+```css
+:root {
+  /* Marca */
+  --banex-blue-50: #eaf2ff;
+  --banex-blue-100: #cfe2ff;
+  --banex-blue-500: #1a56db;
+  --banex-blue-600: #1648b8;
+  --banex-blue-700: #12398f;
+
+  /* Reintegro / exito */
+  --cash-green-50: #eafaf3;
+  --cash-green-500: #0e9f6e;
+  --cash-green-600: #057a55;
+
+  /* Anomalias */
+  --risk-red-500: #ef4444;
+  --risk-amber-500: #f59e0b;
+  --risk-orange-500: #f97316;
+
+  /* Superficies */
+  --ink-950: #07111f;
+  --ink-900: #0b1526;
+  --ink-850: #111c2f;
+  --ink-800: #172338;
+  --ink-700: #243149;
+  --ink-500: #64748b;
+  --ink-300: #cbd5e1;
+  --ink-100: #f1f5f9;
+
+  /* Lineas y foco */
+  --line-subtle: rgba(148, 163, 184, 0.18);
+  --line-strong: rgba(148, 163, 184, 0.36);
+  --focus-ring: rgba(26, 86, 219, 0.42);
+}
+```
+
+### Uso del color
+
+| Contexto | Color | Regla |
+|---|---|---|
+| CTA principal | `--banex-blue-500` | Subir, procesar, descargar |
+| Reintegro calculado | `--cash-green-500` | Montos a favor, estados correctos |
+| `NO_EXTRACT` | `--risk-red-500` | Pago QR sin extracto bancario |
+| `NO_QR` | `--risk-amber-500` | Extracto sin pago QR asociado |
+| `AMOUNT_MISMATCH` | `--risk-orange-500` | Diferencia de monto por tolerancia |
+| Datos secundarios | `--ink-500` | Ayudas, fechas, labels |
+
+---
+
+## Tipografia
+
+Para una interfaz financiera se recomienda separar lectura general y cifras.
+
+```css
+--font-sans: "Aptos", "Segoe UI", system-ui, sans-serif;
+--font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+--text-xs: 0.75rem / 1rem;
+--text-sm: 0.875rem / 1.25rem;
+--text-base: 1rem / 1.5rem;
+--text-lg: 1.125rem / 1.75rem;
+--text-xl: 1.25rem / 1.75rem;
+--text-2xl: 1.5rem / 2rem;
+--text-3xl: 1.875rem / 2.25rem;
+```
+
+Reglas:
+
+- Montos USDT, Bs., porcentajes y tipo de cambio usan `font-mono tabular-nums`.
+- Títulos usan `font-semibold tracking-tight`.
+- Badges usan `text-xs font-semibold uppercase tracking-wide`.
+- Nunca mostrar montos financieros como `number.toString()` sin formato fijo.
+
+---
+
+## Layout base Astro
+
+El frontend actual está en `frontend/` con Astro, React y Tailwind v4 mediante `@tailwindcss/vite`. La estructura recomendada es:
+
+```text
+frontend/src/
+  layouts/
+    AppShell.astro
+  pages/
+    index.astro
+    uploads/index.astro
+    rebates/index.astro
+    tiers/index.astro
+    reconciliation/index.astro
+    simulator/index.astro
+  components/
+    Sidebar.astro
+    Topbar.astro
+    EmptyState.astro
+  islands/
+    upload/UploadDropzone.tsx
+    upload/JobProgress.tsx
+    rebates/RebatesTable.tsx
+    tiers/TiersEditor.tsx
+    reconciliation/AnomalyPanel.tsx
+    simulator/WhatIfSimulator.tsx
+  lib/
+    api.ts
+    socket.ts
+    money.ts
+```
+
+### AppShell
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│ Sidebar │ Topbar: periodo activo, estado API, accion subir         │
+│         ├──────────────────────────────────────────────────────────┤
+│         │ Contenido de pagina                                      │
+└─────────┴──────────────────────────────────────────────────────────┘
+```
+
+Reglas de navegación:
+
+- Desktop: sidebar fija de 264px con estado activo visible.
+- Tablet: sidebar compacta con iconos y tooltips.
+- Mobile: navegación inferior con 4 acciones: Dashboard, Subir, Reintegros, Alertas.
+- Cada página muestra período activo y último upload procesado cuando aplique.
+
+---
+
+## Modelo de islands
+
+Astro debe renderizar HTML estático por defecto. React se usa solo donde hay interacción real.
+
+| Island | Directiva | Motivo |
+|---|---|---|
+| `UploadDropzone` | `client:load` | Drag and drop inmediato |
+| `JobProgress` | `client:load` | Socket.IO debe escuchar desde el inicio |
+| `RebatesTable` | `client:load` | Tabla interactiva, filtros y virtualización |
+| `TiersEditor` | `client:load` | Formularios y validación de rangos |
+| `AnomalyPanel` | `client:load` | Filtros, exportación y explicación IA opcional |
+| `WhatIfSimulator` | `client:load` | Recalculo local con el motor de niveles |
+| Gráficos del dashboard | `client:visible` | Hidratar solo al entrar al viewport |
+
+Cada island que use TanStack Query monta su propio `QueryClientProvider`. Si dos islands necesitan compartir estado simple, usar Nano Stores o eventos del navegador antes que un provider global React.
+
+---
+
+## Componentes clave
 
 ### KPI Card
 
-Aparece en grupos de 4 en el dashboard ejecutivo.
+Uso: dashboard ejecutivo y resumen posterior al procesamiento.
 
+```text
+┌────────────────────────────────────┐
+│ Total reintegrado          +12.4%  │
+│ 1,234.56000000 USDT                │
+│ Bs. 8,621.92                       │
+│ Periodo: 2026-05                   │
+└────────────────────────────────────┘
 ```
-┌─────────────────────────────┐
-│  Total reintegrado    ↑ 12% │  ← label + delta vs período anterior
-│                             │
-│  1,234.56 USDT              │  ← cifra principal (font-mono, text-3xl)
-│  Bs 8,621.92                │  ← cifra secundaria (text-sm, gray-400)
-│                       [💲]  │  ← icono Lucide alineado a la derecha
-└─────────────────────────────┘
+
+Props sugeridas: `label`, `primary`, `secondary`, `trend`, `period`, `status`.
+
+Reglas:
+
+- Cifra principal siempre en mono.
+- Delta en verde si baja costo operativo o sube adopción; rojo si suben anomalías.
+- Skeleton antes de datos, no spinner dentro de tarjetas.
+
+### Upload Dropzone
+
+Estados obligatorios:
+
+1. Vacío: explica formatos aceptados y que no hay integración directa.
+2. Archivo seleccionado: muestra nombre, tamaño, hash parcial si ya fue calculado y validación de extensión.
+3. Preview: primeras filas, hojas detectadas y período inferido.
+4. Error: formato inválido, columnas faltantes o tamaño excedido.
+5. Enviado: enlaza con `JobProgress`.
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│ Arrastra el reporte mensual de pagos QR                    │
+│ Excel o CSV. Procesamiento independiente de Banexcoin core. │
+│                                                            │
+│ [Seleccionar archivo]                                      │
+└────────────────────────────────────────────────────────────┘
 ```
 
-Props: `label`, `primary`, `secondary?`, `icon`, `delta?`, `deltaLabel?`
+### JobProgress
 
-Delta verde si positivo, rojo si negativo. Animación de counter con `framer-motion` al montar.
+Debe mapear exactamente los eventos emitidos por el backend.
 
----
+| Progreso | Mensaje UX |
+|---|---|
+| 5% | Leyendo archivo y validando estructura |
+| 25% | Normalizando transacciones QR |
+| 45% | Calculando consumo mensual por usuario |
+| 65% | Aplicando niveles de reintegro |
+| 80% | Conciliando contra extracto bancario |
+| 95% | Guardando resultados y preparando resumen |
+| 100% | Proceso completado |
+
+El estado final debe mostrar `rebateCount`, `anomalyCount`, `parseErrorCount` y accesos directos a reportes.
 
 ### LevelBadge
 
-```
-┌──────────────────┐
-│  ★ Nivel 4 · Oro │   ← icono + nombre + color semántico del nivel
-└──────────────────┘
-```
+| Nivel | Nombre | Color | Uso |
+|---|---|---|---|
+| 1 | Base | `#94a3b8` | Consumo inicial |
+| 2 | Bronce | `#d97706` | Consumo medio bajo |
+| 3 | Plata | `#cbd5e1` | Consumo medio |
+| 4 | Oro | `#eab308` | Alto consumo |
+| 5 | Platino | `#818cf8` | Máximo nivel |
 
-Variantes: `default` (fondo suave), `outline`, `dot` (solo punto de color + texto, para tablas densas).
+Variantes: `solid`, `soft`, `outline`, `dot`.
 
----
+### Rebate Amount
 
-### AnomalyBadge
+Componente para mostrar reintegros con equivalencia:
 
-```
-● Sin extracto    (rojo   #EF4444)
-● Sin pago QR     (ámbar  #F59E0B)
-● Monto difiere   (naranja #F97316)
-```
-
----
-
-### UploadDropzone
-
-Estado vacío:
-```
-┌─────────────────────────────────────────────────────┐
-│                                                     │
-│             ⬆  Arrastra el Excel aquí               │
-│        o haz clic para seleccionar archivo          │
-│                                                     │
-│          Acepta: .xlsx — máximo 50 MB               │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+```text
+7.01024511 USDT
+Bs. 49.00 · T/C 6.98960000
 ```
 
-Estado con archivo (preview antes de confirmar):
-```
-┌─────────────────────────────────────────────────────┐
-│  📄 pago-qr-mayo-2025.xlsx              23 MB   [×] │
-├─────────────────────────────────────────────────────┤
-│  Preview — primeras 5 filas de "Pago QR"            │
-│  ┌──────────┬──────────┬──────────┬──────────┐      │
-│  │ Usuario  │  Cuenta  │ BOB      │ USDT     │      │
-│  ├──────────┼──────────┼──────────┼──────────┤      │
-│  │ jgarcia  │  20045   │ 150.00   │ 21.459   │      │
-│  │ mlopez   │  20089   │  80.50   │ 11.519   │      │
-│  └──────────┴──────────┴──────────┴──────────┘      │
-│  ... y 5.320 filas más                              │
-│                                                     │
-│  Período detectado: mayo 2025   Filas: 5.325        │
-│                                                     │
-│        [Cancelar]   [Procesar 5.325 filas →]        │
-└─────────────────────────────────────────────────────┘
-```
+Reglas:
 
----
-
-### ProgressJob
-
-Aparece tras confirmar el upload. Animado con Framer Motion.
-
-```
-┌─────────────────────────────────────────────────────┐
-│  Procesando pago-qr-mayo-2025.xlsx                  │
-│                                                     │
-│  ████████████████░░░░░░░░░░░░░░  65%                │
-│                                                     │
-│  Conciliando con extracto bancario...               │
-│                                                     │
-│  ⏱  Tiempo estimado: ~5 segundos                   │
-└─────────────────────────────────────────────────────┘
-```
-
-Cuando termina, hace morph (Framer Layout) a la tarjeta de resultado:
-
-```
-┌─────────────────────────────────────────────────────┐
-│  ✓  Procesamiento completado                        │
-│                                                     │
-│  1.247 reintegros calculados                        │
-│  30 anomalías detectadas                            │
-│                                                     │
-│  [Ver reintegros]   [Ver anomalías]   [Descargar]  │
-└─────────────────────────────────────────────────────┘
-```
-
----
+- USDT: máximo 8 decimales.
+- Bs.: 2 decimales.
+- Tipo de cambio: 6 a 8 decimales según dato fuente.
 
 ### RebatesTable
 
-Tabla principal. TanStack Table con virtualización para 1.000+ filas.
+Columnas mínimas:
 
-```
-┌──┬────────────┬──────────┬──────────────┬──────────┬──────────┬──────────┬───────┐
-│  │ Usuario    │ Total BOB│ Nivel        │ Cashback │ USDT     │ BOB      │ T/C ⌀ │
-├──┼────────────┼──────────┼──────────────┼──────────┼──────────┼──────────┼───────┤
-│  │ jgarcia    │ 2,450.00 │ ★ Oro        │ 2.00%    │   7.0102 │  49.00   │ 6.990 │
-│  │ mlopez     │   320.00 │ ◆ Bronce     │ 1.00%    │   0.4577 │   3.20   │ 6.992 │
-│  │ aruiz      │ 5,800.00 │ ♛ Platino    │ 3.00%    │  24.930  │ 174.00   │ 6.981 │
-└──┴────────────┴──────────┴──────────────┴──────────┴──────────┴──────────┴───────┘
+| Columna | Formato |
+|---|---|
+| Usuario / cuenta | nombre o ID + número de cuenta |
+| Total consumido | Bs. con 2 decimales |
+| Equivalente USDT | 8 decimales |
+| Nivel | `LevelBadge` |
+| % reintegro | porcentaje fijo |
+| Reintegro USDT | mono, destacado |
+| Reintegro Bs. | mono |
+| T/C promedio | mono |
+| Estado | pendiente, exportado, pagado |
 
-[Buscar usuario...]  [Filtrar nivel ▼]  [Exportar CSV]     Mostrando 1-50 de 1.247
-```
+Requisitos de UX:
 
-Al hacer clic en una fila, abre un **drawer lateral** con todas las transacciones del usuario en el mes.
+- Filtros por período, nivel, estado y búsqueda por usuario/cuenta.
+- Virtualización para más de 1.000 filas.
+- Drawer lateral con transacciones fuente del usuario.
+- Exportar selección o reporte completo.
 
-**Drawer detalle de usuario:**
-```
-┌─────────────────────────────────────────────────────┐
-│  jgarcia — Cuenta #20045                       [×]  │
-│  ★ Nivel 4 · Oro · 2.00% cashback                   │
-├─────────────────────────────────────────────────────┤
-│  Total gastado:    Bs 2,450.00                      │
-│  Reintegro:        7.0102 USDT  =  Bs 49.00        │
-│  T/C promedio:     6.9896                           │
-│                                                     │
-│  Transacciones del período (18)                     │
-│  ┌──────────┬──────────┬──────────┬───────────────┐  │
-│  │ Fecha    │ BOB      │ USDT     │ T/C     │ ✓?  │  │
-│  ├──────────┼──────────┼──────────┼─────────┼─────┤  │
-│  │ 03/05    │  150.00  │  21.459  │ 6.992   │  ✓ │  │
-│  │ 07/05    │   80.00  │  11.432  │ 6.990   │  ✓ │  │
-│  │ 12/05    │  220.00  │  31.428  │ 6.999   │  ⚠ │  │ ← anomalía
-│  └──────────┴──────────┴──────────┴─────────┴─────┘  │
-└─────────────────────────────────────────────────────┘
-```
+### AnomalyPanel
 
----
+Tipos visuales:
+
+| Tipo | Label | Color | Acción esperada |
+|---|---|---|---|
+| `NO_EXTRACT` | Pago QR sin extracto | rojo | Revisar si el banco no reportó el movimiento |
+| `NO_QR` | Extracto sin pago QR | ámbar | Revisar transacción externa o duplicada |
+| `AMOUNT_MISMATCH` | Monto diferente | naranja | Validar tipo de cambio, redondeo o corrección manual |
+
+Debe incluir conteos, filtros, delta, referencia de fila y exportación CSV/Excel.
 
 ### TiersEditor
 
-CRUD de niveles de cashback.
+Editor de rangos definido por Banexcoin.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Niveles de Cashback                              [+ Añadir]    │
-├─────────────────────────────────────────────────────────────────┤
-│  ○ Nivel 1 · Básico     Bs 0  –  Bs 500      1.00%   [Editar]  │
-│  ○ Nivel 2 · Bronce     Bs 501 – Bs 1.000    1.50%   [Editar]  │
-│  ○ Nivel 3 · Plata      Bs 1.001 – Bs 2.500  2.00%   [Editar]  │
-│  ★ Nivel 4 · Oro        Bs 2.501 – Bs 5.000  2.50%   [Editar]  │
-│  ♛ Nivel 5 · Platino    Bs 5.001 – sin tope  3.00%   [Editar]  │
-│                                                                 │
-│  ⚠  Validación: rangos sin solapamiento, sin huecos entre ellos│
-└─────────────────────────────────────────────────────────────────┘
-```
+Reglas de validación:
 
-Inline validation: si se edita un rango y crea un solapamiento, se marca en rojo antes de guardar.
-
----
-
-### ReconciliationPanel
-
-```
-┌─────────────────────────────────────────────────────┐
-│  Conciliación — Mayo 2025                           │
-│                                                     │
-│  ✓  5.268 transacciones conciliadas correctamente  │
-│  ● 23  sin extracto bancario                (rojo)  │
-│  ●  4  en extracto sin pago QR             (ámbar)  │
-│  ●  7  con monto diferente                (naranja) │
-│                           [Explicar con IA ✦]      │
-├─────────────────────────────────────────────────────┤
-│  Filtro: [Todas ▼]                  [Exportar CSV]  │
-│                                                     │
-│  Transacción       Tipo            Delta            │
-│  TXN-20250503-001  ● Sin extracto  —                │
-│  TXN-20250507-014  ● Monto difiere Bs +0.15         │
-│  TXN-20250512-089  ● Sin extracto  —                │
-└─────────────────────────────────────────────────────┘
-```
-
----
+- `minAmountBOB` y `maxAmountBOB` son montos positivos.
+- No puede haber solapamientos.
+- No debe haber huecos si negocio exige cobertura completa.
+- El nivel superior puede tener `maxAmountBOB = null`.
+- Cambios aplican desde un período efectivo, no retroactivamente salvo confirmación explícita.
 
 ### WhatIfSimulator
 
-Pantalla de simulación sin tocar base de datos.
+Simula cambios de niveles sin persistir.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Simulador de niveles                           [Restablecer]   │
-├────────────────────────────┬────────────────────────────────────┤
-│  Configuración             │  Impacto en tiempo real            │
-│                            │                                    │
-│  Nivel 1 · Básico          │  ┌────────────────────────────┐   │
-│  BOB  [0] ─────── [500]    │  │  Básico   ▓░░░░░░ 38%  473 │   │
-│  Cashback  [1.00%]         │  │  Bronce   ▓▓░░░░░ 22%  274 │   │
-│                            │  │  Plata    ▓▓▓░░░░ 18%  225 │   │
-│  Nivel 2 · Bronce          │  │  Oro      ▓▓▓▓░░░ 14%  175 │   │
-│  BOB  [501] ──── [1.000]   │  │  Platino  ▓▓▓▓▓░░  8%  100 │   │
-│  Cashback  [1.50%]         │  └────────────────────────────┘   │
-│                            │                                    │
-│  ...                       │  Costo total tesorería:            │
-│                            │  1,847.32 USDT  =  Bs 12,913.05  │
-│                            │                                    │
-│                            │  vs configuración actual:          │
-│                            │  ▲ +120.50 USDT (+6.98%)          │
-└────────────────────────────┴────────────────────────────────────┘
-```
+Debe mostrar:
 
-Los deslizadores usan el `tier-engine` de `packages/utils` directamente en el cliente. Sin llamadas a API.
+- Distribución de usuarios por nivel.
+- Costo total estimado en USDT y Bs.
+- Variación contra configuración actual.
+- Usuarios que cambian de nivel.
+- Botón para llevar propuesta al editor, no guardado directo.
 
 ---
 
 ## Pantallas
 
-### 1. Dashboard ejecutivo `/`
+### Dashboard `/`
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  BanexReintegra                          Mayo 2025  [Subir ▲]  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌──────────┐  │
-│  │ Reintegrado│  │ Usuarios   │  │ Ticket ⌀   │  │ Anomalías│  │
-│  │ 1,234 USDT │  │   1.247    │  │ Bs 1.250   │  │    34    │  │
-│  │ ↑ 12%      │  │ ↑ 8%       │  │ ↓ 3%       │  │  ⚠ 34   │  │
-│  └────────────┘  └────────────┘  └────────────┘  └──────────┘  │
-│                                                                 │
-│  Distribución por nivel                 Reintegros por semana  │
-│  ┌────────────────────────┐             ┌──────────────────────┐│
-│  │  Básico  38%           │             │      ▂ ▄ █ ▆ ▃       ││
-│  │  Bronce  22%   (donut) │             │   semana 1 2 3 4     ││
-│  │  Plata   18%           │             │                      ││
-│  │  Oro     14%           │             └──────────────────────┘│
-│  │  Platino  8%           │                                     │
-│  └────────────────────────┘                                     │
-│                                                                 │
-│  Últimos uploads                                                │
-│  pago-qr-mayo-2025.xlsx   ✓ Listo   1.247 reintegros   [Ver]  │
-│  pago-qr-abr-2025.xlsx    ✓ Listo   1.195 reintegros   [Ver]  │
-└─────────────────────────────────────────────────────────────────┘
-```
+Objetivo: resumen ejecutivo del último período.
 
----
+Incluye:
 
-### 2. Tabla de reintegros `/rebates`
+- KPIs: total reintegrado, usuarios beneficiados, consumo total, anomalías abiertas.
+- Últimos uploads con estado.
+- Distribución por nivel.
+- Reintegro por semana o por día.
+- CTA principal: `Subir reporte mensual`.
 
-Pantalla completa con la `RebatesTable`. Filtros en sidebar o toolbar.
+### Uploads `/uploads`
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Reintegros — Mayo 2025             [Descargar Excel] [BanexTx]│
-├──────────────────────────┬──────────────────────────────────────┤
-│  Filtros                 │                                      │
-│  Período: [Mayo 2025 ▼]  │  [Buscar usuario...]   [Nivel ▼]    │
-│  Nivel: [Todos ▼]        │                                      │
-│  Estado: [Todos ▼]       │  [RebatesTable completa aquí]       │
-│                          │                                      │
-│  [Aplicar]               │                                      │
-└──────────────────────────┴──────────────────────────────────────┘
-```
+Objetivo: cargar reportes y consultar historial.
 
----
+Incluye:
 
-### 3. Upload `/uploads/new`
+- Dropzone.
+- Reglas de archivo aceptado.
+- Historial con hash, período, estado y fecha.
+- Acceso a reportes generados por upload.
 
-Página dedicada al flujo de upload. Tres estados con transición Framer Motion:
+### Reintegros `/rebates`
 
-```
-Estado A: Dropzone vacío
-Estado B: Preview + confirmación  
-Estado C: Progreso + resultado
-```
+Objetivo: revisar, filtrar y exportar los cálculos.
 
----
+Incluye:
 
-### 4. Conciliación `/reconciliation`
+- Tabla principal.
+- Drawer de detalle por usuario.
+- Descarga de Excel y BanexTransfer.
+- Marcado operativo `pagado` cuando corresponda.
 
-Panel de anomalías + tabla filtrable. Botón "Explicar con IA" en la cabecera.
+### Niveles `/tiers`
 
----
+Objetivo: administrar reglas de cashback por rango de consumo.
 
-### 5. Niveles `/tiers`
+Incluye:
 
-Editor de niveles con validación visual inline + historial de cambios (quién modificó qué y cuándo).
+- Editor de rangos.
+- Validación en vivo.
+- Historial de vigencia.
+- Botón `Simular impacto`.
+
+### Conciliación `/reconciliation`
+
+Objetivo: explicar y resolver diferencias entre Pago QR y extracto.
+
+Incluye:
+
+- Resumen por tipo.
+- Tabla de anomalías.
+- Filtros por tipo y severidad.
+- Exportación de anomalías.
+- Botón opcional `Explicar con IA` si existe backend configurado.
+
+### Simulador `/simulator`
+
+Objetivo: analizar impacto de cambios en niveles antes de guardarlos.
+
+Incluye:
+
+- Sliders o inputs monetarios.
+- Impacto financiero inmediato.
+- Comparación contra configuración vigente.
+- CTA hacia `/tiers` con propuesta precargada.
 
 ---
 
-### 6. Simulador `/simulator`
+## Estados de UI
 
-Two-panel layout: configuración a la izquierda, impacto en vivo a la derecha.
-
----
-
-## Navegación lateral
-
-```
-┌─────────────────┐
-│  Banex          │
-│  Reintegra      │
-├─────────────────┤
-│  ▣ Dashboard    │
-│  ⇅ Reintegros  │
-│  ↑ Subir Excel  │
-│  ⚠ Conciliación│
-│  ◈ Niveles      │
-│  ⚙ Simulador   │
-└─────────────────┘
-```
-
-Sidebar colapsable en mobile (hamburger). Breadcrumb en la cabecera de cada página.
-
----
-
-## Flujos de usuario
-
-### Flujo principal: procesar un mes
-
-```
-Usuario llega al dashboard
-    │
-    ▼
-Clic en "Subir ▲"
-    │
-    ▼
-Dropzone → arrastra Excel
-    │
-    ▼
-Preview de filas + confirmación del período
-    │
-    ├─ [Cancelar] → vuelve al dashboard
-    │
-    └─ [Procesar] → barra de progreso WebSocket
-                        │
-                        ▼
-                   Job completado → tarjeta de resultado
-                        │
-                        ├─ [Ver reintegros] → /rebates?uploadId=X
-                        ├─ [Ver anomalías]  → /reconciliation?uploadId=X
-                        └─ [Descargar]      → Excel + BanexTransfer
-```
-
-### Flujo de ajuste de niveles
-
-```
-/tiers → editar rango de un nivel
-    │
-    ├─ Validación inline: ¿solapamiento?
-    │       Sí → badge rojo, botón guardar desactivado
-    │       No → badge verde, guardar habilitado
-    │
-    └─ [Guardar] → modal "¿Aplicar a partir de qué período?"
-                        │
-                        └─ Confirmar → nivel actualizado
-```
-
-### Flujo del simulador
-
-```
-/simulator → carga automáticamente el último upload
-    │
-    ├─ Mover deslizador de rango
-    │       ▼
-    │   Re-calcula en cliente con tier-engine (sin API)
-    │   Actualiza gráfico de distribución y costo total
-    │
-    └─ [Guardar como nueva configuración] → redirige a /tiers con valores pre-cargados
-```
-
----
-
-## Animaciones (Framer Motion)
-
-| Elemento | Animación | Duración |
-|---|---|---|
-| Dropzone en hover | `scale: 1.02`, borde azul | 150ms ease |
-| Upload → progreso | Layout morph (height expand) | 300ms spring |
-| Progreso → resultado | Layout morph + fade-in checkmark | 400ms spring |
-| KPI cards al montar | Stagger fade-up (50ms entre cards) | 200ms ease-out |
-| Drawer lateral | Slide desde la derecha | 250ms ease-in-out |
-| Counter de cifras | Contador animado de 0 al valor final | 800ms ease-out |
-| Filas de tabla al filtrar | Fade-out filas eliminadas | 150ms |
-
-**Regla:** las animaciones que responden a acción del usuario (<300ms) no tienen `delay`. Las animaciones decorativas de montaje sí pueden tener stagger.
+| Estado | Regla |
+|---|---|
+| Loading inicial | Skeleton por componente, no pantalla blanca |
+| Empty | Explicar qué falta y ofrecer CTA directo |
+| Error recuperable | Mensaje claro + acción de reintento |
+| Error de archivo | Mostrar columna/fila faltante si se conoce |
+| Procesando | Barra con porcentaje y mensaje del worker |
+| Completado con alertas | Estado exitoso, pero destacar anomalías abiertas |
 
 ---
 
 ## Responsive
 
-| Breakpoint | Cambio principal |
+| Breakpoint | Comportamiento |
 |---|---|
-| `< 768px` | Sidebar se convierte en bottom nav. KPI cards en 2×2. Tabla solo muestra 4 columnas. |
-| `768px – 1024px` | Sidebar colapsado por defecto. Two-panel del simulador se apila. |
-| `> 1024px` | Layout completo como en los wireframes. |
+| `< 640px` | Navegación inferior, cards apiladas, tablas con columnas fijas y scroll horizontal |
+| `640px - 1024px` | Sidebar compacta, grids de 2 columnas, filtros colapsables |
+| `> 1024px` | Sidebar completa, dashboards de 12 columnas, drawers laterales |
 
-La tabla de reintegros usa scroll horizontal en mobile sin truncar datos (columnas fijas: Usuario y Nivel; resto scrollable).
-
----
-
-## Dark mode
-
-shadcn/ui usa CSS variables y soporte de dark mode con `class="dark"` en `<html>`. Añadir al `tailwind.config.ts`:
-
-```typescript
-darkMode: 'class'
-```
-
-Toggle en la barra superior. Preferencia guardada en `localStorage`. En el primer render se lee del sistema operativo con `prefers-color-scheme`.
-
-Todas las superficies usan los tokens `--surface-*` definidos arriba. No hardcodear `bg-white` ni `bg-gray-900` directamente.
+Tablas financieras no deben truncar montos. Si falta espacio, ocultar columnas secundarias antes que recortar valores.
 
 ---
 
-## Modelo de islands (Astro + React)
+## Accesibilidad
 
-Cada página `.astro` es HTML estático. Los componentes React se montan como islands solo donde hay interactividad.
+- Contraste mínimo AA en texto y controles.
+- Foco visible en inputs, botones y filas clicables.
+- Estados de anomalía no dependen solo del color; siempre incluyen texto.
+- Dropzone tiene input file accesible por teclado.
+- Tablas tienen encabezados semánticos y `aria-sort` cuando aplique.
+- Las animaciones respetan `prefers-reduced-motion`.
 
-### Patrón de página Astro
-
-```astro
----
-// src/pages/rebates/index.astro
-import DashboardLayout from '@/layouts/DashboardLayout.astro'
-import RebatesTable from '@/islands/rebates/RebatesTable'
-
-// Los datos iniciales se pueden cargar aquí en build time o SSR
-// y pasarse como props al island para evitar un flash de carga
-const uploadId = Astro.url.searchParams.get('uploadId') ?? ''
 ---
 
-<DashboardLayout title="Reintegros">
-  <RebatesTable client:load uploadId={uploadId} />
-</DashboardLayout>
-```
+## Motion
 
-### Cómo evitar el flash de carga (prop drilling desde Astro)
+Usar movimiento con intención operativa.
 
-Para páginas que tienen datos estáticos predecibles (lista de niveles, KPIs del último período), Astro los carga en el frontmatter y los pasa como props serializadas al island. El island arranca con datos reales en lugar de spinner.
-
-```astro
----
-const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/rebates/summary`)
-const summary = await res.json()
----
-<KpiCards client:load initialData={summary} />
-```
-
-### Islands que necesitan QueryClientProvider
-
-`RebatesTable` y `TiersEditor` usan TanStack Query internamente. Cada uno monta su propio `QueryClientProvider` localmente:
-
-```tsx
-// src/islands/rebates/RebatesTable.tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-
-const queryClient = new QueryClient()
-
-export default function RebatesTable(props: Props) {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <RebatesTableInner {...props} />
-    </QueryClientProvider>
-  )
-}
-```
-
-Esto es intencional en Astro: cada island es independiente. Si dos islands necesitan compartir estado, la solución es un store de Nano Stores (`@nanostores/react`) compartido entre ambas.
-
-### Estado compartido entre islands (Nano Stores)
-
-```typescript
-// src/lib/stores.ts
-import { atom } from 'nanostores'
-
-export const activeUploadId = atom<string | null>(null)
-export const jobStatus = atom<'idle' | 'processing' | 'done' | 'error'>('idle')
-```
-
-`JobProgress.tsx` escribe en `jobStatus`. `RebatesTable.tsx` lo lee para saber cuándo refrescar. Sin prop drilling entre islands, sin contexto global de React.
-
-### Variables de entorno en Astro
-
-| Variable | Dónde se usa | Prefijo |
+| Elemento | Animación | Duración |
 |---|---|---|
-| `PUBLIC_API_URL` | Islands (cliente) | `PUBLIC_` → expuesta al browser |
-| `API_SECRET` | Frontmatter `.astro` (servidor) | Sin prefijo → solo en build/SSR |
+| Cards al cargar | Fade + translateY leve | 180ms |
+| Dropzone hover | Borde y glow azul | 120ms |
+| Progreso | Width transition | 250ms |
+| Resultado final | Check + reveal de acciones | 300ms |
+| Drawer | Slide right | 220ms |
+| Filtros aplicados | Highlight temporal en tabla | 180ms |
+
+Evitar animar cifras financieras de forma que parezcan cambiar después del cálculo final.
+
+---
+
+## Variables de entorno del frontend
+
+| Variable | Uso |
+|---|---|
+| `PUBLIC_API_URL` | Base URL del backend NestJS expuesta al navegador |
+
+Regla Astro: solo variables con prefijo `PUBLIC_` pueden ser usadas dentro de islands que corren en browser.
+
+---
+
+## Checklist de implementación visual
+
+- `frontend/src/styles/global.css` define tokens base y estilos globales.
+- `AppShell.astro` centraliza navegación, topbar y contenedor.
+- Islands usan `client:*` solo cuando necesitan interacción.
+- Montos se formatean con helpers compartidos.
+- Los tres estados críticos (`processing`, `done`, `failed`) existen en upload.
+- Las tablas soportan miles de filas sin congelar la UI.
+- El diseño comunica independencia: carga manual de archivos, sin prometer conexión directa al core de Banexcoin.
