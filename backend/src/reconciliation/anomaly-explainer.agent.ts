@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import type { AnomalyDTO } from '@banex/types'
@@ -14,7 +13,7 @@ export interface AnomalyExplanation {
   explanation: string
 }
 
-const MODEL = 'gemini-2.5-flash'
+const MODEL = 'gemini-3-flash-preview'
 const MAX_TOKENS = 300
 
 const SYSTEM_PROMPT = `Eres un analista de conciliación financiera de Banexcoin Bolivia.
@@ -37,7 +36,6 @@ const TYPE_LABELS: Record<string, string> = {
 @Injectable()
 export class AnomalyExplainerAgent {
   private readonly logger = new Logger(AnomalyExplainerAgent.name)
-  private readonly cache = new Map<string, string>()
   private clientPromise: Promise<GoogleGenAIClient | null> | null = null
 
   constructor(
@@ -91,12 +89,6 @@ export class AnomalyExplainerAgent {
       }
     }
 
-    const cacheKey = createHash('sha256').update(summary).digest('hex')
-    const hit = this.cache.get(cacheKey)
-    if (hit) {
-      return { available: true, cached: true, explanation: hit }
-    }
-
     try {
       const response = await client.models.generateContent({
         model: MODEL,
@@ -112,7 +104,6 @@ export class AnomalyExplainerAgent {
         throw new Error('Respuesta vacía del modelo')
       }
 
-      this.cache.set(cacheKey, text)
       return { available: true, cached: false, explanation: text }
     } catch (error) {
       this.logger.error(
@@ -137,20 +128,27 @@ export class AnomalyExplainerAgent {
 
     const lines: string[] = [
       `Total de anomalías: ${anomalies.length}.`,
+      `Estado: ${anomalies.filter((a) => a.resolved).length} resueltas y ${
+        anomalies.filter((a) => !a.resolved).length
+      } pendientes.`,
       'Conteo por tipo:',
     ]
     for (const [type, list] of byType) {
       lines.push(`- ${list.length} ${TYPE_LABELS[type] ?? type}.`)
     }
 
-    const examples = anomalies.slice(0, 5).map((a) => {
-      const parts = [`tx ${a.transactionId}`, TYPE_LABELS[a.type] ?? a.type]
-      if (a.deltaBOB) parts.push(`delta Bs ${a.deltaBOB}`)
-      return `  · ${parts.join(', ')}`
-    })
-    if (examples.length > 0) {
-      lines.push('Ejemplos:')
-      lines.push(...examples)
+    const deltas = anomalies
+      .filter((a) => a.type === 'AMOUNT_MISMATCH' && a.deltaBOB !== null)
+      .map((a) => Number(a.deltaBOB))
+      .filter(Number.isFinite)
+
+    if (deltas.length > 0) {
+      const total = deltas.reduce((sum, value) => sum + value, 0)
+      const average = total / deltas.length
+      lines.push(
+        `Diferencias de monto: delta promedio Bs ${average.toFixed(2)}, ` +
+          `mínimo Bs ${Math.min(...deltas).toFixed(2)} y máximo Bs ${Math.max(...deltas).toFixed(2)}.`,
+      )
     }
 
     return lines.join('\n')

@@ -258,7 +258,7 @@ Schema unificado de errores:
 | Anomalía detectada | warn | tipo, conteo (no `transactionId` individual en agregado) |
 | Error de parseo | warn | `rowNumber`, `sheetName`, motivo |
 | Job fallido | error | `jobId`, mensaje, stack en logs internos solamente |
-| Llamada a Claude | info | `model`, `inputTokens`, `outputTokens`, NO el contenido |
+| Llamada a Gemini | info | `model`, `inputTokens`, `outputTokens`, NO el contenido |
 
 ### 6.2 Qué NO loguear
 
@@ -266,7 +266,7 @@ Schema unificado de errores:
 - Usernames en claro (usar hash o ID interno).
 - API keys, secrets, tokens.
 - Contenido completo del Excel.
-- Respuestas crudas de Claude (pueden contener datos sensibles).
+- Respuestas crudas de Gemini (pueden contener datos sensibles).
 
 ### 6.3 Formato
 
@@ -294,7 +294,7 @@ Schema unificado de errores:
 - **Nunca** commitear `.env`. Solo `.env.example`.
 - Todas las env vars necesarias documentadas en `.env.example` con valores ficticios.
 - Validar al arranque que todas las requeridas estén presentes (fallar rápido).
-- Secrets: `JWT_SECRET`, `ANTHROPIC_API_KEY`, `DATABASE_URL` (en URL), `REDIS_URL`.
+- Secrets: `JWT_SECRET`, `GEMINI_API_KEY`, `DATABASE_URL` (en URL), `REDIS_URL`.
 
 ### 7.2 CORS
 
@@ -322,7 +322,7 @@ Schema unificado de errores:
 - Endpoints públicos (subir archivo, generar IA) usan `@nestjs/throttler`.
 - Default: 10 requests / minuto / IP para uploads. 5 / minuto / IP para `POST /reconciliation/explain`.
 
-### 7.7 Llamadas a Claude (LLM)
+### 7.7 Llamadas a Gemini (LLM)
 
 - **No enviar PII** al modelo. Anonimizar usernames antes de enviarlos a la API.
 - Limitar `max_tokens` para acotar costos.
