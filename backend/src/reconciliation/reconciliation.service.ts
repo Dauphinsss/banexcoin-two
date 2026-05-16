@@ -16,7 +16,9 @@ export class ReconciliationService {
         where: { uploadId },
         _count: { _all: true },
       }),
-      this.prisma.qRTransaction.count({ where: { uploadId } }),
+      this.prisma.ledgerTransaction.count({
+        where: { uploadId, serviceCode: 'S-001' },
+      }),
     ])
 
     const byType = new Map(counts.map((row) => [row.type, row._count._all]))
@@ -54,7 +56,7 @@ export class ReconciliationService {
       uploadId: anomaly.uploadId,
       transactionId: anomaly.transactionId,
       type: anomaly.type as AnomalyDTO['type'],
-      qrAmountBOB: anomaly.qrAmountBOB?.toString() ?? null,
+      qrAmountBOB: anomaly.ledgerAmountBOB?.toString() ?? null,
       extractAmountBOB: anomaly.extractAmountBOB?.toString() ?? null,
       deltaBOB: anomaly.deltaBOB?.toString() ?? null,
       resolved: anomaly.resolved,
@@ -83,7 +85,7 @@ export class ReconciliationService {
       uploadId: updated.uploadId,
       transactionId: updated.transactionId,
       type: updated.type as AnomalyDTO['type'],
-      qrAmountBOB: updated.qrAmountBOB?.toString() ?? null,
+      qrAmountBOB: updated.ledgerAmountBOB?.toString() ?? null,
       extractAmountBOB: updated.extractAmountBOB?.toString() ?? null,
       deltaBOB: updated.deltaBOB?.toString() ?? null,
       resolved: updated.resolved,

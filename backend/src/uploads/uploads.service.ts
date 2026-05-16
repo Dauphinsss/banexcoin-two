@@ -66,7 +66,7 @@ export class UploadsService {
             errorMessage: null,
             period: requestedPeriod ?? existing.period,
             rowCount: 0,
-            qrRowCount: 0,
+            transactionRowCount: 0,
             extractRowCount: 0,
             parseErrorCount: 0,
             anomalyCount: 0,
@@ -244,8 +244,14 @@ export class UploadsService {
   async listMinimalTransactions(uploadId: string) {
     await this.ensureUpload(uploadId)
 
-    const transactions = await this.prisma.qRTransaction.findMany({
-      where: { uploadId },
+    const transactions = await this.prisma.ledgerTransaction.findMany({
+      where: {
+        uploadId,
+        serviceCode: 'S-001',
+        amountBOB: { not: null },
+        amountUSDT: { not: null },
+        exchangeRate: { not: null },
+      },
       select: {
         userAccount: { select: { accountNumber: true } },
         amountBOB: true,
@@ -256,10 +262,10 @@ export class UploadsService {
     })
 
     return transactions.map((transaction) => ({
-      userId: Number(transaction.userAccount.accountNumber),
-      amountBOB: transaction.amountBOB.toString(),
-      amountUSDT: transaction.amountUSDT.toString(),
-      exchangeRate: transaction.exchangeRate.toString(),
+      userId: Number(transaction.userAccount?.accountNumber ?? 0),
+      amountBOB: transaction.amountBOB?.toString() ?? '0',
+      amountUSDT: transaction.amountUSDT?.toString() ?? '0',
+      exchangeRate: transaction.exchangeRate?.toString() ?? '0',
     }))
   }
 
@@ -294,8 +300,8 @@ export class UploadsService {
       await tx.reconciliationAnomaly.deleteMany({ where: { uploadId } })
       await tx.monthlyRebate.deleteMany({ where: { uploadId } })
       await tx.parseError.deleteMany({ where: { uploadId } })
-      await tx.qRTransaction.deleteMany({ where: { uploadId } })
-      await tx.extractTransaction.deleteMany({ where: { uploadId } })
+      await tx.bankExtractEntry.deleteMany({ where: { uploadId } })
+      await tx.ledgerTransaction.deleteMany({ where: { uploadId } })
 
       const accountMap = new Map<string, { username: string | null; displayName: string | null }>()
 
@@ -339,26 +345,38 @@ export class UploadsService {
       const userIdByAccount = new Map(users.map((user) => [user.accountNumber, user.id]))
 
       if (qrRows.length > 0) {
-        await tx.qRTransaction.createMany({
+        await tx.ledgerTransaction.createMany({
           data: qrRows.map((row) => ({
             uploadId,
             userAccountId: requireUserAccountId(userIdByAccount, row.accountNumber),
+            serviceCode: row.serviceCode,
+            serviceName: 'PAGO QR',
+            sourceSheet: 'Pago QR',
+            sourceRowNumber: row.rowNumber,
             transactionId: row.transactionId,
+            status: row.status,
+            direction: 'DEBIT',
+            productSymbol: 'USDT',
             transactedAt: row.transactedAt,
             amountBOB: row.amountBOB,
             amountUSDT: row.amountUSDT,
             exchangeRate: row.exchangeRate,
             feeBOB: row.commission,
             feeUSDT: '0',
+            netAmountBOB: row.amountBOB,
+            netAmountUSDT: row.amountUSDT,
             rawRow: JSON.stringify(row.raw),
           })),
         })
       }
 
       if (parsed.extractRows.length > 0) {
-        await tx.extractTransaction.createMany({
+        await tx.bankExtractEntry.createMany({
           data: parsed.extractRows.map((row) => ({
             uploadId,
+            extractKind: 'PAYMENT',
+            sourceSheet: 'EXTRACTO DE PAGOS',
+            sourceRowNumber: row.rowNumber,
             transactionId: row.transactionId,
             transactedAt: row.transactedAt,
             amountBOB: row.amountBOB,
@@ -367,30 +385,57 @@ export class UploadsService {
         })
       }
 
-      const persistedQrRows = await tx.qRTransaction.findMany({
+      const persistedQrTransactions = await tx.ledgerTransaction.findMany({
+        where: { uploadId, serviceCode: 'S-001' },
+        select: {
+          id: true,
+          transactionId: true,
+          userAccountId: true,
+          amountBOB: true,
+          amountUSDT: true,
+          exchangeRate: true,
+        },
+      })
+      const persistedExtractRows = await tx.bankExtractEntry.findMany({
         where: { uploadId },
         select: { id: true, transactionId: true },
       })
-      const persistedExtractRows = await tx.extractTransaction.findMany({
-        where: { uploadId },
-        select: { id: true, transactionId: true },
-      })
-      const qrIdByTransactionId = new Map(
-        persistedQrRows.map((row) => [row.transactionId, row.id]),
+      const qrByTransactionId = new Map(
+        persistedQrTransactions.map((row) => [row.transactionId, row]),
       )
       const extractIdByTransactionId = new Map(
         persistedExtractRows.map((row) => [row.transactionId, row.id]),
       )
+
+      if (persistedQrTransactions.length > 0) {
+        await tx.qrTransactionDetail.createMany({
+          data: qrRows.flatMap((row) => {
+            const ledger = qrByTransactionId.get(row.transactionId)
+            if (!ledger) return []
+
+            return [{
+              ledgerTransactionId: ledger.id,
+              quoteNumber: row.quoteNumber === null ? null : String(row.quoteNumber),
+              currencyCode: 'BOB',
+              paidAmountBOB: row.amountBOB,
+              exchangedAmountUSDT: row.amountUSDT,
+              createdAtSource: row.transactedAt,
+              updatedAtSource: row.transactedAt,
+            }]
+          }),
+        })
+      }
 
       if (anomalies.length > 0) {
         await tx.reconciliationAnomaly.createMany({
           data: anomalies.map((anomaly) => ({
             uploadId,
             transactionId: anomaly.transactionId,
+            serviceCode: 'S-001',
             type: anomaly.type,
-            qrTransactionId: qrIdByTransactionId.get(anomaly.transactionId) ?? null,
-            extractTransactionId: extractIdByTransactionId.get(anomaly.transactionId) ?? null,
-            qrAmountBOB: anomaly.qrAmountBOB,
+            ledgerTransactionId: qrByTransactionId.get(anomaly.transactionId)?.id ?? null,
+            bankExtractEntryId: extractIdByTransactionId.get(anomaly.transactionId) ?? null,
+            ledgerAmountBOB: anomaly.qrAmountBOB,
             extractAmountBOB: anomaly.extractAmountBOB,
             deltaBOB: anomaly.deltaBOB,
           })),
@@ -403,14 +448,15 @@ export class UploadsService {
           .map((anomaly) => anomaly.transactionId),
       )
       const reconciledTransactionIds = parsed.extractRows
-        .filter((row) => qrIdByTransactionId.has(row.transactionId))
+        .filter((row) => qrByTransactionId.has(row.transactionId))
         .map((row) => row.transactionId)
         .filter((transactionId) => !anomalousQrIds.has(transactionId))
 
       if (reconciledTransactionIds.length > 0) {
-        await tx.qRTransaction.updateMany({
+        await tx.ledgerTransaction.updateMany({
           where: {
             uploadId,
+            serviceCode: 'S-001',
             transactionId: { in: reconciledTransactionIds },
           },
           data: { reconciledWithExtract: true },
@@ -442,26 +488,18 @@ export class UploadsService {
         const rebateIdByUserId = new Map(
           persistedRebates.map((rebate) => [rebate.userAccountId, rebate.id]),
         )
-        const persistedQrTransactions = await tx.qRTransaction.findMany({
-          where: { uploadId },
-          select: {
-            id: true,
-            userAccountId: true,
-            amountBOB: true,
-            amountUSDT: true,
-            exchangeRate: true,
-          },
-        })
-
         if (persistedQrTransactions.length > 0) {
           await tx.monthlyRebateItem.createMany({
             data: persistedQrTransactions.flatMap((transaction) => {
+              if (!transaction.userAccountId) return []
+              if (!transaction.amountBOB || !transaction.amountUSDT || !transaction.exchangeRate) return []
+
               const monthlyRebateId = rebateIdByUserId.get(transaction.userAccountId)
               if (!monthlyRebateId) return []
 
               return [{
                 monthlyRebateId,
-                qrTransactionId: transaction.id,
+                ledgerTransactionId: transaction.id,
                 amountBOB: transaction.amountBOB,
                 amountUSDT: transaction.amountUSDT,
                 exchangeRate: transaction.exchangeRate,
@@ -489,7 +527,7 @@ export class UploadsService {
           period,
           status: 'DONE',
           rowCount: qrRows.length,
-          qrRowCount: qrRows.length,
+          transactionRowCount: qrRows.length,
           extractRowCount: parsed.extractRows.length,
           parseErrorCount: parseErrors.length,
           anomalyCount: anomalies.length,

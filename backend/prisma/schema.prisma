@@ -252,9 +252,9 @@ model ReconciliationAnomaly {
   uploadId           String
   upload             Upload             @relation(fields: [uploadId], references: [id], onDelete: Cascade)
   ledgerTransactionId String?
-  ledgerTransaction  LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
+  ledgerTransaction  LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id], onDelete: Cascade)
   bankExtractEntryId String?
-  bankExtractEntry   BankExtractEntry?  @relation(fields: [bankExtractEntryId], references: [id])
+  bankExtractEntry   BankExtractEntry?  @relation(fields: [bankExtractEntryId], references: [id], onDelete: Cascade)
   transactionId      String
   serviceCode        String?
   type               String             // AnomalyType en packages/types
@@ -304,7 +304,7 @@ model MonthlyRebateItem {
   monthlyRebateId     String
   monthlyRebate       MonthlyRebate      @relation(fields: [monthlyRebateId], references: [id], onDelete: Cascade)
   ledgerTransactionId String
-  ledgerTransaction   LedgerTransaction  @relation(fields: [ledgerTransactionId], references: [id])
+  ledgerTransaction   LedgerTransaction  @relation(fields: [ledgerTransactionId], references: [id], onDelete: Cascade)
   amountBOB           Decimal
   amountUSDT          Decimal
   exchangeRate        Decimal
