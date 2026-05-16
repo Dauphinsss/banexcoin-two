@@ -71,14 +71,14 @@ export function LatestResults() {
   }, [state.rebates])
 
   if (status === 'loading') {
-    return <div className="text-sm text-slate-400">Cargando resultados...</div>
+    return <div className="text-sm text-muted">Cargando resultados...</div>
   }
 
   if (status === 'empty') {
     return (
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-6">
-        <p className="text-sm text-slate-300">Todavía no hay uploads procesados.</p>
-        <a className="mt-4 inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500" href="/uploads/new">
+      <div className="rounded-lg border border-line bg-panel p-6">
+        <p className="text-sm text-muted">Todavía no hay uploads procesados.</p>
+        <a className="mt-4 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-medium text-inverse hover-bg-brand-hover" href="/uploads/new">
           Subir Excel
         </a>
       </div>
@@ -86,7 +86,7 @@ export function LatestResults() {
   }
 
   if (status === 'error') {
-    return <div className="text-sm text-red-300">No se pudieron cargar los resultados.</div>
+    return <div className="text-sm text-danger">No se pudieron cargar los resultados.</div>
   }
 
   return (
@@ -99,25 +99,25 @@ export function LatestResults() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <section className="rounded-lg border border-line bg-panel p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-slate-100">Último procesamiento</h2>
-              <p className="mt-1 text-sm text-slate-400">{state.upload?.filename}</p>
+              <h2 className="text-base font-semibold text-main">Último procesamiento</h2>
+              <p className="mt-1 text-sm text-muted">{state.upload?.filename}</p>
             </div>
-            <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+            <span className="rounded-md border border-success-muted bg-success-soft px-3 py-1 text-xs font-medium text-success">
               {state.upload?.period ?? 'Sin período'}
             </span>
           </div>
-          <div className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 text-sm text-muted sm:grid-cols-3">
             <Metric label="Filas QR" value={String(state.upload?.rowCount ?? 0)} />
             <Metric label="Parse errors" value={String(state.upload?.parseErrorCount ?? 0)} />
             <Metric label="Conciliación" value={`${state.stats?.reconciliationRate ?? '0.00'}%`} />
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-          <h2 className="text-base font-semibold text-slate-100">Anomalías</h2>
+        <section className="rounded-lg border border-line bg-panel p-5">
+          <h2 className="text-base font-semibold text-main">Anomalías</h2>
           <div className="mt-4 space-y-2 text-sm">
             <Metric label="Sin extracto" value={String(state.stats?.noExtract ?? 0)} />
             <Metric label="Sin QR" value={String(state.stats?.noQr ?? 0)} />
@@ -131,18 +131,18 @@ export function LatestResults() {
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">
-      <p className="text-xs uppercase tracking-widest text-slate-500">{label}</p>
-      <p className="mt-2 font-mono text-xl font-semibold text-slate-100">{value}</p>
+    <div className="rounded-lg border border-line bg-panel-strong p-4">
+      <p className="text-xs uppercase tracking-widest text-faint">{label}</p>
+      <p className="mt-2 font-mono text-xl font-semibold text-main">{value}</p>
     </div>
   )
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md bg-slate-950/50 px-3 py-2">
-      <span className="text-slate-400">{label}</span>
-      <span className="font-mono text-slate-100">{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-md bg-panel-inset-strong px-3 py-2">
+      <span className="text-muted">{label}</span>
+      <span className="font-mono text-main">{value}</span>
     </div>
   )
 }

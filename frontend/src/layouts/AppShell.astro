@@ -24,12 +24,12 @@ const navItems = [
     <meta name="generator" content={Astro.generator} />
     <title>{title} · BanexReintegra</title>
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+  <body class="min-h-screen bg-app text-main antialiased">
     <div class="flex min-h-screen">
-      <aside class="hidden md:flex md:w-64 flex-col border-r border-slate-800 bg-slate-950/60">
-        <div class="px-6 py-6 border-b border-slate-800">
-          <p class="text-sm uppercase tracking-widest text-slate-500">Banexcoin</p>
-          <p class="text-lg font-semibold text-slate-100">BanexReintegra</p>
+      <aside class="hidden md:flex md:w-64 flex-col border-r border-line bg-app-muted">
+        <div class="px-6 py-6 border-b border-line">
+          <p class="text-sm uppercase tracking-widest text-faint">Banexcoin</p>
+          <p class="text-lg font-semibold text-main">BanexReintegra</p>
         </div>
         <nav class="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => (
@@ -37,8 +37,8 @@ const navItems = [
               href={item.href}
               class={`block px-3 py-2 rounded-md text-sm transition-colors ${
                 item.id === activePage
-                  ? 'bg-blue-600/20 text-blue-200 font-medium'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                  ? 'bg-brand-active text-brand-soft font-medium'
+                  : 'text-muted hover-text-main hover-bg-panel-hover'
               }`}
             >
               {item.label}
@@ -48,9 +48,9 @@ const navItems = [
       </aside>
 
       <main class="flex-1 flex flex-col">
-        <header class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <header class="border-b border-line px-6 py-4 flex items-center justify-between">
           <h1 class="text-lg font-semibold tracking-tight">{title}</h1>
-          <div class="text-xs text-slate-500 font-mono">api: localhost:3000</div>
+          <div class="text-xs text-faint font-mono">api: localhost:3000</div>
         </header>
         <section class="flex-1 px-6 py-8">
           <slot />

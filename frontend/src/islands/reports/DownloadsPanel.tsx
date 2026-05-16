@@ -47,7 +47,7 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
   }, [uploadId])
 
   if (status === 'loading') {
-    return <p className="text-sm text-slate-400">Cargando descargas...</p>
+    return <p className="text-sm text-muted">Cargando descargas...</p>
   }
 
   if (status === 'error' || !upload) {
@@ -56,20 +56,20 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
 
   if (status === 'empty') {
     return (
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-muted">
         Las descargas estarán disponibles cuando un upload termine de procesarse.
       </p>
     )
   }
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-5 space-y-4">
+    <div className="rounded-lg border border-line bg-panel p-5 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-sm uppercase tracking-widest text-slate-500">Descargas</h3>
-          <p className="mt-1 text-xs text-slate-400">
-            Período <span className="font-mono text-slate-300">{upload.period ?? '—'}</span> ·
-            {' '}archivo <span className="font-mono text-slate-300">{upload.filename}</span>
+          <h3 className="text-sm uppercase tracking-widest text-faint">Descargas</h3>
+          <p className="mt-1 text-xs text-muted">
+            Período <span className="font-mono text-muted">{upload.period ?? '—'}</span> ·
+            {' '}archivo <span className="font-mono text-muted">{upload.filename}</span>
           </p>
         </div>
       </div>
@@ -98,7 +98,7 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
         />
       </div>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-faint">
         Las descargas se regeneran al momento desde la base de datos. El archivo BanexTransfer
         usa la cuenta de tesorería configurada en <span className="font-mono">TREASURY_ACCOUNT_NUMBER</span>.
       </p>
@@ -109,9 +109,9 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
 export default DownloadsPanel
 
 const accentColors: Record<'blue' | 'green' | 'purple', string> = {
-  blue: 'border-blue-500/40 hover:border-blue-400 hover:bg-blue-500/5',
-  green: 'border-emerald-500/40 hover:border-emerald-400 hover:bg-emerald-500/5',
-  purple: 'border-violet-500/40 hover:border-violet-400 hover:bg-violet-500/5',
+  blue: 'border-brand-soft hover-border-brand-soft hover-bg-brand-soft',
+  green: 'border-success-soft hover-border-success-soft hover-bg-success-soft',
+  purple: 'border-violet-soft hover-border-violet-soft hover-bg-violet-soft',
 }
 
 const DownloadCard = ({
@@ -130,14 +130,14 @@ const DownloadCard = ({
   <a
     href={href}
     download
-    className={`block rounded-md border ${accentColors[accent]} bg-slate-950/40 px-4 py-3 transition-colors`}
+    className={`block rounded-md border ${accentColors[accent]} bg-panel-inset px-4 py-3 transition-colors`}
   >
     <div className="flex items-start gap-3">
       <span className="text-xl shrink-0">{icon}</span>
       <div className="min-w-0">
-        <p className="font-medium text-slate-100">{title}</p>
-        <p className="mt-1 text-xs text-slate-400 leading-relaxed">{description}</p>
-        <p className="mt-2 text-xs text-blue-400">Descargar →</p>
+        <p className="font-medium text-main">{title}</p>
+        <p className="mt-1 text-xs text-muted leading-relaxed">{description}</p>
+        <p className="mt-2 text-xs text-brand">Descargar →</p>
       </div>
     </div>
   </a>

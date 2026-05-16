@@ -77,39 +77,39 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
 
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex justify-end bg-overlay backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <aside
-        className="h-full w-full max-w-2xl bg-slate-950 border-l border-slate-800 shadow-2xl overflow-y-auto animate-slide-in"
+        className="h-full w-full max-w-2xl bg-app border-l border-line shadow-2xl overflow-y-auto animate-slide-in"
         onClick={(e) => e.stopPropagation()}
         style={{ animation: 'slide-in 250ms ease-in-out' }}
       >
-        <header className="sticky top-0 z-10 bg-slate-950/95 border-b border-slate-800 px-6 py-4 flex items-start justify-between gap-4">
+        <header className="sticky top-0 z-10 bg-app-glass border-b border-line px-6 py-4 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-widest text-slate-500">Detalle de usuario</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-100 truncate">{rebate.username}</h2>
-            <p className="text-xs text-slate-500 font-mono">Cuenta {rebate.userId}</p>
+            <p className="text-xs uppercase tracking-widest text-faint">Detalle de usuario</p>
+            <h2 className="mt-1 text-lg font-semibold text-main truncate">{rebate.username}</h2>
+            <p className="text-xs text-faint font-mono">Cuenta {rebate.userId}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 text-2xl leading-none px-2"
+            className="text-muted hover-text-soft text-2xl leading-none px-2"
             aria-label="Cerrar"
           >
             ×
           </button>
         </header>
 
-        <section className="px-6 py-5 space-y-4 border-b border-slate-800">
+        <section className="px-6 py-5 space-y-4 border-b border-line">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <SummaryRow label="Total gastado" value={formatBOB(rebate.totalSpentBOB)} />
             <SummaryRow
               label="Nivel"
               value={
-                <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs text-blue-200">
+                <span className="rounded-md border border-brand-muted bg-brand-soft px-2 py-1 text-xs text-brand-soft">
                   {rebate.tierName ?? 'Sin nivel'}
                 </span>
               }
@@ -118,7 +118,7 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
             <SummaryRow
               label="T/C promedio"
               value={
-                <span className="font-mono tabular-nums text-slate-200">
+                <span className="font-mono tabular-nums text-soft">
                   {formatRate(rebate.avgExchangeRate)}
                 </span>
               }
@@ -126,7 +126,7 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
             <SummaryRow
               label="Reintegro USDT"
               value={
-                <span className="font-mono tabular-nums text-emerald-200">
+                <span className="font-mono tabular-nums text-success">
                   {formatUSDT(rebate.rebateUSDT)}
                 </span>
               }
@@ -135,16 +135,16 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
             <SummaryRow
               label="Reintegro BOB"
               value={
-                <span className="font-mono tabular-nums text-slate-200">
+                <span className="font-mono tabular-nums text-soft">
                   {formatBOB(rebate.rebateBOB)}
                 </span>
               }
             />
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center justify-between text-xs text-faint">
             <span>{rebate.transactionCount} transacciones · período {rebate.period}</span>
-            <span className={rebate.paidOut ? 'text-emerald-300' : ''}>
+            <span className={rebate.paidOut ? 'text-success-strong' : ''}>
               {rebate.paidOut
                 ? `✓ Pagado el ${formatDateTime(rebate.paidOutAt)}`
                 : 'Pendiente de pago'}
@@ -153,17 +153,17 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
         </section>
 
         <section className="px-6 py-5">
-          <h3 className="text-sm font-medium text-slate-300 mb-3">Transacciones del período</h3>
+          <h3 className="text-sm font-medium text-muted mb-3">Transacciones del período</h3>
           {status === 'loading' ? (
-            <p className="text-sm text-slate-400">Cargando transacciones...</p>
+            <p className="text-sm text-muted">Cargando transacciones...</p>
           ) : status === 'error' ? (
-            <p className="text-sm text-red-300">{errorMessage}</p>
+            <p className="text-sm text-danger">{errorMessage}</p>
           ) : transactions.length === 0 ? (
-            <p className="text-sm text-slate-400">Sin transacciones para mostrar.</p>
+            <p className="text-sm text-muted">Sin transacciones para mostrar.</p>
           ) : (
-            <div className="overflow-hidden rounded-md border border-slate-800">
+            <div className="overflow-hidden rounded-md border border-line">
               <table className="min-w-full text-xs">
-                <thead className="bg-slate-900 text-slate-500 uppercase tracking-wider">
+                <thead className="bg-panel-solid text-faint uppercase tracking-wider">
                   <tr>
                     <th className="px-3 py-2 text-left">Fecha</th>
                     <th className="px-3 py-2 text-right">BOB</th>
@@ -172,30 +172,30 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
                     <th className="px-3 py-2 text-center">Estado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-900">
+                <tbody className="divide-y divide-line-dark">
                   {transactions.map((tx) => (
                     <tr
                       key={tx.id}
-                      className="hover:bg-slate-900/60 cursor-pointer"
+                      className="hover-bg-panel-hover-muted cursor-pointer"
                       onClick={() => setSelectedTx(tx)}
                     >
-                      <td className="px-3 py-2 text-slate-300 font-mono">
+                      <td className="px-3 py-2 text-muted font-mono">
                         {formatDateTime(tx.transactedAt).slice(0, 16)}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-soft">
                         {formatBOB(tx.amountBOB)}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-300">
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                         {formatUSDTCompact(tx.amountUSDT)}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                         {formatRate(tx.exchangeRate)}
                       </td>
                       <td className="px-3 py-2 text-center">
                         {tx.reconciledWithExtract ? (
-                          <span className="text-emerald-300" title="Conciliada con extracto">✓</span>
+                          <span className="text-success-strong" title="Conciliada con extracto">✓</span>
                         ) : (
-                          <span className="text-amber-300" title="Sin conciliar">⚠</span>
+                          <span className="text-warning-strong" title="Sin conciliar">⚠</span>
                         )}
                       </td>
                     </tr>
@@ -235,12 +235,12 @@ const SummaryRow = ({
   <div
     className={`rounded-md border px-3 py-2 ${
       highlight
-        ? 'border-emerald-500/30 bg-emerald-500/5'
-        : 'border-slate-800 bg-slate-900/40'
+        ? 'border-success-muted bg-success-faint'
+        : 'border-line bg-panel'
     }`}
   >
-    <p className="text-xs text-slate-500">{label}</p>
-    <div className="mt-1 text-slate-100">{value}</div>
+    <p className="text-xs text-faint">{label}</p>
+    <div className="mt-1 text-main">{value}</div>
   </div>
 )
 
@@ -252,21 +252,21 @@ const TransactionModal = ({
   onClose: () => void
 }): JSX.Element => (
   <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-strong p-4"
     onClick={onClose}
     role="dialog"
     aria-modal="true"
   >
     <div
-      className="w-full max-w-lg rounded-lg border border-slate-700 bg-slate-950 p-6 shadow-2xl"
+      className="w-full max-w-lg rounded-lg border border-line-strong bg-app p-6 shadow-2xl"
       onClick={(e) => e.stopPropagation()}
     >
       <header className="flex items-center justify-between mb-4">
-        <h4 className="text-base font-semibold text-slate-100">Transacción QR</h4>
+        <h4 className="text-base font-semibold text-main">Transacción QR</h4>
         <button
           type="button"
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-200 text-xl leading-none"
+          className="text-muted hover-text-soft text-xl leading-none"
         >
           ×
         </button>
@@ -304,9 +304,9 @@ const ModalField = ({
   value: string
   mono?: boolean
 }): JSX.Element => (
-  <div className="flex justify-between gap-4 border-b border-slate-800 pb-1.5">
-    <dt className="text-slate-500">{label}</dt>
-    <dd className={`text-slate-200 text-right ${mono ? 'font-mono tabular-nums' : ''}`}>
+  <div className="flex justify-between gap-4 border-b border-line pb-1.5">
+    <dt className="text-faint">{label}</dt>
+    <dd className={`text-soft text-right ${mono ? 'font-mono tabular-nums' : ''}`}>
       {value}
     </dd>
   </div>
