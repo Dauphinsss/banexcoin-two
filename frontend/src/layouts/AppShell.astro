@@ -8,13 +8,14 @@ interface Props {
 
 const { title, activePage } = Astro.props
 const navItems = [
-  { id: 'dashboard',      href: '/',                 label: 'Dashboard' },
-  { id: 'uploads',        href: '/uploads/new',      label: 'Subir Excel' },
-  { id: 'rebates',        href: '/rebates',          label: 'Reintegros' },
-  { id: 'reconciliation', href: '/reconciliation',   label: 'Conciliación' },
-  { id: 'tiers',          href: '/tiers',            label: 'Niveles' },
-  { id: 'simulator',      href: '/simulator',        label: 'Simulador' },
+  { id: 'dashboard',      href: '/',                 label: 'Dashboard',    hint: 'Resumen mensual' },
+  { id: 'uploads',        href: '/uploads/new',      label: 'Subir Excel',  hint: 'Validar archivo' },
+  { id: 'rebates',        href: '/rebates',          label: 'Reintegros',   hint: 'Usuarios y pagos' },
+  { id: 'reconciliation', href: '/reconciliation',   label: 'Conciliación', hint: 'Control bancario' },
+  { id: 'tiers',          href: '/tiers',            label: 'Niveles',      hint: 'Reglas cashback' },
+  { id: 'simulator',      href: '/simulator',        label: 'Simulador',    hint: 'Impacto what-if' },
 ] as const
+const currentItem = navItems.find((item) => item.id === activePage)
 ---
 
 <html lang="es" class="dark">
@@ -24,36 +25,85 @@ const navItems = [
     <meta name="generator" content={Astro.generator} />
     <title>{title} · BanexReintegra</title>
   </head>
-  <body class="min-h-screen bg-app text-main antialiased">
-    <div class="flex min-h-screen">
-      <aside class="hidden md:flex md:w-64 flex-col border-r border-line bg-app-muted">
+  <body class="min-h-screen bg-app text-main antialiased app-canvas">
+    <div class="relative z-10 flex min-h-screen">
+      <aside class="hidden md:flex md:w-72 flex-col border-r border-line bg-app-muted backdrop-blur-xl">
         <div class="px-6 py-6 border-b border-line">
-          <p class="text-sm uppercase tracking-widest text-faint">Banexcoin</p>
-          <p class="text-lg font-semibold text-main">BanexReintegra</p>
+          <a href="/" class="flex items-center gap-3" aria-label="Inicio BanexReintegra">
+            <span class="brand-mark grid size-10 place-items-center rounded-md text-sm font-semibold text-inverse">BR</span>
+            <span>
+              <span class="block text-xs uppercase tracking-widest text-faint">Banexcoin</span>
+              <span class="block text-lg font-semibold text-main">BanexReintegra</span>
+            </span>
+          </a>
         </div>
-        <nav class="flex-1 px-3 py-4 space-y-1">
+
+        <nav class="flex-1 px-3 py-4 space-y-1" aria-label="Navegación principal">
           {navItems.map((item) => (
             <a
               href={item.href}
-              class={`block px-3 py-2 rounded-md text-sm transition-colors ${
+              aria-label={item.label}
+              aria-current={item.id === activePage ? 'page' : undefined}
+              class={`group block rounded-md px-3 py-3 text-sm transition-colors ${
                 item.id === activePage
-                  ? 'bg-brand-active text-brand-soft font-medium'
-                  : 'text-muted hover-text-main hover-bg-panel-hover'
+                  ? 'border border-brand-muted bg-brand-active text-main'
+                  : 'border border-transparent text-muted hover-text-main hover-bg-panel-hover'
               }`}
             >
-              {item.label}
+              <span class="flex items-center gap-3">
+                <span class={`h-2 w-2 rounded-full ${item.id === activePage ? 'bg-brand' : 'bg-chart-track'}`}></span>
+                <span>
+                  <span class="block font-medium">{item.label}</span>
+                  <span class="block text-xs text-faint">{item.hint}</span>
+                </span>
+              </span>
             </a>
           ))}
         </nav>
+
+        <div class="mx-4 mb-4 rounded-lg border surface-card-quiet p-4">
+          <p class="text-xs uppercase tracking-widest text-faint">Estado API</p>
+          <div class="mt-3 flex items-center gap-3 text-sm text-soft">
+            <span class="status-dot size-2 rounded-full"></span>
+            localhost:3000
+          </div>
+        </div>
       </aside>
 
       <main class="flex-1 flex flex-col">
-        <header class="border-b border-line px-6 py-4 flex items-center justify-between">
-          <h1 class="text-lg font-semibold tracking-tight">{title}</h1>
-          <div class="text-xs text-faint font-mono">api: localhost:3000</div>
+        <header class="sticky top-0 z-20 border-b border-line bg-app-glass px-4 py-3 backdrop-blur-xl md:px-8">
+          <div class="mx-auto flex max-w-7xl items-center justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs uppercase tracking-widest text-faint">{currentItem?.hint ?? 'Operación'}</p>
+              <h1 class="truncate text-lg font-semibold tracking-tight md:text-xl">{title}</h1>
+            </div>
+            <a
+              href="/uploads/new"
+              class="hidden rounded-md bg-brand px-4 py-2 text-sm font-medium text-inverse shadow-lg shadow-black/20 transition-transform hover:-translate-y-0.5 md:inline-flex"
+            >
+              Nuevo upload
+            </a>
+          </div>
+          <nav class="mt-3 flex gap-2 overflow-x-auto pb-1 md:hidden" aria-label="Navegación móvil">
+            {navItems.map((item) => (
+              <a
+                href={item.href}
+                aria-label={item.label}
+                class={`shrink-0 rounded-md border px-3 py-2 text-sm ${
+                  item.id === activePage
+                    ? 'border-brand-muted bg-brand-active text-main'
+                    : 'border-line bg-panel text-muted'
+                }`}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
         </header>
-        <section class="flex-1 px-6 py-8">
-          <slot />
+        <section class="flex-1 px-4 py-6 md:px-8 md:py-8">
+          <div class="mx-auto max-w-7xl">
+            <slot />
+          </div>
         </section>
       </main>
     </div>

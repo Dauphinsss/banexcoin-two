@@ -6,14 +6,27 @@ import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
 
 <AppShell title="Dashboard" activePage="dashboard">
   <div class="space-y-6">
-    <div class="rounded-lg border border-line bg-panel p-6">
-      <h2 class="text-xl font-semibold tracking-tight text-main">
-        Resultados del cashback mensual
-      </h2>
-      <p class="mt-2 text-sm text-muted max-w-2xl">
-        Vista ejecutiva del último Excel procesado: reintegros, usuarios,
-        conciliación y anomalías.
-      </p>
+    <div class="overflow-hidden rounded-lg border surface-card">
+      <div class="relative p-6 md:p-8">
+        <div class="relative max-w-3xl">
+          <p class="text-xs uppercase tracking-widest text-brand">Operacion mensual</p>
+          <h2 class="mt-3 text-2xl font-semibold tracking-tight text-main md:text-3xl">
+            Resultados del cashback mensual
+          </h2>
+          <p class="mt-3 max-w-2xl text-sm leading-6 text-muted">
+            Vista ejecutiva del ultimo Excel procesado: reintegros calculados,
+            usuarios beneficiados, conciliacion bancaria y anomalias accionables.
+          </p>
+          <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+            <a href="/uploads/new" class="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-inverse">
+              Subir reporte
+            </a>
+            <a href="/reconciliation" class="inline-flex items-center justify-center rounded-md border border-line bg-panel px-4 py-2 text-sm text-soft hover-bg-panel-hover">
+              Revisar conciliacion
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
     <LatestResults client:load />

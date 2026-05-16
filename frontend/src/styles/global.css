@@ -1,30 +1,65 @@
 @import "tailwindcss";
 
 :root {
-  --color-app: 2 6 23;
-  --color-app-muted: 2 6 23;
-  --color-panel: 15 23 42;
-  --color-panel-hover: 30 41 59;
-  --color-panel-line: 30 41 59;
-  --color-panel-line-strong: 51 65 85;
-  --color-text-main: 241 245 249;
-  --color-text-soft: 226 232 240;
-  --color-text-muted: 148 163 184;
-  --color-text-faint: 100 116 139;
-  --color-brand: 37 99 235;
-  --color-brand-hover: 59 130 246;
-  --color-brand-soft: 191 219 254;
-  --color-success: 16 185 129;
-  --color-success-soft: 167 243 208;
-  --color-warning: 245 158 11;
-  --color-warning-soft: 253 230 138;
-  --color-danger: 239 68 68;
-  --color-danger-soft: 254 202 202;
-  --color-orange: 249 115 22;
-  --color-violet: 139 92 246;
+  /* Banexcoin official site source: #171724 base, #262634 border,
+     #FF5D30 and #FF8E0A brand accents. */
+  --color-app: 23 23 36;
+  --color-app-muted: 23 23 36;
+  --color-panel: 31 31 47;
+  --color-panel-hover: 38 38 52;
+  --color-panel-line: 38 38 52;
+  --color-panel-line-strong: 64 64 84;
+  --color-text-main: 255 255 255;
+  --color-text-soft: 239 240 246;
+  --color-text-muted: 173 174 190;
+  --color-text-faint: 124 125 145;
+  --color-brand: 255 93 48;
+  --color-brand-hover: 255 142 10;
+  --color-brand-soft: 255 213 185;
+  --color-success: 39 204 139;
+  --color-success-soft: 182 248 221;
+  --color-warning: 255 142 10;
+  --color-warning-soft: 255 226 184;
+  --color-danger: 255 93 48;
+  --color-danger-soft: 255 204 190;
+  --color-orange: 255 142 10;
+  --color-violet: 93 61 255;
   --color-overlay: 0 0 0;
   --color-inverse: 255 255 255;
 }
+
+  .app-canvas {
+    background-color: rgb(var(--color-app));
+  }
+
+  .app-canvas::before {
+    background-color: rgb(var(--color-panel) / 0.18);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: fixed;
+  }
+
+  .brand-mark {
+    background-color: rgb(var(--color-brand));
+    box-shadow: 0 12px 30px rgb(var(--color-brand) / 0.24);
+  }
+
+  .surface-card {
+    background-color: rgb(var(--color-panel) / 0.68);
+    border-color: rgb(var(--color-panel-line));
+    box-shadow: 0 24px 80px rgb(0 0 0 / 0.18);
+  }
+
+  .surface-card-quiet {
+    background: rgb(var(--color-panel) / 0.42);
+    border-color: rgb(var(--color-panel-line));
+  }
+
+  .status-dot {
+    background: rgb(var(--color-success));
+    box-shadow: 0 0 0 5px rgb(var(--color-success) / 0.12);
+  }
 
   .bg-app { background-color: rgb(var(--color-app)); }
   .bg-app-muted { background-color: rgb(var(--color-app-muted) / 0.6); }
