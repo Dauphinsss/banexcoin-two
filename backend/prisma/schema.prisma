@@ -19,10 +19,13 @@ datasource db {
 // USUARIOS
 // =========================================================================
 
-model User {
-  id            Int             @id @default(autoincrement())
-  username      String          @unique
-  accountNumber Int             @unique
+model UserAccount {
+  id            String          @id @default(cuid())
+  externalId    String?
+  username      String?
+  accountNumber String          @unique
+  displayName   String?
+  active        Boolean         @default(true)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -30,6 +33,7 @@ model User {
   rebates       MonthlyRebate[]
 
   @@index([username])
+  @@index([externalId])
 }
 
 // =========================================================================
@@ -37,24 +41,38 @@ model User {
 // =========================================================================
 
 model Upload {
-  id              String          @id @default(cuid())
-  filename        String
-  fileHash        String          @unique
-  fileSizeBytes   Int
-  period          String?         // "2025-05"; nullable hasta que el parser lo infiera
-  status          String          @default("PENDING") // UploadStatus en packages/types
-  rowCount        Int             @default(0)
-  errorMessage    String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id                  String                 @id @default(cuid())
+  originalName        String
+  storagePath         String
+  mimeType            String
+  fileSizeBytes       Int
+  fileHash            String                 @unique
+  period              String?                // "2025-05"; nullable hasta que el parser lo infiera
+  status              String                 @default("PENDING") // UploadStatus en packages/types
+  rowCount            Int                    @default(0)
+  qrRowCount          Int                    @default(0)
+  extractRowCount     Int                    @default(0)
+  parseErrorCount     Int                    @default(0)
+  anomalyCount        Int                    @default(0)
+  errorMessage        String?
+  supersedesUploadId  String?
+  processedAt         DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
-  transactions    QRTransaction[]
-  rebates         MonthlyRebate[]
-  anomalies       Anomaly[]
-  parseErrors     ParseError[]
+  supersedesUpload    Upload?                @relation("UploadSupersession", fields: [supersedesUploadId], references: [id])
+  supersededByUploads Upload[]               @relation("UploadSupersession")
+
+  qrTransactions      QRTransaction[]
+  extractTransactions ExtractTransaction[]
+  rebates             MonthlyRebate[]
+  anomalies           ReconciliationAnomaly[]
+  parseErrors         ParseError[]
+  reports             GeneratedReport[]
 
   @@index([period])
   @@index([status])
+  @@index([supersedesUploadId])
 }
 
 // =========================================================================
@@ -62,31 +80,51 @@ model Upload {
 // =========================================================================
 
 model QRTransaction {
-  id                    String   @id @default(cuid())
+  id                    String                  @id @default(cuid())
   uploadId              String
-  upload                Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
-  userId                Int
-  user                  User     @relation(fields: [userId], references: [id])
-
-  quoteNumber           Int?     // "Número de cotización"
-  transactionId         String   // "Transacción Id" — clave de conciliación
-  status                String   // "Completed", etc.
-  amountUSDT            Decimal
+  upload                Upload                  @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  userAccountId         String
+  userAccount           UserAccount             @relation(fields: [userAccountId], references: [id])
+  transactionId         String                  // "Transacción Id" — clave de conciliación
+  transactedAt          DateTime?
   amountBOB             Decimal
+  amountUSDT            Decimal
   exchangeRate          Decimal
-  commission            Decimal  @default(0)
-  serviceCode           String   // "S-001"
-  transactedAt          DateTime
-  createdAt             DateTime @default(now())
+  feeBOB                Decimal?                @default(0)
+  feeUSDT               Decimal?                @default(0)
+  reconciledWithExtract Boolean                 @default(false)
+  rawRow                String
+  createdAt             DateTime                @default(now())
 
-  reconciledWithExtract Boolean  @default(false)
-  extractMismatchNote   String?
+  anomaly               ReconciliationAnomaly?
+  rebateItems           MonthlyRebateItem[]
 
   // Un transactionId puede repetirse entre uploads (mismo mes recargado),
   // pero no dentro del mismo upload.
   @@unique([uploadId, transactionId])
   @@index([transactionId])
-  @@index([userId])
+  @@index([userAccountId])
+}
+
+// =========================================================================
+// TRANSACCIONES DE EXTRACTO
+// =========================================================================
+
+model ExtractTransaction {
+  id                   String                 @id @default(cuid())
+  uploadId             String
+  upload               Upload                 @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  transactionId        String
+  transactedAt         DateTime?
+  amountBOB            Decimal
+  reference            String?
+  rawRow               String
+  createdAt            DateTime               @default(now())
+
+  anomaly              ReconciliationAnomaly?
+
+  @@index([uploadId])
+  @@index([transactionId])
 }
 
 // =========================================================================
@@ -94,21 +132,22 @@ model QRTransaction {
 // =========================================================================
 
 model CashbackTier {
-  id              Int       @id @default(autoincrement())
+  id              String         @id @default(cuid())
+  level           Int
   name            String
   minAmountBOB    Decimal
-  maxAmountBOB    Decimal?  // null = sin tope superior
+  maxAmountBOB    Decimal?       // null = sin tope superior
   rebatePercent   Decimal
-  active          Boolean   @default(true)
-  validFrom       DateTime
-  validTo         DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  validFromPeriod String
+  validToPeriod   String?
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   rebates         MonthlyRebate[]
 
   @@index([active])
-  @@index([validFrom, validTo])
+  @@index([validFromPeriod, validToPeriod])
 }
 
 // =========================================================================
@@ -116,31 +155,32 @@ model CashbackTier {
 // =========================================================================
 
 model MonthlyRebate {
-  id              String        @id @default(cuid())
+  id              String              @id @default(cuid())
   uploadId        String
-  upload          Upload        @relation(fields: [uploadId], references: [id], onDelete: Cascade)
-  userId          Int
-  user            User          @relation(fields: [userId], references: [id])
-  period          String        // "2025-05"
+  upload          Upload              @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  userAccountId   String
+  userAccount     UserAccount         @relation(fields: [userAccountId], references: [id])
+  tierId          String?
+  tier            CashbackTier?       @relation(fields: [tierId], references: [id])
+  period          String              // "2025-05"
 
   totalSpentBOB   Decimal
-  tierId          Int?
-  tier            CashbackTier? @relation(fields: [tierId], references: [id])
-  rebatePercent   Decimal
-  rebateUSDT      Decimal
-  rebateBOB       Decimal
+  totalSpentUSDT  Decimal
   avgExchangeRate Decimal
-  transactionCount Int
-
-  paidOut         Boolean       @default(false)
+  rebatePercent   Decimal
+  rebateBOB       Decimal
+  rebateUSDT      Decimal
+  payoutStatus    String              @default("PENDING")
+  exported        Boolean             @default(false)
+  paidOut         Boolean             @default(false)
   paidOutAt       DateTime?
-  paidOutBy       String?
-  supersededBy    String?
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
-  @@unique([userId, period])
+  items           MonthlyRebateItem[]
+
+  @@unique([uploadId, userAccountId])
   @@index([uploadId])
   @@index([period])
   @@index([tierId])
@@ -150,27 +190,29 @@ model MonthlyRebate {
 // ANOMALÍAS DE CONCILIACIÓN
 // =========================================================================
 
-model Anomaly {
-  id                String      @id @default(cuid())
-  uploadId          String
-  upload            Upload      @relation(fields: [uploadId], references: [id], onDelete: Cascade)
-  transactionId     String
-  type              String      // AnomalyType en packages/types
-  qrAmountBOB       Decimal?
-  extractAmountBOB  Decimal?
-  deltaBOB          Decimal?
-  qrRowNumber       Int?
-  extractRowNumber  Int?
+model ReconciliationAnomaly {
+  id                   String                @id @default(cuid())
+  uploadId             String
+  upload               Upload                @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  qrTransactionId      String?               @unique
+  qrTransaction        QRTransaction?        @relation(fields: [qrTransactionId], references: [id])
+  extractTransactionId String?               @unique
+  extractTransaction   ExtractTransaction?   @relation(fields: [extractTransactionId], references: [id])
+  transactionId        String
+  type                 String                // AnomalyType en packages/types
+  qrAmountBOB          Decimal?
+  extractAmountBOB     Decimal?
+  deltaBOB             Decimal?
 
-  resolved          Boolean     @default(false)
-  resolvedAt        DateTime?
-  resolvedBy        String?
-  resolvedNote      String?
+  resolved             Boolean               @default(false)
+  resolutionNote       String?
+  resolvedAt           DateTime?
 
-  createdAt         DateTime    @default(now())
+  createdAt            DateTime              @default(now())
 
   @@index([uploadId, type])
   @@index([transactionId])
+  @@index([type, resolved])
 }
 
 // =========================================================================
@@ -183,9 +225,48 @@ model ParseError {
   upload      Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
   sheetName   String
   rowNumber   Int
+  columnName  String?
+  errorCode   String?
   message     String
-  rawSnippet  String?
+  rawRow      String?
   createdAt   DateTime @default(now())
 
   @@index([uploadId])
+}
+
+// =========================================================================
+// DETALLE DE REINTEGROS
+// =========================================================================
+
+model MonthlyRebateItem {
+  id              String         @id @default(cuid())
+  monthlyRebateId String
+  monthlyRebate   MonthlyRebate  @relation(fields: [monthlyRebateId], references: [id], onDelete: Cascade)
+  qrTransactionId String
+  qrTransaction   QRTransaction  @relation(fields: [qrTransactionId], references: [id])
+  amountBOB       Decimal
+  amountUSDT      Decimal
+  exchangeRate    Decimal
+  createdAt       DateTime       @default(now())
+
+  @@index([monthlyRebateId])
+  @@index([qrTransactionId])
+}
+
+// =========================================================================
+// REPORTES GENERADOS
+// =========================================================================
+
+model GeneratedReport {
+  id          String   @id @default(cuid())
+  uploadId    String
+  upload      Upload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  type        String
+  format      String
+  storagePath String
+  generatedBy String?
+  createdAt   DateTime @default(now())
+
+  @@index([uploadId])
+  @@index([type, format])
 }
