@@ -717,6 +717,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 
 | Documento | Propósito |
 |---|---|
+| [FEATURES.md](FEATURES.md) | Backlog descompuesto por etapas del flow: 50+ features con prioridad, esfuerzo y categoría de premio que sirven. Punto de entrada para implementar. |
 | [SKILL.md](SKILL.md) | Decisiones de stack y planificación de 72 horas |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Estructura técnica detallada del monorepo, modelo de datos, API REST |
 | [agents.md](agents.md) | Mapa de los agentes backend (BullMQ workers, EventsGateway, AnomalyExplainerAgent con Claude) |
