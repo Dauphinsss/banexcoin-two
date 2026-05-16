@@ -1,0 +1,35 @@
+---
+import AppShell from '../layouts/AppShell.astro'
+---
+
+<AppShell title="Dashboard" activePage="dashboard">
+  <div class="space-y-6 max-w-4xl">
+    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-8">
+      <h2 class="text-xl font-semibold tracking-tight text-slate-100">
+        Sistema de cashback automatizado para Banexcoin Bolivia
+      </h2>
+      <p class="mt-2 text-sm text-slate-400 max-w-2xl">
+        Carga el reporte mensual de pagos QR, procesa reintegros por niveles,
+        concilia contra el extracto bancario y genera el archivo BanexTransfer.
+        Independiente del core Banexcoin.
+      </p>
+      <a
+        href="/uploads/new"
+        class="inline-flex mt-6 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
+      >
+        Subir reporte mensual →
+      </a>
+    </div>
+
+    <div class="rounded-xl border border-slate-800 bg-slate-900/30 p-6">
+      <h3 class="text-sm uppercase tracking-widest text-slate-500">Estado de la implementación</h3>
+      <ul class="mt-3 space-y-1 text-sm text-slate-300">
+        <li>✓ F0 · Cimientos (Prisma, Postgres, Redis, tier-engine)</li>
+        <li>✓ F1 · Ingesta (upload, parser, idempotencia, dropzone)</li>
+        <li>· F2 · Cálculo · pendiente</li>
+        <li>· F3 · Conciliación · pendiente</li>
+        <li>· F4 · Workers BullMQ · pendiente</li>
+      </ul>
+    </div>
+  </div>
+</AppShell>

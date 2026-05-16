@@ -16,3 +16,9 @@ export {
   type TierEngineTransaction,
   type RebateResult,
 } from './tier-engine.js'
+
+export {
+  detectPeriod,
+  type PeriodDetectionResult,
+  type PeriodWarning,
+} from './period.js'

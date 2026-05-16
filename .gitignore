@@ -18,3 +18,7 @@ backend/prisma/migrations/migration_lock.toml
 # Reportes generados localmente durante desarrollo
 /outputs
 /tmp
+
+# Archivos subidos por el usuario (UPLOAD_STORAGE_DIR)
+backend/data
+data/uploads
