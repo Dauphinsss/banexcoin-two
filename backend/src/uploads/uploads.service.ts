@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { Prisma } from '@prisma/client'
 import { D } from '@banex/utils'
+import { randomUUID } from 'node:crypto'
 import type {
   CreateUploadResponse,
   MonthlyRebateDTO,
@@ -29,6 +31,7 @@ const ALLOWED_EXTENSIONS = new Set(['.xlsx', '.xls'])
 const PROCESS_UPLOAD_TRANSACTION_TIMEOUT_MS = 60_000
 const PROCESS_UPLOAD_TRANSACTION_MAX_WAIT_MS = 10_000
 const CREATE_MANY_BATCH_SIZE = 1_000
+const UPLOAD_OVERWRITE_USER_NAMES = 'UPLOAD_OVERWRITE_USER_NAMES'
 const PROCESS_UPLOAD_TRANSACTION_OPTIONS = {
   maxWait: PROCESS_UPLOAD_TRANSACTION_MAX_WAIT_MS,
   timeout: PROCESS_UPLOAD_TRANSACTION_TIMEOUT_MS,
@@ -38,6 +41,7 @@ const PROCESS_UPLOAD_TRANSACTION_OPTIONS = {
 export class UploadsService {
   private readonly logger = new Logger(UploadsService.name)
   private readonly maxBytes: number
+  private readonly overwriteUserNamesOnUpload: boolean
 
   constructor(
     @Inject(PrismaService)
@@ -57,6 +61,10 @@ export class UploadsService {
   ) {
     const maxMb = Number(this.config.get<string>('MAX_UPLOAD_SIZE_MB') ?? '50')
     this.maxBytes = maxMb * 1024 * 1024
+    this.overwriteUserNamesOnUpload = parseBooleanConfig(
+      this.config.get<string>(UPLOAD_OVERWRITE_USER_NAMES),
+      false,
+    )
   }
 
   async create(
@@ -369,24 +377,42 @@ export class UploadsService {
 
       const accountEntries = [...accountMap.entries()]
       if (accountEntries.length > 0) {
-        await createManyInChunks(
-          accountEntries.map(([accountNumber, meta]) => ({
-            accountNumber,
-            username: meta.username,
-            displayName: meta.displayName,
-            active: true,
-          })),
-          (data) => tx.userAccount.createMany({ data, skipDuplicates: true }),
-        )
+        const accountRows = accountEntries.map(([accountNumber, meta]) => ({
+          id: randomUUID(),
+          accountNumber,
+          username: meta.username,
+          displayName: meta.displayName,
+        }))
 
-        await tx.userAccount.updateMany({
-          where: {
-            accountNumber: {
-              in: accountEntries.map(([accountNumber]) => accountNumber),
-            },
-          },
-          data: { active: true },
-        })
+        await createManyInChunks(
+          accountRows,
+          (data) => tx.$executeRaw`
+            INSERT INTO "UserAccount" (
+              "id",
+              "accountNumber",
+              "username",
+              "displayName",
+              "active",
+              "createdAt",
+              "updatedAt"
+            )
+            VALUES ${Prisma.join(
+              data.map((account) => Prisma.sql`
+                (
+                  ${account.id},
+                  ${account.accountNumber},
+                  ${account.username},
+                  ${account.displayName},
+                  true,
+                  NOW(),
+                  NOW()
+                )
+              `),
+            )}
+            ON CONFLICT ("accountNumber") DO UPDATE SET
+              ${userAccountConflictSet(this.overwriteUserNamesOnUpload)}
+          `,
+        )
       }
 
       const users =
@@ -718,6 +744,35 @@ const createManyInChunks = async <T>(
   for (let index = 0; index < data.length; index += CREATE_MANY_BATCH_SIZE) {
     await createBatch(data.slice(index, index + CREATE_MANY_BATCH_SIZE))
   }
+}
+
+const userAccountConflictSet = (overwriteNames: boolean): Prisma.Sql => {
+  if (overwriteNames) {
+    return Prisma.sql`
+      "username" = EXCLUDED."username",
+      "displayName" = EXCLUDED."displayName",
+      "active" = true,
+      "updatedAt" = NOW()
+    `
+  }
+
+  return Prisma.sql`
+    "active" = true,
+    "updatedAt" = NOW()
+  `
+}
+
+const parseBooleanConfig = (
+  value: string | undefined,
+  defaultValue: boolean,
+): boolean => {
+  if (value === undefined) return defaultValue
+
+  const normalized = value.trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
+
+  return defaultValue
 }
 
 const normalizeQrRows = (
