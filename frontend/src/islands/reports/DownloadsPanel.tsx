@@ -48,7 +48,7 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
   }, [uploadId])
 
   if (status === 'loading') {
-    return <p className="text-sm text-muted">Cargando descargas...</p>
+    return <DownloadsSkeleton />
   }
 
   if (status === 'error' || !upload) {
@@ -145,4 +145,33 @@ const DownloadCard = ({
       </div>
     </div>
   </a>
+)
+
+const DownloadsSkeleton = (): JSX.Element => (
+  <div className="rounded-lg border border-line bg-panel p-5 space-y-4" aria-hidden="true">
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <div className="h-3 w-28 rounded skeleton-block" />
+        <div className="mt-3 h-3 w-full max-w-lg rounded skeleton-block" />
+      </div>
+    </div>
+
+    <div className="grid gap-3 md:grid-cols-3">
+      {[0, 1, 2].map((item) => (
+        <div key={item} className="rounded-md border border-line bg-panel-inset px-4 py-3">
+          <div className="flex items-start gap-3">
+            <div className="size-5 shrink-0 rounded skeleton-block" />
+            <div className="min-w-0 flex-1">
+              <div className="h-4 w-28 rounded skeleton-block" />
+              <div className="mt-3 h-3 w-full rounded skeleton-block" />
+              <div className="mt-2 h-3 w-4/5 rounded skeleton-block" />
+              <div className="mt-3 h-3 w-20 rounded skeleton-block" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div className="h-3 w-full max-w-3xl rounded skeleton-block" />
+  </div>
 )

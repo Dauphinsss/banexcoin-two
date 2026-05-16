@@ -161,7 +161,7 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
         <section className="px-6 py-5">
           <h3 className="text-sm font-medium text-muted mb-3">Transacciones del período</h3>
           {status === 'loading' ? (
-            <p className="text-sm text-muted">Cargando transacciones...</p>
+            <TransactionsSkeleton />
           ) : status === 'error' ? (
             <p className="text-sm text-danger">{errorMessage}</p>
           ) : transactions.length === 0 ? (
@@ -309,6 +309,33 @@ const TransactionModal = ({
         ) : null}
       </dl>
     </div>
+  </div>
+)
+
+const TransactionsSkeleton = (): JSX.Element => (
+  <div className="overflow-hidden rounded-md border border-line" aria-hidden="true">
+    <table className="min-w-full text-xs">
+      <thead className="bg-panel-solid text-faint uppercase tracking-wider">
+        <tr>
+          {['Fecha', 'BOB', 'USDT', 'T/C', 'Estado'].map((label, index) => (
+            <th key={label} className={`px-3 py-2 ${index === 0 ? 'text-left' : index === 4 ? 'text-center' : 'text-right'}`}>
+              <div className={`h-3 rounded skeleton-block ${index === 0 ? 'w-16' : index === 4 ? 'mx-auto w-12' : 'ml-auto w-12'}`} />
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-line-dark">
+        {Array.from({ length: 6 }).map((_, row) => (
+          <tr key={row}>
+            <td className="px-3 py-2"><div className="h-4 w-28 rounded skeleton-block" /></td>
+            <td className="px-3 py-2"><div className="ml-auto h-4 w-16 rounded skeleton-block" /></td>
+            <td className="px-3 py-2"><div className="ml-auto h-4 w-16 rounded skeleton-block" /></td>
+            <td className="px-3 py-2"><div className="ml-auto h-4 w-12 rounded skeleton-block" /></td>
+            <td className="px-3 py-2"><div className="mx-auto size-4 rounded-full skeleton-block" /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </div>
 )
 
