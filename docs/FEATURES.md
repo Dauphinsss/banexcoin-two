@@ -48,7 +48,7 @@ F5  Visualización   (dashboard, tabla, drawer)
 F6  Reportes        (Excel, BanexTransfer, Cuadre)
 F7  Configuración   (CRUD de tiers)
 F8  Simulador       (what-if en navegador)
-F9  IA              (Claude para anomalías)
+F9  IA              (Gemini para anomalías)
 F10 Polish          (animaciones, dark mode, mobile, pitch)
 ```
 
@@ -56,30 +56,30 @@ F10 Polish          (animaciones, dark mode, mobile, pitch)
 
 ## F0 · Cimientos
 
-### F0.1 · Setup monorepo Turborepo + pnpm
+### F0.1 · Setup monorepo Turborepo + Bun
 
 - **Prio:** P0 · **Esfuerzo:** S · **Premio:** Empresarial
 - **FLOW ref:** sección 14 (anexos técnicos)
 - **Módulo:** raíz del repo
 
-Estructura `apps/{api,web}` + `packages/{types,utils,ui}` con `turbo.json` y `pnpm-workspace.yaml`.
+Estructura actual con `backend`, `frontend` y `packages/*` usando Bun workspaces y `turbo.json`.
 
 **Aceptación:**
-- `pnpm install` en raíz instala todo
-- `pnpm dev` levanta web y api en paralelo
+- `bun install` en raíz instala todo
+- `bun run dev` levanta web y api en paralelo
 - `packages/types` se importa desde ambos apps
 
-### F0.2 · SQLite local + Redis opcional
+### F0.2 · PostgreSQL + infraestructura opcional
 
 - **Prio:** P0 · **Esfuerzo:** S · **Premio:** Empresarial
 - **FLOW ref:** sección 5 (master flow)
 - **Módulo:** `docker-compose.yml`
 
-SQLite local para desarrollo sin Docker. Redis 7-alpine queda opcional para workers BullMQ.
+PostgreSQL como base de datos objetivo mediante `DATABASE_URL`. La infraestructura local adicional queda como opcional.
 
 **Aceptación:**
-- `bun run db:push` crea `backend/prisma/dev.db`
-- `docker compose up -d redis` arranca Redis en 6379 cuando se necesiten workers
+- `bun run db:push` aplica el schema contra PostgreSQL
+- `DATABASE_URL` apunta a una instancia PostgreSQL válida
 
 ### F0.3 · Prisma schema y primera migración
 
@@ -306,31 +306,31 @@ Modelo `Anomaly` con relación a `Upload` y `QRTransaction` opcional.
 
 ---
 
-## F4 · Persistencia y workers
+## F4 · Persistencia y procesamiento
 
-### F4.1 · BullMQ setup con Redis
+### F4.1 · Orquestación modular del procesamiento
 
 - **Prio:** P0 · **Esfuerzo:** M · **Premio:** Empresarial
 - **FLOW ref:** sección 5 (master flow)
-- **Módulo:** `apps/api/src/jobs/bull.config.ts`
+- **Módulo:** `backend/src/uploads` y `backend/src/jobs`
 
-Configuración: 3 reintentos con backoff exponencial, concurrencia 1, removeOnComplete 100.
+Separar progresivamente validación, parsing, cálculo, conciliación y persistencia para evitar que `UploadsService` concentre todo el caso de uso.
 
 **Aceptación:**
-- `process-upload` queue funcional
-- Bull Board en `/admin/queues` (solo dev)
+- Responsabilidades separadas por componente
+- Reintentos manuales seguros por idempotencia
 
 ### F4.2 · ProcessUploadAgent (orquestador)
 
 - **Prio:** P0 · **Esfuerzo:** M · **Premio:** Empresarial
 - **FLOW ref:** sección 5
-- **Módulo:** `apps/api/src/jobs/process-upload.processor.ts`
+- **Módulo:** `backend/src/jobs`
 
-Llama secuencialmente a Parse → Tier → Reconcile → Persistence. Emite eventos a cada paso.
+Orquesta secuencialmente parseo, cálculo, conciliación y persistencia sin mezclar lógica de cada paso.
 
 **Aceptación:**
 - Si cualquier agente falla, marca `Upload{FAILED}` con `errorMessage` claro
-- Si todos OK, marca `Upload{DONE}` y emite `job:done`
+- Si todos OK, marca `Upload{DONE}`
 
 **Dependencias:** F1.3, F1.4, F2.2, F3.1, F4.1, F4.3, F4.4
 
@@ -346,18 +346,18 @@ Llama secuencialmente a Parse → Tier → Reconcile → Persistence. Emite even
 - Si falla en medio, no queda data parcial
 - Idempotente: re-ejecutar limpia y reinserta
 
-### F4.4 · EventsGateway WebSocket
+### F4.4 · Estado de procesamiento recuperable
 
-- **Prio:** P0 · **Esfuerzo:** M · **Premio:** UI/UX + Innovación
+- **Prio:** P1 · **Esfuerzo:** M · **Premio:** UI/UX
 - **FLOW ref:** sección 5 + sección 10 (demo seg 30-60)
-- **Módulo:** `apps/api/src/events/events.gateway.ts`
+- **Módulo:** `backend/src/uploads`
 
-Socket.IO namespace `/jobs`. Emite `job:progress`, `job:done`, `job:failed`.
+El frontend debe poder consultar estado del upload y mostrar mensajes claros sin depender de transporte en tiempo real.
 
 **Aceptación:**
-- Cliente recibe los 4 eventos (5%, 45%, 80%, 95%, 100%)
-- CORS abierto para `PUBLIC_API_URL` del frontend
-- Reconexión automática si la conexión cae
+- El estado del upload es consultable por API
+- La UI muestra errores y estados terminales de forma clara
+- No se exponen filas completas ni datos sensibles
 
 ---
 
@@ -572,7 +572,7 @@ Two-panel: configuración con deslizadores + impacto en vivo (distribución + co
 
 ---
 
-## F9 · IA (Claude)
+## F9 · IA (Gemini)
 
 ### F9.1 · AnomalyExplainerAgent
 
@@ -580,10 +580,10 @@ Two-panel: configuración con deslizadores + impacto en vivo (distribución + co
 - **FLOW ref:** sección 4.6 (innovación #3) + sección 10 (demo seg 100-130)
 - **Módulo:** `apps/api/src/reconciliation/anomaly-explainer.agent.ts`
 
-Llama a Claude con un resumen agregado de las anomalías. Devuelve hipótesis en español.
+Llama a Gemini con un resumen agregado de las anomalías. Devuelve hipótesis en español.
 
 **Aceptación:**
-- Usa `claude-opus-4-7` o `claude-sonnet-4-6`
+- Usa el modelo configurado en backend para Gemini
 - Prompt incluye: conteos por tipo + distribución temporal + 5 ejemplos
 - Respuesta en 2-3 oraciones, máximo 300 tokens
 - Cache: misma combinación de anomalías → misma respuesta (hash del input)
@@ -615,7 +615,7 @@ Botón visible. Estado de carga con spinner. Resultado en card animada que apare
 - **FLOW ref:** sección 10 (demo)
 - **Módulo:** distribuido por islands
 
-Implementar las animaciones documentadas en `design.md`:
+Implementar las animaciones documentadas en `DESIGN.md`:
 - Layout morph upload → progreso → resultado
 - Stagger fade-up de KPI cards
 - Counter animado en cifras
@@ -657,11 +657,11 @@ Revisar todos los textos: errores, tooltips, botones, vacíos. Tono profesional,
 - **FLOW ref:** sección 11
 - **Módulo:** `README.md` + carpeta `pitch/`
 
-README con: setup en 3 comandos, arquitectura en 1 párrafo, link al FLOW.md.
+README con: setup corto, arquitectura en 1 párrafo, link al FLOW.md.
 Slides: 6 diapositivas siguiendo el script de la sección 11 del FLOW.
 
 **Aceptación:**
-- `docker compose up && pnpm dev` funciona desde cero
+- `bun run dev` funciona desde cero con variables configuradas
 - Slides exportadas como PDF en `pitch/BanexReintegra-Pitch.pdf`
 
 ### F10.5 · Datos de seed para demo confiable
@@ -673,7 +673,7 @@ Slides: 6 diapositivas siguiendo el script de la sección 11 del FLOW.
 Seed con 5 tiers + admin user. El Excel real se carga en la demo, no se hardcodea.
 
 **Aceptación:**
-- `pnpm seed` deja DB lista para demo
+- `bun run db:seed` deja DB lista para demo
 - Si algo falla, hay un `seed:demo` que pre-carga el upload del Excel real (fallback de pitch)
 
 ### F10.6 · Health checks y observabilidad mínima
@@ -682,7 +682,7 @@ Seed con 5 tiers + admin user. El Excel real se carga en la demo, no se hardcode
 - **FLOW ref:** sección 13 (roadmap mes 1)
 - **Módulo:** `apps/api/src/health/health.controller.ts`
 
-`GET /health` con estado de SQLite, Redis y workers BullMQ.
+`GET /health` con estado básico del backend y dependencias críticas disponibles.
 
 **Aceptación:**
 - Devuelve 200 si todo OK, 503 si algo cae
@@ -703,7 +703,7 @@ Seed con 5 tiers + admin user. El Excel real se carga en la demo, no se hardcode
 | F2.4 validación niveles | ● | | | | |
 | F3.1 ReconcileAgent | ● | | ● | | ● |
 | F4.3 PersistenceAgent | ● | | | | |
-| F4.4 EventsGateway WS | | | ● | ● | ● |
+| F4.4 Estado recuperable | | | ● | ● | |
 | F5.2 Dashboard ejecutivo | ● | ● | ● | ● | |
 | F5.3 Tabla TanStack | ● | | | ● | |
 | F5.4 Drawer detalle | ● | | | ● | |
@@ -713,7 +713,7 @@ Seed con 5 tiers + admin user. El Excel real se carga en la demo, no se hardcode
 | F6.3 Cuadre DEBE/HABER | ● | | ● | | ● |
 | F7.1 TiersEditor | ● | | | ● | |
 | F8.1 WhatIfSimulator | | | ● | ● | ● |
-| F9.1 + F9.2 Claude IA | | | ● | ● | ● |
+| F9.1 + F9.2 Gemini IA | | | ● | ● | ● |
 | F10.1 animaciones | | | | ● | |
 | F10.2 dark mode | | | | ● | |
 | F10.3 microcopy | | ● | ● | ● | |

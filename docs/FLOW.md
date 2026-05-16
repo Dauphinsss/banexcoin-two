@@ -5,7 +5,7 @@
 > - **Cliente:** Banexcoin Bolivia
 > - **Representante:** Lorena Alejandra Grundy Castaños
 > - **Período de datos analizados:** Abril – Mayo 2025
-> - **Stack:** Astro + React Islands · NestJS · PostgreSQL · BullMQ · Prisma
+> - **Stack:** Astro + React Islands · NestJS · PostgreSQL · Prisma
 
 ---
 
@@ -38,7 +38,7 @@
 
 ## 2. El problema, en cifras reales
 
-Análisis del Excel `Reportes Banexcoin Bolivia Hackaton 2026.xlsx` (datos ficticios pero estructuralmente reales según indicación de Banexcoin):
+Análisis del Excel [`Reportes Banexcoin Bolivia Hackaton 2026.xlsx`](Reportes%20Banexcoin%20Bolivia%20Hackaton%202026.xlsx) (datos ficticios pero estructuralmente reales según indicación de Banexcoin):
 
 | Métrica | Valor |
 |---|---|
@@ -143,7 +143,7 @@ La slide del hackathon define 5 categorías. Cada una requiere un mensaje espec�
 
 **Features que lo demuestran:**
 - **Preview del Excel** antes de procesar (genera confianza)
-- **Progreso en tiempo real por WebSocket** (reduce ansiedad)
+- **Estados claros durante el procesamiento** (reduce ansiedad)
 - **Drawer de detalle** que va de la tabla agregada a la transacción atómica en un clic
 - **Microcopy en español** profesional, sin tecnicismos
 - **Dark mode**, **animaciones Framer Motion** suaves (<300ms)
@@ -190,11 +190,11 @@ La slide del hackathon define 5 categorías. Cada una requiere un mensaje espec�
 │                                            existente             {PENDING}  │
 │                                            (idempotencia)        │           │
 │                                                                  ▼           │
-│                                                          Encola BullMQ      │
+│                                                          Procesa backend    │
 │                                                                  │           │
 │                                                                  ▼           │
-│            Progress UI  ◄── WebSocket ──   ProcessUploadAgent               │
-│            (ws live)                              │                          │
+│            Progress UI  ◄── HTTP state ──  Upload processing                 │
+│                                                   │                          │
 │                                                   ├─► ParseAgent             │
 │                                                   │   (lee Pago QR +         │
 │                                                   │    Extracto)             │
@@ -279,7 +279,7 @@ Día 2, 14:00  Sube transferencia al sistema
 Día 1, 09:00  Lorena entra al dashboard
 Día 1, 09:00  Drag & drop del Excel
 Día 1, 09:00  Confirma preview de 5.325 transacciones
-Día 1, 09:00  Espera 25s mientras procesa (WebSocket en vivo)
+Día 1, 09:00  Espera mientras el backend procesa el archivo
 Día 1, 09:01  Revisa KPIs y 2 anomalías detectadas
 Día 1, 09:02  Lee explicación IA de las anomalías
 Día 1, 09:03  Descarga Excel auditable + archivo BanexTransfer
@@ -334,7 +334,7 @@ START
   ├─ Hash ya existe en DB → muestra "Este archivo ya fue procesado el 14/05 a las 10:23"
   │                          ofrece "Ver resultados" o "Cancelar"
   ▼
-[Crea Upload{PENDING}, encola job en BullMQ, devuelve uploadId]
+[Crea Upload{PROCESSING}, procesa el archivo y devuelve uploadId]
   │
   ▼
 [Frontend abre conexión Socket.IO al namespace /jobs]
@@ -505,7 +505,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 | `UPLOADING` | POST /uploads | Spinner + barra HTTP | Multer recibiendo |
 | `VALIDATING` | Tras upload completo | "Validando archivo..." | SHA-256 + headers check |
 | `DUPLICATE` | Hash existe | Modal "Ya procesado el X" | Sin crear nuevo Upload |
-| `QUEUED` | Job encolado | "En cola..." | Upload{PENDING} en BullMQ |
+| `QUEUED` | Procesamiento pendiente | "En cola..." | Reservado para evolución futura |
 | `PROCESSING` | Worker activo | Barra de progreso WS (5%→100%) | Agentes corriendo |
 | `DONE` | job:done | Card de resultado + CTA "Ver" | Upload{DONE}, datos persistidos |
 | `FAILED` | job:failed | Card de error + "Reintentar" | Upload{FAILED}, log preservado |
@@ -545,7 +545,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 
 ### 9.6 Reintento de job fallido
 
-- BullMQ reintenta 3 veces con backoff exponencial
+- El backend registra el fallo y conserva el upload con estado `FAILED`
 - Si los 3 fallan: Upload{FAILED} con `errorMessage` detallado
 - UI ofrece botón "Reintentar" que re-encola sin pedir el archivo de nuevo (ya está en almacenamiento temporal con su hash)
 
@@ -582,7 +582,7 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 
 ### Segundo 30–60 · Procesamiento en vivo (Innovación)
 
-→ Barra de progreso WebSocket, etiquetas cambiando:
+→ Estado de procesamiento, etiquetas cambiando:
 - "Leyendo archivo..."
 - "Calculando reintegros..."
 - "Conciliando con extracto bancario..." ← *pausa para enfatizar*
@@ -717,10 +717,11 @@ END (Lorena descarga BanexTransfer y lo carga en sistema Banexcoin)
 
 | Documento | Propósito |
 |---|---|
-| [FEATURES.md](FEATURES.md) | Backlog descompuesto por etapas del flow: 50+ features con prioridad, esfuerzo y categoría de premio que sirven. Punto de entrada para implementar. |
-| [SKILL.md](SKILL.md) | Decisiones de stack y planificación de 72 horas |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Estructura técnica detallada del monorepo, modelo de datos, API REST |
-| [agents.md](agents.md) | Mapa de los agentes backend (BullMQ workers, EventsGateway, AnomalyExplainerAgent con Gemini) |
-| [design.md](design.md) | Sistema de diseño completo: tokens, componentes, pantallas, modelo de islands Astro |
+| [FEATURES.md](FEATURES.md) | Backlog descompuesto por etapas del flow. |
+| [SKILL.md](SKILL.md) | Decisiones de stack y planificación de trabajo. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura técnica, límites y contenedores C4. |
+| [BD.md](BD.md) | Modelo de datos y criterios de persistencia. |
+| [AGENTS.md](AGENTS.md) | Guía para agentes de desarrollo del repositorio. |
+| [DESIGN.md](DESIGN.md) | Sistema de diseño, tokens, componentes y modelo de islands Astro. |
 
 **Regla de oro:** si algo de los anexos contradice este FLOW.md, gana FLOW.md y se actualiza el anexo.

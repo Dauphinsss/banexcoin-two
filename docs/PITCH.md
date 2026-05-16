@@ -113,7 +113,7 @@ El jurado de un hackathon ha visto 50 demos. Lo que diferencia un ganador es que
 
 ### 0:25–0:55 · Procesamiento en vivo
 
-→ Barra de progreso WebSocket, etiquetas cambian:
+→ Estado de procesamiento, etiquetas cambian:
 - "Leyendo archivo..."
 - "Calculando reintegros..."
 - "Conciliando con extracto bancario..." ← **pausa de 1 segundo**
@@ -139,9 +139,9 @@ El jurado de un hackathon ha visto 50 demos. Lo que diferencia un ganador es que
 
 → Volver. Clic en "Explicar con IA ✦" en panel de anomalías.
 
-→ Pantalla muestra respuesta de Claude.
+→ Pantalla muestra respuesta de Gemini.
 
-> "Esto es nuestro agente con Claude. En lugar de mostrarle al operador una lista de anomalías, le explica el patrón."
+> "Esto es nuestro agente de explicación. En lugar de mostrarle al operador una lista de anomalías, le explica el patrón."
 
 → Cambio a Simulador. Mover un deslizador del Nivel 4. Gráfico se actualiza en vivo.
 
@@ -202,13 +202,13 @@ El jurado de un hackathon ha visto 50 demos. Lo que diferencia un ganador es que
 
 ### "¿Escalabilidad?"
 
-> "BullMQ con Redis. Hoy procesa 5.325 transacciones en 25 segundos en un solo worker. Para 50.000, agregamos workers — el código no cambia."
+> "La arquitectura es modular. Hoy procesa el archivo desde el backend y el siguiente paso natural es separar orquestación y persistencia para escalar sin romper módulos."
 
 ### "¿Cómo se integra con el core de Banexcoin?"
 
 > "No se integra. La ficha técnica lo prohíbe: el sistema debe ser independiente. Lorena descarga el archivo BanexTransfer y lo sube al sistema de Banexcoin como ya lo hace hoy. Reemplazamos el cálculo, no el flujo operativo."
 
-### "¿Quién paga las llamadas a Claude?"
+### "¿Quién paga las llamadas a Gemini?"
 
 > "Una llamada por sesión cuando el operador pide explicación, con cache por hash de las anomalías. Estimación: <$0.10 por procesamiento mensual."
 
@@ -236,7 +236,7 @@ El jurado de un hackathon ha visto 50 demos. Lo que diferencia un ganador es que
 ## Lo que SÍ mostrar (en orden de prioridad)
 
 1. ✅ Upload con preview del Excel real.
-2. ✅ Barra de progreso WebSocket con mensajes que cuentan la historia.
+2. ✅ Estado de procesamiento con mensajes que cuentan la historia.
 3. ✅ KPIs con counter animado.
 4. ✅ Drilldown de la tabla al drawer al modal de transacción.
 5. ✅ Panel de anomalías con "Explicar con IA".
@@ -251,13 +251,13 @@ El jurado de un hackathon ha visto 50 demos. Lo que diferencia un ganador es que
 ### Si la API no responde
 
 - Tener una **versión seed** de DB pre-cargada con el resultado del Excel.
-- Si BullMQ no procesa: navegar directamente a `/uploads/:id` del upload ya procesado.
+- Si el procesamiento falla: navegar directamente a un upload ya procesado.
 
-### Si el WebSocket falla
+### Si el estado de procesamiento falla
 
-- La pantalla de progreso tiene fallback a polling cada 1s. Practicar para que la latencia perceptible sea similar.
+- Tener un upload ya procesado listo para continuar la demo sin depender del procesamiento en vivo.
 
-### Si Claude está caído
+### Si Gemini está caído
 
 - "Explicar con IA" tiene respuesta cacheada del Excel del enunciado. La demo no llama al API si hay cache hit.
 
@@ -309,7 +309,7 @@ Fuente sugerida: **Inter** o **Aptos**. Tamaños grandes (mínimo 32pt). Fondo o
 | **Solución social** | Hook: "el 87% paga en efectivo" — inclusión financiera |
 | **Mejor pitch** | Toda la estructura. Frase ancla repetida 3 veces. Cierre seco. |
 | **Mejor UI/UX** | Demo segundos 25-55: preview, progreso WS, microcopy en español |
-| **Innovación tecnológica** | Demo 55-100: Claude explica, simulador en navegador, conciliación |
+| **Innovación tecnológica** | Demo 55-100: Gemini explica, simulador en navegador, conciliación |
 
 ---
 
