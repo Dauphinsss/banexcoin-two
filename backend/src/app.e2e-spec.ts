@@ -259,6 +259,43 @@ describe('App e2e', () => {
     ])
   })
 
+  it('valida tiers y reporta solapamientos sin persistir', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/tiers/validate')
+      .send({
+        tiers: [
+          {
+            id: 'tier-a',
+            level: 1,
+            name: 'Basico',
+            minAmountBOB: '0',
+            maxAmountBOB: '500',
+            rebatePercent: '1.00',
+          },
+          {
+            id: 'tier-b',
+            level: 2,
+            name: 'Bronce',
+            minAmountBOB: '400',
+            maxAmountBOB: '900',
+            rebatePercent: '1.50',
+          },
+        ],
+      })
+      .expect(201)
+
+    expect(response.body.valid).toBe(false)
+    expect(response.body.blockingCount).toBeGreaterThan(0)
+    expect(response.body.conflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'OVERLAP',
+          severity: 'error',
+        }),
+      ]),
+    )
+  })
+
   it('rechaza upload sin archivo con error controlado', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/uploads')

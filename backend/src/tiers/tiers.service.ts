@@ -48,7 +48,17 @@ export class TiersService {
 
   async create(dto: CreateTierDto): Promise<CashbackTierDTO> {
     // Validar contra todo el set vigente (los activos del período de aplicación)
-    await this.assertValidWith(dto.validFromPeriod, dto, null)
+    await this.assertValidWith(
+      dto.validFromPeriod,
+      {
+        level: dto.level,
+        name: dto.name,
+        minAmountBOB: dto.minAmountBOB,
+        maxAmountBOB: dto.maxAmountBOB ?? null,
+        rebatePercent: dto.rebatePercent,
+      },
+      null,
+    )
 
     const created = await this.prisma.cashbackTier.create({
       data: {

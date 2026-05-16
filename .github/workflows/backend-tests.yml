@@ -42,5 +42,8 @@ jobs:
       - name: Run backend unit tests
         run: bun run --cwd backend test
 
+      - name: Run shared utils tests
+        run: bun run --cwd packages/utils test
+
       - name: Run backend e2e tests
         run: bun run --cwd backend test:e2e
