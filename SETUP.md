@@ -65,6 +65,8 @@ Si ya estás aquí, sigue.
 
 El proyecto tiene **tres** archivos de entorno. Hay que copiar los `.example` a `.env` en cada uno.
 
+> **Crítico:** `backend/.env` es el que necesita Prisma. Si solo copias el `.env` raíz, `bun run db:push` falla con `Environment variable not found: DATABASE_URL` porque Prisma busca su `.env` en el directorio de su `schema.prisma`, no en la raíz del monorepo.
+
 ### Windows (PowerShell)
 
 ```powershell
@@ -438,6 +440,20 @@ La DB no existe o el `DATABASE_URL` está mal:
 
 1. Revisa `backend/.env` → `DATABASE_URL` debe ser `file:./dev.db` (relativo a `backend/prisma/`)
 2. Corre `bun run db:push` para crearla
+
+### `Environment variable not found: DATABASE_URL` al correr `db:push`
+
+Falta el archivo `backend/.env`. Prisma busca su `.env` junto al `schema.prisma`, no en la raíz del monorepo:
+
+```bash
+# Windows
+Copy-Item backend/.env.example backend/.env
+
+# Linux / macOS / Git Bash
+cp backend/.env.example backend/.env
+```
+
+Luego reintenta `bun run db:push`.
 
 ### El frontend no se conecta al backend
 
