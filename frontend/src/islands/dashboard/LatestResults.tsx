@@ -397,7 +397,7 @@ function KpiCard({
 }) {
   const styles = ACCENT_STYLES[accent]
   return (
-    <Card className="relative overflow-hidden transition-transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5">
+    <Card className="relative gap-3 overflow-hidden py-5 transition-transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5">
       <div className={`absolute inset-x-0 top-0 h-0.5 ${styles.bar}`} />
       {spark && spark.length > 1 ? (
         <div className="pointer-events-none absolute right-3 top-4 opacity-80">
@@ -416,8 +416,8 @@ function KpiCard({
           </span>
         </div>
         <div className="flex items-baseline gap-1.5">
-          <p className="font-mono text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
-          {suffix ? <span className="text-xs text-muted-foreground">{suffix}</span> : null}
+          <p className="font-mono text-[26px] font-semibold leading-none tracking-tight tabular-nums">{value}</p>
+          {suffix ? <span className="text-xs font-medium text-muted-foreground">{suffix}</span> : null}
         </div>
         {secondary ? (
           <p className="font-mono text-[11px] tabular-nums text-muted-foreground">{secondary}</p>

@@ -4,7 +4,6 @@ import type { UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 interface DownloadsPanelProps {
@@ -63,22 +62,19 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
 
   return (
     <Card>
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="grid size-9 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/25">
-              <Download className="size-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold">Descargas operativas</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Período{' '}
-                <span className="font-mono text-foreground">{upload.period ?? '—'}</span> · archivo{' '}
-                <span className="font-mono text-foreground">{upload.filename}</span>
-              </p>
-            </div>
+      <CardContent className="space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/25">
+            <Download className="size-4" />
           </div>
-          <Badge variant="secondary">{upload.period ?? 'Sin periodo'}</Badge>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold">Descargas operativas</h3>
+            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+              Período{' '}
+              <span className="font-mono text-foreground">{upload.period ?? '—'}</span> · archivo{' '}
+              <span className="font-mono text-foreground">{upload.filename}</span>
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">

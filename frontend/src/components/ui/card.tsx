@@ -7,7 +7,10 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",
+        // Banexcoin glassy card: soft gradient, subtle white border, inner top highlight, soft outer shadow
+        "flex flex-col gap-6 rounded-2xl border border-white/[0.06] py-6 text-card-foreground",
+        "bg-[linear-gradient(180deg,oklch(0.24_0.015_280/0.7)_0%,oklch(0.20_0.015_280/0.7)_100%)]",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_8px_32px_-12px_rgba(0,0,0,0.4)]",
         className
       )}
       {...props}
@@ -87,6 +90,6 @@ export {
   CardFooter,
   CardTitle,
   CardAction,
-  CardDescription,
   CardContent,
+  CardDescription,
 }
