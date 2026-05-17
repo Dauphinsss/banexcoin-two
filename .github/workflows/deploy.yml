@@ -64,7 +64,7 @@ jobs:
           # Descargar la nueva versión de tu backend
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
           
-          # Encender el contenedor con el puerto 3000 y el CORS abierto para el Front
+          # Encender el contenedor configurando el driver nativo de AWS CloudWatch Logs
           docker run -d \
             --name nestjs_api \
             -p 3000:3000 \
@@ -76,6 +76,10 @@ jobs:
             -e FILE_STORAGE_DRIVER=s3 \
             -e S3_BUCKET="${{ secrets.S3_BUCKET }}" \
             -e S3_REGION="${{ secrets.S3_REGION || 'sa-east-1' }}" \
+            --log-driver=awslogs \
+            --log-opt awslogs-region=$AWS_DEFAULT_REGION \
+            --log-opt awslogs-group=nestjs-api-logs \
+            --log-opt awslogs-stream=backend-prod \
             --restart always \
             $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
