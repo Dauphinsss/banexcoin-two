@@ -26,6 +26,12 @@ export interface CreateTierPayload extends TierInput {
 
 export type UpdateTierPayload = Partial<CreateTierPayload>
 
+export interface PublishTierConfigPayload {
+  validFromPeriod: string
+  validToPeriod?: string | null
+  tiers: TierInput[]
+}
+
 const API_BASE = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
 export interface ApiError {
@@ -117,6 +123,15 @@ export const api = {
       body: JSON.stringify(payload),
     })
     return handleResponse<CashbackTierDTO>(res)
+  },
+
+  async publishTierConfiguration(payload: PublishTierConfigPayload): Promise<CashbackTierDTO[]> {
+    const res = await fetch(`${API_BASE}/api/tiers/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse<CashbackTierDTO[]>(res)
   },
 
   async updateTier(id: string, payload: UpdateTierPayload): Promise<CashbackTierDTO> {
