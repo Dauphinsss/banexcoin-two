@@ -7,7 +7,10 @@
  */
 
 export class DuplicateUploadError extends Error {
-  constructor(public readonly existingUploadId: string) {
+  constructor(
+    public readonly existingUploadId: string,
+    public readonly canReload: boolean,
+  ) {
     super('El archivo ya fue procesado anteriormente.')
     this.name = 'DuplicateUploadError'
   }

@@ -32,6 +32,7 @@ const PROCESS_UPLOAD_TRANSACTION_TIMEOUT_MS = 60_000
 const PROCESS_UPLOAD_TRANSACTION_MAX_WAIT_MS = 10_000
 const CREATE_MANY_BATCH_SIZE = 1_000
 const UPLOAD_OVERWRITE_USER_NAMES = 'UPLOAD_OVERWRITE_USER_NAMES'
+const UPLOAD_DUPLICATE_MODE = 'UPLOAD_DUPLICATE_MODE'
 const PROCESS_UPLOAD_TRANSACTION_OPTIONS = {
   maxWait: PROCESS_UPLOAD_TRANSACTION_MAX_WAIT_MS,
   timeout: PROCESS_UPLOAD_TRANSACTION_TIMEOUT_MS,
@@ -42,6 +43,7 @@ export class UploadsService {
   private readonly logger = new Logger(UploadsService.name)
   private readonly maxBytes: number
   private readonly overwriteUserNamesOnUpload: boolean
+  private readonly duplicateMode: 'prod' | 'test'
 
   constructor(
     @Inject(PrismaService)
@@ -65,11 +67,13 @@ export class UploadsService {
       this.config.get<string>(UPLOAD_OVERWRITE_USER_NAMES),
       false,
     )
+    this.duplicateMode = parseDuplicateMode(this.config.get<string>(UPLOAD_DUPLICATE_MODE))
   }
 
   async create(
     file: Express.Multer.File,
     requestedPeriod: string | undefined,
+    allowDuplicate = false,
   ): Promise<CreateUploadResponse> {
     this.validateFile(file)
 
@@ -80,7 +84,10 @@ export class UploadsService {
     })
 
     if (existing) {
-      if (existing.status === 'FAILED') {
+      const canReloadDuplicate = this.duplicateMode === 'test'
+      const shouldReload = canReloadDuplicate && allowDuplicate
+
+      if (shouldReload) {
         await this.prisma.upload.update({
           where: { id: existing.id },
           data: {
@@ -116,14 +123,14 @@ export class UploadsService {
         return {
           uploadId: existing.id,
           status: 'DONE',
-          wasDuplicate: false,
+          wasDuplicate: true,
         }
       }
 
       this.logger.log(
         `Upload duplicado detectado · hash=${fileHash.slice(0, 8)} · existingId=${existing.id}`,
       )
-      throw new DuplicateUploadError(existing.id)
+      throw new DuplicateUploadError(existing.id, canReloadDuplicate)
     }
 
     const storagePath = await this.storage.save(fileHash, file.originalname, file.buffer)
@@ -773,6 +780,11 @@ const parseBooleanConfig = (
   if (['0', 'false', 'no', 'off'].includes(normalized)) return false
 
   return defaultValue
+}
+
+const parseDuplicateMode = (value: string | undefined): 'prod' | 'test' => {
+  const normalized = value?.trim().toLowerCase()
+  return normalized === 'test' ? 'test' : 'prod'
 }
 
 const normalizeQrRows = (

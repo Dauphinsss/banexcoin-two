@@ -29,7 +29,13 @@ type Stage =
   | { kind: 'preview'; file: File; preview: Preview }
   | { kind: 'uploading'; file: File; preview: Preview }
   | { kind: 'success'; uploadId: string }
-  | { kind: 'duplicate'; existingUploadId: string }
+  | {
+      kind: 'duplicate'
+      file: File
+      preview: Preview
+      existingUploadId: string
+      canReload: boolean
+    }
   | { kind: 'error'; message: string; previousFile?: File }
 
 interface Preview {
@@ -86,26 +92,33 @@ export default function UploadDropzone(): JSX.Element {
     disabled: stage.kind === 'analyzing' || stage.kind === 'uploading',
   })
 
-  const submit = useCallback(async () => {
-    if (stage.kind !== 'preview') return
-    setStage({ kind: 'uploading', file: stage.file, preview: stage.preview })
+  const submit = useCallback(async (allowDuplicate = false) => {
+    if (stage.kind !== 'preview' && stage.kind !== 'duplicate') return
+
+    const file = stage.file
+    const preview = stage.preview
+    setStage({ kind: 'uploading', file, preview })
 
     try {
       const response = await api.createUpload(
-        stage.file,
-        stage.preview.detectedPeriod ?? undefined,
+        file,
+        preview.detectedPeriod ?? undefined,
+        allowDuplicate,
       )
       setStage({ kind: 'success', uploadId: response.uploadId })
     } catch (error) {
       if (error instanceof ApiCallError && error.payload.error === 'DUPLICATE_UPLOAD') {
         setStage({
           kind: 'duplicate',
+          file,
+          preview,
           existingUploadId: String(error.payload.existingUploadId ?? ''),
+          canReload: error.payload.canReload === true,
         })
         return
       }
       const message = error instanceof Error ? error.message : 'Falló la carga.'
-      setStage({ kind: 'error', message, previousFile: stage.file })
+      setStage({ kind: 'error', message, previousFile: file })
     }
   }, [stage])
 
@@ -129,7 +142,7 @@ export default function UploadDropzone(): JSX.Element {
           file={stage.file}
           preview={stage.preview}
           onCancel={reset}
-          onConfirm={submit}
+          onConfirm={() => void submit(false)}
         />
       ) : null}
 
@@ -142,7 +155,12 @@ export default function UploadDropzone(): JSX.Element {
       ) : null}
 
       {stage.kind === 'duplicate' ? (
-        <DuplicateState existingUploadId={stage.existingUploadId} onTryAnother={reset} />
+        <DuplicateState
+          existingUploadId={stage.existingUploadId}
+          canReload={stage.canReload}
+          onReload={() => void submit(true)}
+          onTryAnother={reset}
+        />
       ) : null}
     </div>
   )
@@ -353,21 +371,47 @@ const SuccessState = ({
 
 const DuplicateState = ({
   existingUploadId,
+  canReload,
+  onReload,
   onTryAnother,
 }: {
   existingUploadId: string
+  canReload: boolean
+  onReload: () => void
   onTryAnother: () => void
 }): JSX.Element => (
   <div className="rounded-xl border border-warning-soft bg-warning-faint p-8 text-center space-y-4">
     <TriangleAlert className="mx-auto size-8 text-warning-strong" aria-hidden="true" />
     <div>
-      <p className="text-main font-medium">Este archivo ya fue procesado anteriormente.</p>
+      <p className="text-main font-medium">Estas subiendo el mismo archivo.</p>
+      {canReload ? (
+        <p className="mt-1 text-sm text-muted">
+          Estas en modo test. Quieres aplicarlo de todas formas y reemplazar sus resultados?
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-muted">
+          La recarga esta restringida para este entorno.
+        </p>
+      )}
       <p className="text-xs text-muted font-mono mt-1">ID existente: {existingUploadId}</p>
     </div>
     <div className="flex justify-center gap-3">
+      {canReload ? (
+        <button
+          type="button"
+          onClick={onReload}
+          className="px-4 py-2 rounded-md text-sm font-medium bg-brand hover-bg-brand-hover text-inverse"
+        >
+          Si, aplicar de todas formas
+        </button>
+      ) : null}
       <a
         href={`/uploads/${existingUploadId}`}
-        className="px-4 py-2 rounded-md text-sm font-medium bg-brand hover-bg-brand-hover text-inverse"
+        className={`px-4 py-2 rounded-md text-sm font-medium ${
+          canReload
+            ? 'border border-line-strong text-muted hover-text-inverse'
+            : 'bg-brand hover-bg-brand-hover text-inverse'
+        }`}
       >
         Ver resultados existentes
       </a>

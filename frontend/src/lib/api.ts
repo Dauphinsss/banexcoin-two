@@ -57,10 +57,15 @@ const handleResponse = async <T>(res: Response): Promise<T> => {
 }
 
 export const api = {
-  async createUpload(file: File, period?: string): Promise<CreateUploadResponse> {
+  async createUpload(
+    file: File,
+    period?: string,
+    allowDuplicate = false,
+  ): Promise<CreateUploadResponse> {
     const formData = new FormData()
     formData.append('file', file)
     if (period) formData.append('period', period)
+    if (allowDuplicate) formData.append('allowDuplicate', 'true')
 
     const res = await fetch(`${API_BASE}/api/uploads`, {
       method: 'POST',

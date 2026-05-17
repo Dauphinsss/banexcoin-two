@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Matches } from 'class-validator'
+import { IsIn, IsOptional, IsString, Matches } from 'class-validator'
 
 /**
  * Campos opcionales que pueden acompañar al multipart.
@@ -12,4 +12,10 @@ export class CreateUploadDto {
     message: 'period debe tener formato YYYY-MM',
   })
   period?: string
+
+  /** Confirmacion explicita para reprocesar un archivo duplicado en modo test. */
+  @IsOptional()
+  @IsString()
+  @IsIn(['true', 'false', '1', '0'])
+  allowDuplicate?: string
 }
