@@ -5,7 +5,9 @@ import { DownloadsPanel } from '../../islands/reports/DownloadsPanel'
 import { RebatesTable } from '../../islands/rebates/RebatesTable'
 import { AnomalyPanel } from '../../islands/reconciliation/AnomalyPanel'
 
-export const prerender = false
+export async function getStaticPaths() {
+  return [{ params: { id: 'placeholder' } }]
+}
 
 const { id } = Astro.params
 ---
