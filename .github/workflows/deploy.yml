@@ -57,14 +57,14 @@ jobs:
           # Autenticar Docker dentro de tu EC2 con AWS ECR usando las variables inyectadas de forma segura
           aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
           
-          # Detener y remover el contenedor viejo si ya existiera
+          # Detener y remover el contenedor viejo o congelado en estado 'Created'
           docker stop nestjs_api || true
-          docker rm nestjs_api || true
+          docker rm -f nestjs_api || true
           
           # Descargar la nueva versión de tu backend
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
           
-          # Encender el contenedor configurando el driver nativo de AWS CloudWatch Logs
+          # Encender el contenedor con logs locales estándar (Quitamos awslogs para evitar bloqueos)
           docker run -d \
             --name nestjs_api \
             -p 3000:3000 \
@@ -76,10 +76,6 @@ jobs:
             -e FILE_STORAGE_DRIVER=s3 \
             -e S3_BUCKET="${{ secrets.S3_BUCKET }}" \
             -e S3_REGION="${{ secrets.S3_REGION || 'sa-east-1' }}" \
-            --log-driver=awslogs \
-            --log-opt awslogs-region=$AWS_DEFAULT_REGION \
-            --log-opt awslogs-group=nestjs-api-logs \
-            --log-opt awslogs-stream=backend-prod \
             --restart always \
             $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
