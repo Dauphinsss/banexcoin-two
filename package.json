@@ -9,7 +9,6 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "bun run --cwd backend prisma:generate",
     "build:shared": "bun run --cwd packages/types build && bun run --cwd packages/utils build",
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
