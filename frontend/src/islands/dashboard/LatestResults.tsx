@@ -18,6 +18,7 @@ import { formatPeriodLabel } from '../../lib/format'
 import { useCounter } from '../../lib/use-counter'
 import { EmptyState } from '../shared/EmptyState'
 import { LevelBadge, getLevelColor } from '../../components/LevelBadge'
+import { resolveUploadId } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -74,9 +75,11 @@ export function LatestResults() {
 
     async function load() {
       try {
-        const uploads = await api.listUploads()
-        const upload = uploads.find((item) => item.status === 'DONE') ?? null
-        if (!upload) {
+        const resolvedId = resolveUploadId()
+        const upload = resolvedId
+          ? await api.getUpload(resolvedId)
+          : (await api.listUploads({ status: 'DONE' }))[0] ?? null
+        if (!upload || upload.status !== 'DONE') {
           if (!cancelled) setStatus('empty')
           return
         }
@@ -283,7 +286,7 @@ export function LatestResults() {
                     <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
                       Archivo activo
                     </CardDescription>
-                    <CardTitle className="text-base">Último procesamiento</CardTitle>
+                    <CardTitle className="text-base">Procesamiento seleccionado</CardTitle>
                     <p className="text-sm text-muted-foreground line-clamp-1">{state.upload?.filename}</p>
                   </div>
                   <Badge variant="secondary" className="shrink-0">

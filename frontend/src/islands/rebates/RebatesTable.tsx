@@ -67,7 +67,7 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
         const resolvedId = resolveUploadId(uploadId)
         const targetUpload = resolvedId
           ? await api.getUpload(resolvedId)
-          : (await api.listUploads()).find((item) => item.status === 'DONE') ?? null
+          : (await api.listUploads({ status: 'DONE' }))[0] ?? null
 
         if (!targetUpload || targetUpload.status !== 'DONE') {
           if (!cancelled) setStatus('empty')
@@ -196,7 +196,7 @@ const allVisibleSelected =
           <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0 space-y-1">
               <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Último archivo procesado
+                Archivo seleccionado
               </p>
               <h2 className="truncate text-base font-semibold">{upload?.filename}</h2>
               <p className="font-mono text-xs text-muted-foreground">

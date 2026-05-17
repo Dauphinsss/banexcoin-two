@@ -38,8 +38,7 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
           }
           return
         }
-        const uploads = await api.listUploads()
-        const latest = uploads.find((u) => u.status === 'DONE') ?? null
+        const latest = (await api.listUploads({ status: 'DONE' }))[0] ?? null
         if (!cancelled) {
           setUpload(latest)
           setStatus(latest ? 'ready' : 'empty')
