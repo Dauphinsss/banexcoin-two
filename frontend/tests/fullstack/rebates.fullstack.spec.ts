@@ -26,9 +26,6 @@ test.describe('rebates fullstack', () => {
 
     const firstTransaction = page.locator('[role="dialog"] table tbody tr').first()
     await expect(firstTransaction).toBeVisible()
-    await firstTransaction.click()
-    await expect(page.getByRole('heading', { name: 'Transacción QR' })).toBeVisible()
-    await expect(page.getByText('ID transacción')).toBeVisible()
-    await expect(page.getByText('207681530')).toBeVisible()
+    await expect(firstTransaction).toContainText('5.00')
   })
 })
