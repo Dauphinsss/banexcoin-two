@@ -5,7 +5,7 @@ import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
 ---
 
 <AppShell title="Dashboard" activePage="dashboard">
-  <div class="reveal-stack space-y-6">
+  <div class="reveal-stack min-w-0 space-y-6">
     {/* Hero */}
     <section class="hero-panel relative overflow-hidden rounded-xl border border-border bg-card/70 shadow-xl shadow-black/10">
       <div
@@ -17,8 +17,8 @@ import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
         class="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl"
       />
 
-      <div class="relative grid gap-6 p-6 md:grid-cols-[1fr_auto] md:items-end md:p-10">
-        <div class="max-w-2xl space-y-4">
+      <div class="relative grid min-w-0 gap-6 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:p-10">
+        <div class="min-w-0 max-w-2xl space-y-4">
           <div class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             <span class="relative flex size-1.5">
               <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60"></span>
@@ -26,18 +26,18 @@ import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
             </span>
             Operación mensual
           </div>
-          <h2 class="text-3xl font-semibold tracking-tight md:text-4xl">
+          <h2 class="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
             Resultados del <span class="text-primary">cashback</span> mensual
           </h2>
-          <p class="max-w-xl text-sm leading-6 text-muted-foreground md:text-[15px]">
+          <p class="max-w-xl text-pretty text-sm leading-6 text-muted-foreground md:text-[15px]">
             Vista ejecutiva del último Excel procesado: reintegros calculados,
             usuarios beneficiados, conciliación bancaria y anomalías accionables.
           </p>
 
-          <div class="flex flex-wrap gap-3 pt-2">
+          <div class="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap">
             <a
               href="/uploads/new"
-              class="banex-primary-button inline-flex items-center gap-2 rounded-full px-6 h-11 text-[15px] font-semibold text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              class="banex-primary-button inline-flex h-11 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -48,7 +48,7 @@ import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
             </a>
             <a
               href="/reconciliation"
-              class="inline-flex items-center gap-2 rounded-full px-6 h-11 text-[15px] font-medium text-white transition-all hover:brightness-110 border border-white/[0.08] backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-white/[0.08] px-6 text-[15px] font-medium text-white backdrop-blur-sm transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto"
               style="background: linear-gradient(135deg, oklch(0.28 0.015 280 / 0.6) 0%, oklch(0.20 0.015 280 / 0.8) 100%); box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.06);"
             >
               Revisar control bancario

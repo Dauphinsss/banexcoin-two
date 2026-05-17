@@ -90,11 +90,11 @@ Reglas:
 
 ## IA Y Prompts
 
-- `GEMINI_API_KEY` habilita explicación opcional de anomalías.
+- `CEREBRAS_API_KEY` habilita explicación opcional de anomalías.
 - Enviar solo resúmenes agregados al modelo.
 - No enviar filas completas del Excel, cuentas completas, usernames ni identificadores sensibles.
 - La IA nunca debe bloquear conciliación, reportes ni lectura de resultados.
-- Si Gemini falla o no está configurado, devolver una respuesta controlada.
+- Si Cerebras falla o no está configurado, devolver una respuesta controlada.
 
 ## Testing
 

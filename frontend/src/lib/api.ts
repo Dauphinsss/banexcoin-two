@@ -26,6 +26,12 @@ export interface CreateTierPayload extends TierInput {
 
 export type UpdateTierPayload = Partial<CreateTierPayload>
 
+export interface PublishTierConfigPayload {
+  validFromPeriod: string
+  validToPeriod?: string | null
+  tiers: TierInput[]
+}
+
 const API_BASE = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
 export interface ApiError {
@@ -53,6 +59,17 @@ const handleResponse = async <T>(res: Response): Promise<T> => {
   } catch {
     payload = { error: 'UNKNOWN', message: res.statusText || 'Error desconocido' }
   }
+  throw new ApiCallError(res.status, payload)
+}
+
+const readErrorResponse = async (res: Response): Promise<never> => {
+  let payload: ApiError
+  try {
+    payload = (await res.json()) as ApiError
+  } catch {
+    payload = { error: 'UNKNOWN', message: res.statusText || 'Error desconocido' }
+  }
+
   throw new ApiCallError(res.status, payload)
 }
 
@@ -119,6 +136,15 @@ export const api = {
     return handleResponse<CashbackTierDTO>(res)
   },
 
+  async publishTierConfiguration(payload: PublishTierConfigPayload): Promise<CashbackTierDTO[]> {
+    const res = await fetch(`${API_BASE}/api/tiers/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse<CashbackTierDTO[]>(res)
+  },
+
   async updateTier(id: string, payload: UpdateTierPayload): Promise<CashbackTierDTO> {
     const res = await fetch(`${API_BASE}/api/tiers/${encodeURIComponent(id)}`, {
       method: 'PATCH',
@@ -158,6 +184,45 @@ export const api = {
       body: JSON.stringify({ uploadId }),
     })
     return handleResponse(res)
+  },
+
+  async explainAnomaliesStream(uploadId: string, onChunk: (chunk: string) => void): Promise<string> {
+    const res = await fetch(`${API_BASE}/api/reconciliation/explain/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadId }),
+    })
+
+    if (!res.ok) {
+      return readErrorResponse(res)
+    }
+
+    if (!res.body) {
+      throw new Error('El navegador no soporta streaming para esta respuesta.')
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let fullText = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value, { stream: true })
+      if (chunk === '') continue
+
+      fullText += chunk
+      onChunk(chunk)
+    }
+
+    const tail = decoder.decode()
+    if (tail !== '') {
+      fullText += tail
+      onChunk(tail)
+    }
+
+    return fullText
   },
 
   async listAnomalies(uploadId: string): Promise<AnomalyDTO[]> {

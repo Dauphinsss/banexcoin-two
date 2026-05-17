@@ -3,11 +3,14 @@ import type { CashbackTierDTO } from '@banex/types'
 import { validateTiers, type TierValidationOutput } from '@banex/utils'
 import { PrismaService } from '../prisma/prisma.service'
 import type { CreateTierDto } from './dto/create-tier.dto'
+import type { PublishTierConfigDto } from './dto/publish-tier-config.dto'
 import type { UpdateTierDto } from './dto/update-tier.dto'
 import type { ValidateTiersDto } from './dto/validate-tiers.dto'
 import {
   TierInUseError,
   TierNotFoundError,
+  TierPeriodLockedError,
+  TierPeriodRangeError,
   TierValidationFailedError,
 } from './errors/tier.errors'
 
@@ -19,15 +22,13 @@ export class TiersService {
 
   /** Lista los tiers activos vigentes para el período (default: todos los activos). */
   async listActive(period?: string): Promise<CashbackTierDTO[]> {
+    const effectivePeriod = period ?? currentPeriod()
+
     const tiers = await this.prisma.cashbackTier.findMany({
       where: {
         active: true,
-        ...(period
-          ? {
-              validFromPeriod: { lte: period },
-              OR: [{ validToPeriod: null }, { validToPeriod: { gte: period } }],
-            }
-          : {}),
+        validFromPeriod: { lte: effectivePeriod },
+        OR: [{ validToPeriod: null }, { validToPeriod: { gte: effectivePeriod } }],
       },
       orderBy: [{ level: 'asc' }, { minAmountBOB: 'asc' }],
     })
@@ -75,6 +76,102 @@ export class TiersService {
 
     this.logger.log(`Tier creado · id=${created.id} · level=${created.level} · name=${created.name}`)
     return this.toDTO(created)
+  }
+
+  async publishConfiguration(dto: PublishTierConfigDto): Promise<CashbackTierDTO[]> {
+    if (dto.validToPeriod && dto.validToPeriod < dto.validFromPeriod) {
+      throw new TierPeriodRangeError(dto.validFromPeriod, dto.validToPeriod)
+    }
+
+    const result = validateTiers(dto.tiers.map((tier, index) => ({
+      id: `PUBLISH-${index + 1}`,
+      level: tier.level,
+      name: tier.name,
+      minAmountBOB: tier.minAmountBOB,
+      maxAmountBOB: tier.maxAmountBOB ?? null,
+      rebatePercent: tier.rebatePercent,
+    })))
+
+    if (!result.valid) {
+      const errors = result.conflicts.filter((conflict) => conflict.severity === 'error')
+      throw new TierValidationFailedError(errors)
+    }
+
+    const lockedUploads = await this.prisma.upload.count({
+      where: {
+        status: 'DONE',
+        period: dto.validToPeriod
+          ? { gte: dto.validFromPeriod, lte: dto.validToPeriod }
+          : { gte: dto.validFromPeriod },
+      },
+    })
+    if (lockedUploads > 0) {
+      throw new TierPeriodLockedError(dto.validFromPeriod, lockedUploads)
+    }
+
+    const previousPeriod = previousMonth(dto.validFromPeriod)
+
+    await this.prisma.$transaction(async (tx) => {
+      const overlapping = await tx.cashbackTier.findMany({
+        where: {
+          active: true,
+          validFromPeriod: { lte: dto.validFromPeriod },
+          OR: [
+            { validToPeriod: null },
+            { validToPeriod: { gte: dto.validFromPeriod } },
+          ],
+        },
+        select: {
+          id: true,
+          validFromPeriod: true,
+        },
+      })
+
+      const closeIds = overlapping
+        .filter((tier) => tier.validFromPeriod < dto.validFromPeriod)
+        .map((tier) => tier.id)
+      const samePeriodIds = overlapping
+        .filter((tier) => tier.validFromPeriod >= dto.validFromPeriod)
+        .map((tier) => tier.id)
+
+      if (closeIds.length > 0) {
+        await tx.cashbackTier.updateMany({
+          where: { id: { in: closeIds } },
+          data: {
+            validToPeriod: previousPeriod,
+            active: true,
+          },
+        })
+      }
+
+      if (samePeriodIds.length > 0) {
+        await tx.cashbackTier.updateMany({
+          where: { id: { in: samePeriodIds } },
+          data: {
+            active: false,
+            validToPeriod: dto.validFromPeriod,
+          },
+        })
+      }
+
+      await tx.cashbackTier.createMany({
+        data: dto.tiers.map((tier) => ({
+          level: tier.level,
+          name: tier.name,
+          minAmountBOB: tier.minAmountBOB,
+          maxAmountBOB: tier.maxAmountBOB ?? null,
+          rebatePercent: tier.rebatePercent,
+          validFromPeriod: dto.validFromPeriod,
+          validToPeriod: dto.validToPeriod ?? null,
+          active: true,
+        })),
+      })
+    })
+
+    this.logger.log(
+      `ConfiguraciÃ³n de tiers publicada Â· from=${dto.validFromPeriod} Â· tiers=${dto.tiers.length}`,
+    )
+    return this.listActive(dto.validFromPeriod)
   }
 
   async update(id: string, dto: UpdateTierDto): Promise<CashbackTierDTO> {
@@ -222,4 +319,18 @@ export class TiersService {
       validToPeriod: tier.validToPeriod,
     }
   }
+}
+
+const previousMonth = (period: string): string => {
+  const [yearRaw, monthRaw] = period.split('-')
+  const year = Number(yearRaw)
+  const month = Number(monthRaw)
+
+  if (month === 1) return `${year - 1}-12`
+  return `${year}-${String(month - 1).padStart(2, '0')}`
+}
+
+const currentPeriod = (): string => {
+  const now = new Date()
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
 }

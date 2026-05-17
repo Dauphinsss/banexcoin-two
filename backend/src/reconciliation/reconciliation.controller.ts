@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Query } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Query, Res } from '@nestjs/common'
+import type { Response } from 'express'
 import { ReconciliationService } from './reconciliation.service'
 import { AnomalyExplainerAgent } from './anomaly-explainer.agent'
 
@@ -30,6 +31,27 @@ export class ReconciliationController {
     }
 
     return this.explainer.explain(body.uploadId)
+  }
+
+  @Post('explain/stream')
+  async explainStream(@Body() body: ExplainAnomaliesBody, @Res() response: Response) {
+    if (!body.uploadId) {
+      throw new BadRequestException('uploadId es obligatorio.')
+    }
+
+    const stream = await this.explainer.explainStream(body.uploadId)
+
+    response.status(200)
+    response.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    response.setHeader('Cache-Control', 'no-cache, no-transform')
+    response.setHeader('X-Accel-Buffering', 'no')
+    response.flushHeaders?.()
+
+    for await (const chunk of stream.chunks) {
+      response.write(chunk)
+    }
+
+    response.end()
   }
 
   @Get('anomalies')

@@ -19,7 +19,13 @@ export interface ExtractoPagosOutput {
  * lo convertimos a positivo para que cuadre contra "Monto Pagado" de Pago QR,
  * que viene positivo.
  */
-export const parseExtractoPagosSheet = (worksheet: Worksheet): ExtractoPagosOutput => {
+export const parseExtractoPagosSheet = (worksheet: Worksheet): ExtractoPagosOutput =>
+  parseExtractoSheet(worksheet, SHEET_EXTRACTO_PAGOS)
+
+export const parseExtractoSheet = (
+  worksheet: Worksheet,
+  sheetName: string,
+): ExtractoPagosOutput => {
   const errors: ParseError[] = []
   const rows: ExtractRowRaw[] = []
 
@@ -31,7 +37,7 @@ export const parseExtractoPagosSheet = (worksheet: Worksheet): ExtractoPagosOutp
       if (parsed) rows.push(parsed)
     } catch (error) {
       errors.push({
-        sheetName: SHEET_EXTRACTO_PAGOS,
+        sheetName,
         rowNumber,
         message: error instanceof Error ? error.message : 'Error desconocido',
         rawSnippet: snippet(row.values),
