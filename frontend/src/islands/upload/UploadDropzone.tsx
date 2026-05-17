@@ -253,7 +253,7 @@ const DropzoneEmpty = ({
     <div
       {...rootProps}
       className={cn(
-        'group relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-4 py-12 text-center transition-[border-color,background-color,box-shadow,transform] duration-200 sm:px-8 sm:py-16',
+        'upload-dropzone group relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-4 py-12 text-center transition-[border-color,background-color,box-shadow,transform] duration-200 sm:px-8 sm:py-16',
         isDragActive
           ? 'scale-[1.01] border-primary bg-primary/5 shadow-lg shadow-primary/10'
           : 'border-border bg-card/40 hover:border-primary/50 hover:bg-card/60',
