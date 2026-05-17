@@ -150,11 +150,11 @@ export const fixtureData = {
 }
 
 export async function mockApi(page: Page): Promise<void> {
-  await page.route(/\/api\//, async (route) => routeFromFixture(route))
+  await page.context().route('**/api/**', async (route) => routeFromFixture(route))
 }
 
 export async function mockEmptyApi(page: Page): Promise<void> {
-  await page.route(/\/api\//, async (route) => {
+  await page.context().route('**/api/**', async (route) => {
     const url = new URL(route.request().url())
     if (url.pathname === '/api/uploads') {
       await route.fulfill({ json: [] })
