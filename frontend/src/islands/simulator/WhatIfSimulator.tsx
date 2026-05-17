@@ -421,3 +421,69 @@ function Metric({
     </div>
   )
 }
+
+function SimulatorSkeleton(): JSX.Element {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[420px_1fr]" aria-hidden="true">
+      <section className="rounded-lg border border-line bg-panel p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-4 w-20 rounded skeleton-block" />
+            <div className="mt-3 h-5 w-32 rounded skeleton-block" />
+          </div>
+          <div className="h-4 w-20 rounded skeleton-block" />
+        </div>
+
+        <div className="mt-6 space-y-6">
+          {Array.from({ length: 3 }).map((_, tier) => (
+            <div key={tier} className="rounded-md border border-line bg-panel-inset p-4">
+              <div className="flex items-center justify-between">
+                <div className="h-4 w-28 rounded skeleton-block" />
+                <div className="h-4 w-14 rounded skeleton-block" />
+              </div>
+              {[0, 1, 2].map((slider) => (
+                <div key={slider} className="mt-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-3 w-24 rounded skeleton-block" />
+                    <div className="h-3 w-16 rounded skeleton-block" />
+                  </div>
+                  <div className="mt-2 h-2 w-full rounded-full skeleton-block" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 h-10 w-full rounded-md skeleton-block" />
+      </section>
+
+      <section className="space-y-5">
+        <div className="rounded-lg border border-line bg-panel p-5">
+          <div className="h-4 w-48 rounded skeleton-block" />
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="rounded-lg border border-line bg-panel-inset-strong p-4">
+                <div className="h-3 w-28 rounded skeleton-block" />
+                <div className="mt-3 h-6 w-20 rounded skeleton-block" />
+                <div className="mt-2 h-3 w-16 rounded skeleton-block" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-line bg-panel p-5">
+          <div className="h-4 w-40 rounded skeleton-block" />
+          <div className="mt-4 space-y-3">
+            {Array.from({ length: 4 }).map((_, row) => (
+              <div key={row} className="grid grid-cols-[140px_1fr_120px] items-center gap-3">
+                <div className="h-4 w-24 rounded skeleton-block" />
+                <div className="h-2 rounded-full skeleton-block" />
+                <div className="ml-auto h-4 w-20 rounded skeleton-block" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}

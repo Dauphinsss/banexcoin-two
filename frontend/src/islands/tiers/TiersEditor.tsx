@@ -627,3 +627,47 @@ const errorMessage = (error: unknown): string =>
     : error instanceof Error
       ? error.message
       : 'Operación fallida.'
+
+function TiersEditorSkeleton(): JSX.Element {
+  return (
+    <div className="space-y-5" aria-hidden="true">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+        <div className="inline-flex rounded-md border border-slate-800 bg-slate-900/40 p-1">
+          <div className="h-8 w-28 rounded skeleton-block" />
+          <div className="ml-1 h-8 w-20 rounded skeleton-block" />
+        </div>
+        <div className="h-10 w-32 rounded-md skeleton-block" />
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-slate-800">
+        <table className="min-w-full divide-y divide-slate-800 text-sm">
+          <thead className="bg-slate-950 text-left text-xs uppercase tracking-widest text-slate-500">
+            <tr>
+              {['Nivel', 'Nombre', 'Desde BOB', 'Hasta BOB', 'Reintegro', 'Vigencia', 'Acciones'].map((label, index) => {
+                const right = (index >= 2 && index <= 4) || index === 6
+                return (
+                  <th key={label} className={`px-4 py-3 ${right ? 'text-right' : 'text-left'}`}>
+                    <div className={`h-3 rounded skeleton-block ${right ? 'ml-auto w-16' : 'w-20'}`} />
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-900 bg-slate-900/30">
+            {Array.from({ length: 5 }).map((_, row) => (
+              <tr key={row}>
+                <td className="px-4 py-3"><div className="h-4 w-8 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="h-4 w-28 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-20 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-20 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-14 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="h-4 w-32 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-28 rounded skeleton-block" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}

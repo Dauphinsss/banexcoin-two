@@ -244,6 +244,21 @@ const DropzoneEmpty = ({
   </div>
 )
 
+const UploadDropzoneSkeleton = (): JSX.Element => (
+  <div className="w-full max-w-3xl mx-auto" aria-hidden="true">
+    <div className="space-y-3">
+      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-line-strong bg-panel px-8 py-16 text-center">
+        <div className="size-10 rounded-md skeleton-block" />
+        <div className="space-y-2">
+          <div className="mx-auto h-4 w-72 max-w-full rounded skeleton-block" />
+          <div className="mx-auto h-3 w-56 max-w-full rounded skeleton-block" />
+        </div>
+        <div className="h-10 w-36 rounded-md skeleton-block" />
+      </div>
+    </div>
+  </div>
+)
+
 const AnalyzingState = ({ filename }: { filename: string }): JSX.Element => (
   <Card>
     <CardContent className="flex flex-col items-center gap-3 py-12 text-center">

@@ -311,6 +311,55 @@ function EmptyState(): JSX.Element {
   )
 }
 
+function RebatesTableSkeleton(): JSX.Element {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+        <div>
+          <div className="h-4 w-36 rounded skeleton-block" />
+          <div className="mt-3 h-5 w-72 max-w-full rounded skeleton-block" />
+          <div className="mt-2 h-3 w-32 rounded skeleton-block" />
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="h-10 w-full rounded-md skeleton-block sm:w-56" />
+          <div className="h-10 w-full rounded-md skeleton-block sm:w-44" />
+          <div className="h-10 w-full rounded-md skeleton-block sm:w-32" />
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-line">
+        <table className="min-w-full divide-y divide-line text-sm">
+          <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
+            <tr>
+              {['Usuario', 'Total BOB', 'Nivel', '%', 'USDT', 'T/C', 'Tx'].map((label, index) => (
+                <th key={label} className={`px-4 py-3 ${index === 0 || index === 2 ? 'text-left' : 'text-right'}`}>
+                  <div className={`h-3 rounded skeleton-block ${index === 0 ? 'w-20' : 'ml-auto w-14'}`} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line-dark bg-panel-muted">
+            {Array.from({ length: 7 }).map((_, row) => (
+              <tr key={row}>
+                <td className="px-4 py-3">
+                  <div className="h-4 w-36 rounded skeleton-block" />
+                  <div className="mt-2 h-3 w-20 rounded skeleton-block" />
+                </td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-24 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="h-6 w-20 rounded-md skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-12 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-24 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-16 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-8 rounded skeleton-block" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 const compare = (
   a: MonthlyRebateDTO,
   b: MonthlyRebateDTO,

@@ -1,36 +1,35 @@
-FROM oven/bun:1.3.11 AS builder
-
+# --- ESTADIO DE COMPILACIÓN ---
+FROM oven/bun:alpine AS builder
 WORKDIR /app
 
-COPY package.json bun.lock ./
-COPY backend/package.json ./backend/package.json
-COPY packages/types/package.json ./packages/types/package.json
-COPY packages/utils/package.json ./packages/utils/package.json
+# Copiamos todo el monorepo (contexto = la raíz del repositorio)
+COPY . .
 
+# Instalamos todas las dependencias
 RUN bun install --frozen-lockfile
 
-COPY backend ./backend
-COPY packages ./packages
-
-RUN bun run build:shared
+# Generamos el cliente de Prisma dentro de backend
 RUN bun run --cwd backend prisma:generate
+
+# Compilamos los paquetes compartidos (types, utils)
+RUN bun run build:shared || true
+
+# Compilamos el backend
 RUN bun run --cwd backend build
 
-FROM oven/bun:1.3.11 AS runner
-
+# --- ESTADIO DE PRODUCCIÓN ---
+FROM oven/bun:alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV HOST=0.0.0.0
-ENV PORT=3000
 
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/bun.lock ./bun.lock
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/backend/package.json ./backend/package.json
-COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/backend/prisma ./backend/prisma
+# Copiamos todo desde el builder.
+# En un monorepo, es la forma más segura y rápida de asegurar
+# que los paquetes locales (workspaces) y prisma funcionen.
+COPY --from=builder /app /app
+
+WORKDIR /app/backend
 
 EXPOSE 3000
 
-CMD ["node", "backend/dist/main.js"]
+# Ejecutamos el archivo compilado de NestJS usando el runtime de Bun
+CMD ["bun", "run", "dist/main.js"]

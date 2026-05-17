@@ -478,6 +478,63 @@ function FilterCard({
   )
 }
 
+function AnomalyPanelSkeleton(): JSX.Element {
+  return (
+    <div className="space-y-5" aria-hidden="true">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+        <div>
+          <div className="h-4 w-32 rounded skeleton-block" />
+          <div className="mt-3 h-5 w-72 max-w-full rounded skeleton-block" />
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-36 rounded-md skeleton-block" />
+          <div className="h-10 w-36 rounded-md skeleton-block" />
+          <div className="h-10 w-28 rounded-md skeleton-block" />
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        {[0, 1, 2, 3].map((item) => (
+          <div key={item} className="rounded-lg border border-line bg-panel p-4">
+            <div className="h-3 w-24 rounded skeleton-block" />
+            <div className="mt-3 h-7 w-14 rounded skeleton-block" />
+          </div>
+        ))}
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-line">
+        <table className="min-w-full divide-y divide-line text-sm">
+          <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
+            <tr>
+              {['Tipo', 'Transaccion', 'QR BOB', 'Extracto BOB', 'Delta', 'Estado', 'Accion'].map((label, index) => {
+                const right = (index >= 2 && index <= 4) || index === 6
+                return (
+                  <th key={label} className={`px-4 py-3 ${right ? 'text-right' : 'text-left'}`}>
+                    <div className={`h-3 rounded skeleton-block ${right ? 'ml-auto w-16' : 'w-24'}`} />
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line-dark bg-panel-muted">
+            {Array.from({ length: 6 }).map((_, row) => (
+              <tr key={row}>
+                <td className="px-4 py-3"><div className="h-4 w-24 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="h-4 w-36 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-20 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-20 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-16 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="h-4 w-20 rounded skeleton-block" /></td>
+                <td className="px-4 py-3"><div className="ml-auto h-4 w-24 rounded skeleton-block" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 const buildAnomaliesCSV = (rows: AnomalyDTO[]): string => {
   const headers = [
     'Tipo',
