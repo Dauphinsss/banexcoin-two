@@ -21,7 +21,7 @@ test.describe('rebates fullstack', () => {
     await expect(page.locator('tbody tr').first()).toContainText('VictorFernandez452024')
 
     await page.locator('tbody tr').first().click()
-    await expect(page.getByText('Detalle de usuario')).toBeVisible()
+    await expect(page.getByText('Detalle de usuario', { exact: true })).toBeVisible()
     await expect(page.getByText('2 transacciones · período 2025-05')).toBeVisible()
 
     await page.locator('aside table tbody tr').first().click()
