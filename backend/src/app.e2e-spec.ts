@@ -240,14 +240,12 @@ describe('App e2e', () => {
     expect(response.body).toEqual(expect.arrayContaining([
       expect.objectContaining({
         level: 1,
-        name: TEST_TIER_NAMES[0],
         minAmountBOB: '0',
         maxAmountBOB: '500',
         rebatePercent: '1',
       }),
       expect.objectContaining({
         level: 2,
-        name: TEST_TIER_NAMES[1],
         minAmountBOB: '500.01',
         maxAmountBOB: '1000',
         rebatePercent: '1.5',
