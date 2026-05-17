@@ -46,6 +46,7 @@ export interface ParseResult {
   periodWarning: string | null
   qrRows: QRTransactionRaw[]
   extractRows: ExtractRowRaw[]
+  collectionExtractRows: ExtractRowRaw[]
   parseErrors: ParseError[]
   metadata: ParseMetadata
 }
@@ -56,6 +57,7 @@ export interface ParseResult {
  */
 export const SHEET_PAGO_QR = 'Pago QR'
 export const SHEET_EXTRACTO_PAGOS = 'EXTRACTO DE PAGOS '
+export const SHEET_EXTRACTO_COBROS = 'EXTRACTO DE COBROS'
 
 /**
  * Cabeceras esperadas en `Pago QR` (row 1 del Excel).

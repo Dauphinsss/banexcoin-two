@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowRight, ChevronDown, Download, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Download, Search } from 'lucide-react'
 import type { MonthlyRebateDTO, UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
 import { formatBOB, formatPercent, formatRate, formatUSDT } from '../../lib/format'
 import { UserDrawer } from './UserDrawer'
+import { EmptyState } from '../shared/EmptyState'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -17,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn } from '@/lib/utils'
+import { cn, resolveUploadId } from '@/lib/utils'
 
 type SortKey =
   | 'username'
@@ -30,7 +32,11 @@ type SortKey =
 
 type SortDir = 'asc' | 'desc'
 
-export function RebatesTable(): JSX.Element {
+interface RebatesTableProps {
+  uploadId?: string
+}
+
+export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
   const [upload, setUpload] = useState<UploadSummary | null>(null)
   const [rebates, setRebates] = useState<MonthlyRebateDTO[]>([])
   const [query, setQuery] = useState('')
@@ -45,16 +51,19 @@ export function RebatesTable(): JSX.Element {
 
     async function load(): Promise<void> {
       try {
-        const uploads = await api.listUploads()
-        const latest = uploads.find((item) => item.status === 'DONE') ?? null
-        if (!latest) {
+        const resolvedId = resolveUploadId(uploadId)
+        const targetUpload = resolvedId
+          ? await api.getUpload(resolvedId)
+          : (await api.listUploads()).find((item) => item.status === 'DONE') ?? null
+
+        if (!targetUpload || targetUpload.status !== 'DONE') {
           if (!cancelled) setStatus('empty')
           return
         }
 
-        const rows = await api.listRebates(latest.id)
+        const rows = await api.listRebates(targetUpload.id)
         if (!cancelled) {
-          setUpload(latest)
+          setUpload(targetUpload)
           setRebates(rows)
           setStatus('ready')
         }
@@ -67,7 +76,7 @@ export function RebatesTable(): JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [uploadId])
 
   const tiers = useMemo(
     () => ['ALL', ...Array.from(new Set(rebates.map((row) => row.tierName ?? 'Sin nivel')))],
@@ -87,6 +96,19 @@ export function RebatesTable(): JSX.Element {
 
     return [...filtered].sort((a, b) => compare(a, b, sortKey, sortDir))
   }, [rebates, query, tier, sortKey, sortDir])
+
+  // KPIs sobre el conjunto filtrado: dan contexto inmediato sin que el
+  // usuario tenga que sumar mentalmente las filas.
+  const totals = useMemo(() => {
+    const usdt = filteredSorted.reduce((sum, r) => sum + Number(r.rebateUSDT), 0)
+    const spent = filteredSorted.reduce((sum, r) => sum + Number(r.totalSpentBOB), 0)
+    const tx = filteredSorted.reduce((sum, r) => sum + r.transactionCount, 0)
+    return {
+      usdt,
+      users: filteredSorted.length,
+      avgTicket: tx === 0 ? 0 : spent / tx,
+    }
+  }, [filteredSorted])
 
   const toggleSort = (key: SortKey): void => {
     if (sortKey === key) {
@@ -114,12 +136,20 @@ export function RebatesTable(): JSX.Element {
   if (status === 'loading') {
     return <RebatesTableSkeleton />
   }
-  if (status === 'empty') return <EmptyState />
+  if (status === 'empty')
+    return (
+      <EmptyState
+        title="Aún no hay reintegros para mostrar"
+        description="Procesa el Excel mensual de pagos QR y aquí verás la tabla de reintegros por usuario, con filtros y exportación a CSV."
+      />
+    )
   if (status === 'error') {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>No se pudieron cargar los reintegros.</AlertDescription>
-      </Alert>
+      <div aria-live="polite">
+        <Alert variant="destructive">
+          <AlertDescription>No se pudieron cargar los reintegros.</AlertDescription>
+        </Alert>
+      </div>
     )
   }
 
@@ -128,28 +158,35 @@ export function RebatesTable(): JSX.Element {
       <div className="space-y-4">
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-1">
+            <div className="min-w-0 space-y-1">
               <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Último upload procesado
+                Último archivo procesado
               </p>
-              <h2 className="text-base font-semibold">{upload?.filename}</h2>
+              <h2 className="truncate text-base font-semibold">{upload?.filename}</h2>
               <p className="font-mono text-xs text-muted-foreground">
                 {filteredSorted.length} de {rebates.length} reintegros
                 {upload?.period ? ` · período ${upload.period}` : null}
               </p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="relative">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <div className="relative min-w-0 sm:w-64">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="pl-9 sm:w-64"
-                  placeholder="Buscar usuario o cuenta"
+                  type="search"
+                  name="rebate-search"
+                  aria-label="Buscar usuario o cuenta"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="pl-9"
+                  placeholder="Buscar usuario o cuenta…"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </div>
-              <div className="relative">
+              <div className="relative min-w-0 sm:w-44">
                 <select
+                  aria-label="Filtrar por nivel"
+                  name="rebate-tier-filter"
                   className="h-9 w-full appearance-none rounded-md border border-input bg-transparent pl-3 pr-9 text-sm text-foreground shadow-[inset_0_1px_2px_rgba(0,0,0,0.18)] transition-[color,box-shadow,border-color] outline-none hover:border-ring/60 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/25 dark:bg-input/30"
                   value={tier}
                   onChange={(event) => setTier(event.target.value)}
@@ -179,9 +216,29 @@ export function RebatesTable(): JSX.Element {
           </CardContent>
         </Card>
 
+        <div className="grid gap-3 sm:grid-cols-3">
+          <KpiTile
+            label="Reintegro total"
+            value={`${formatUSDT(totals.usdt)}`}
+            unit="USDT"
+            accent="emerald"
+          />
+          <KpiTile
+            label="Usuarios beneficiados"
+            value={totals.users.toLocaleString('es-BO')}
+            accent="primary"
+          />
+          <KpiTile
+            label="Ticket promedio"
+            value={formatBOB(totals.avgTicket)}
+            unit="BOB"
+            accent="violet"
+          />
+        </div>
+
         <Card>
           <div className="max-h-[620px] overflow-auto">
-            <Table>
+            <Table className="min-w-[760px]">
               <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow>
                   <SortHeader label="Usuario" sortKey="username" active={sortKey} dir={sortDir} onSort={toggleSort} />
@@ -191,12 +248,13 @@ export function RebatesTable(): JSX.Element {
                   <SortHeader label="USDT" sortKey="rebateUSDT" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="T/C ⌀" sortKey="avgExchangeRate" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Tx" sortKey="transactionCount" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <TableHead className="w-8" aria-label="Ver detalle" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSorted.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                       No hay reintegros que coincidan con los filtros.
                     </TableCell>
                   </TableRow>
@@ -204,8 +262,17 @@ export function RebatesTable(): JSX.Element {
                   filteredSorted.map((row) => (
                     <TableRow
                       key={row.id}
-                      className="group cursor-pointer"
+                      className="group cursor-pointer transition-colors hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-inset"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Ver detalle de ${row.username}`}
                       onClick={() => setSelected(row)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setSelected(row)
+                        }
+                      }}
                     >
                       <TableCell>
                         <p className="font-medium text-foreground">{row.username}</p>
@@ -233,6 +300,12 @@ export function RebatesTable(): JSX.Element {
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
                         {row.transactionCount}
+                      </TableCell>
+                      <TableCell className="w-8 pr-3 text-right">
+                        <ChevronRight
+                          className="ml-auto size-4 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary"
+                          aria-hidden="true"
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -289,67 +362,125 @@ const SortHeader = ({
   )
 }
 
-function EmptyState(): JSX.Element {
+const KPI_ACCENT = {
+  primary: 'text-primary',
+  emerald: 'text-emerald-400',
+  violet: 'text-violet-400',
+} as const
+
+function KpiTile({
+  label,
+  value,
+  unit,
+  accent,
+}: {
+  label: string
+  value: string
+  unit?: string
+  accent: keyof typeof KPI_ACCENT
+}): JSX.Element {
   return (
-    <Card className="border-dashed">
-      <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-        <p className="text-sm text-muted-foreground">Procesa un Excel para ver la tabla de reintegros.</p>
-        <Button asChild>
-          <a href="/uploads/new">
-            Subir Excel
-            <ArrowRight />
-          </a>
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl border border-border bg-card/60 px-4 py-3.5">
+      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1.5 flex items-baseline gap-1.5">
+        <span
+          className={cn(
+            'font-mono text-xl font-semibold tabular-nums md:text-2xl',
+            KPI_ACCENT[accent],
+          )}
+        >
+          {value}
+        </span>
+        {unit ? (
+          <span className="text-xs font-medium uppercase text-muted-foreground">{unit}</span>
+        ) : null}
+      </p>
+    </div>
   )
 }
 
 function RebatesTableSkeleton(): JSX.Element {
+  const columns = [
+    { key: 'user', align: 'left' as const },
+    { key: 'bob', align: 'right' as const },
+    { key: 'tier', align: 'left' as const },
+    { key: 'pct', align: 'right' as const },
+    { key: 'usdt', align: 'right' as const },
+    { key: 'rate', align: 'right' as const },
+    { key: 'tx', align: 'right' as const },
+    { key: 'chevron', align: 'right' as const },
+  ]
+
   return (
     <div className="space-y-4" aria-hidden="true">
-      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
-        <div>
-          <div className="h-4 w-36 rounded skeleton-block" />
-          <div className="mt-3 h-5 w-72 max-w-full rounded skeleton-block" />
-          <div className="mt-2 h-3 w-32 rounded skeleton-block" />
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="h-10 w-full rounded-md skeleton-block sm:w-56" />
-          <div className="h-10 w-full rounded-md skeleton-block sm:w-44" />
-          <div className="h-10 w-full rounded-md skeleton-block sm:w-32" />
-        </div>
-      </div>
+      {/* Espejo del toolbar Card real */}
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0 space-y-2">
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="h-5 w-64 max-w-full" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <Skeleton className="h-9 w-full rounded-md sm:w-64" />
+            <Skeleton className="h-9 w-full rounded-md sm:w-44" />
+            <Skeleton className="h-9 w-full rounded-md sm:w-36" />
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="overflow-hidden rounded-lg border border-line">
-        <table className="min-w-full divide-y divide-line text-sm">
-          <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
-            <tr>
-              {['Usuario', 'Total BOB', 'Nivel', '%', 'USDT', 'T/C', 'Tx'].map((label, index) => (
-                <th key={label} className={`px-4 py-3 ${index === 0 || index === 2 ? 'text-left' : 'text-right'}`}>
-                  <div className={`h-3 rounded skeleton-block ${index === 0 ? 'w-20' : 'ml-auto w-14'}`} />
-                </th>
+      {/* Espejo de la tabla Card real */}
+      <Card>
+        <div className="max-h-[620px] overflow-auto">
+          <Table className="min-w-[760px]">
+            <TableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow>
+                {columns.map((col) => (
+                  <TableHead
+                    key={col.key}
+                    className={col.align === 'right' ? 'text-right' : 'text-left'}
+                  >
+                    <Skeleton
+                      className={cn('h-3 w-14', col.align === 'right' && 'ml-auto')}
+                    />
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 8 }).map((_, row) => (
+                <TableRow key={row}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="mt-2 h-3 w-20" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-6 w-20 rounded-md" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-12" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-8" />
+                  </TableCell>
+                  <TableCell className="w-8" />
+                </TableRow>
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line-dark bg-panel-muted">
-            {Array.from({ length: 7 }).map((_, row) => (
-              <tr key={row}>
-                <td className="px-4 py-3">
-                  <div className="h-4 w-36 rounded skeleton-block" />
-                  <div className="mt-2 h-3 w-20 rounded skeleton-block" />
-                </td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-24 rounded skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="h-6 w-20 rounded-md skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-12 rounded skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-24 rounded skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-16 rounded skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-8 rounded skeleton-block" /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   )
 }

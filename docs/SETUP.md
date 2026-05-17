@@ -31,7 +31,12 @@ cp frontend/.env.example frontend/.env
 
 Después, configurar `DATABASE_URL` con una URL PostgreSQL válida.
 
-`GEMINI_API_KEY` es opcional. Si no está configurada, el backend responde con fallback controlado en la explicación de anomalías.
+`CEREBRAS_API_KEY` es opcional. Si no está configurada, el backend responde con fallback controlado en la explicación de anomalías.
+
+`UPLOAD_DUPLICATE_MODE` controla qué pasa si subes el mismo archivo otra vez:
+
+- `prod`: bloquea la recarga y conserva el resultado existente.
+- `test`: permite reprocesarlo si confirmas la acción desde la UI.
 
 ## Instalar Y Preparar
 
@@ -68,7 +73,7 @@ Servicios esperados:
 - Reportes: Excel, BanexTransfer y balance sheet.
 - Editor de niveles con validación e historial.
 - Simulador what-if.
-- Explicación opcional de anomalías con Gemini si existe `GEMINI_API_KEY`.
+- Explicación opcional de anomalías con Cerebras si existe `CEREBRAS_API_KEY`.
 
 ## Archivos De Referencia
 

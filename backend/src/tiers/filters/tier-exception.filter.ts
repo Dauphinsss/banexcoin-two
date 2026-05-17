@@ -1,13 +1,24 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpStatus, Logger } from '@nestjs/common'
 import type { Response } from 'express'
-import { TierInUseError, TierNotFoundError, TierValidationFailedError } from '../errors/tier.errors'
+import {
+  TierInUseError,
+  TierNotFoundError,
+  TierPeriodLockedError,
+  TierPeriodRangeError,
+  TierValidationFailedError,
+} from '../errors/tier.errors'
 
-@Catch(TierNotFoundError, TierValidationFailedError, TierInUseError)
+@Catch(TierNotFoundError, TierValidationFailedError, TierInUseError, TierPeriodLockedError, TierPeriodRangeError)
 export class TierExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(TierExceptionFilter.name)
 
   catch(
-    exception: TierNotFoundError | TierValidationFailedError | TierInUseError,
+    exception:
+      | TierNotFoundError
+      | TierValidationFailedError
+      | TierInUseError
+      | TierPeriodLockedError
+      | TierPeriodRangeError,
     host: ArgumentsHost,
   ): void {
     const response = host.switchToHttp().getResponse<Response>()
@@ -35,6 +46,26 @@ export class TierExceptionFilter implements ExceptionFilter {
         error: 'TIER_IN_USE',
         message: exception.message,
         rebateCount: exception.rebateCount,
+      })
+      return
+    }
+
+    if (exception instanceof TierPeriodLockedError) {
+      response.status(HttpStatus.CONFLICT).json({
+        error: 'TIER_PERIOD_LOCKED',
+        message: exception.message,
+        period: exception.period,
+        uploadCount: exception.uploadCount,
+      })
+      return
+    }
+
+    if (exception instanceof TierPeriodRangeError) {
+      response.status(HttpStatus.UNPROCESSABLE_ENTITY).json({
+        error: 'TIER_PERIOD_RANGE_INVALID',
+        message: exception.message,
+        validFromPeriod: exception.validFromPeriod,
+        validToPeriod: exception.validToPeriod,
       })
     }
   }

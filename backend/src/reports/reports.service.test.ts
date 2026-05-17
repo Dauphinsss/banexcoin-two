@@ -52,6 +52,22 @@ describe('Report services', () => {
             },
           ],
           parseErrors: [],
+          extractEntries: [
+            {
+              extractKind: 'PAYMENT',
+              sourceRowNumber: 2,
+              transactionId: '207681530',
+              transactedAt: new Date('2025-05-02T09:02:15.000Z'),
+              amountBOB: decimal('5.00'),
+            },
+            {
+              extractKind: 'COLLECTION',
+              sourceRowNumber: 3,
+              transactionId: '307681530',
+              transactedAt: new Date('2025-05-02T10:02:15.000Z'),
+              amountBOB: decimal('7.50'),
+            },
+          ],
         })),
       },
     }
@@ -65,9 +81,14 @@ describe('Report services', () => {
       'Resumen por nivel',
       'Anomalías',
       'Errores de parseo',
+      'Extracto de Pagos',
+      'Extracto de Cobros',
       'Trazabilidad',
     ])
     expect(workbook.getWorksheet('Anomalías')?.getCell('B2').value).toBe("'=tx-risk")
+    expect(workbook.getWorksheet('Resumen por nivel')).toBeDefined()
+    expect(workbook.getWorksheet('Extracto de Pagos')?.getCell('E2').value).toBe(-5)
+    expect(workbook.getWorksheet('Extracto de Cobros')?.getCell('E2').value).toBe(7.5)
   })
 
   it('genera archivo BanexTransfer solo con reintegros elegibles', async () => {

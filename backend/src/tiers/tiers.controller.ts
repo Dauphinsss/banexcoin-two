@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common'
 import { TiersService } from './tiers.service'
 import { CreateTierDto } from './dto/create-tier.dto'
+import { PublishTierConfigDto } from './dto/publish-tier-config.dto'
 import { UpdateTierDto } from './dto/update-tier.dto'
 import { ValidateTiersDto } from './dto/validate-tiers.dto'
 import { TierExceptionFilter } from './filters/tier-exception.filter'
@@ -39,6 +40,11 @@ export class TiersController {
   @Post('validate')
   validate(@Body() dto: ValidateTiersDto) {
     return this.tiers.validateOnly(dto)
+  }
+
+  @Post('publish')
+  async publish(@Body() dto: PublishTierConfigDto) {
+    return this.tiers.publishConfiguration(dto)
   }
 
   @Patch(':id')

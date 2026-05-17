@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import {
   CheckCircle2,
   CircleAlert,
   Download,
-  Loader2,
   Sparkles,
   X,
 } from 'lucide-react'
@@ -22,7 +21,205 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn } from '@/lib/utils'
+import { cn, resolveUploadId } from '@/lib/utils'
+import { EmptyState } from '../shared/EmptyState'
+
+/* ── Estilos para el panel de thinking ─────────────────────────────── */
+const THINKING_STYLES = `
+@keyframes ai-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+@keyframes ai-thought-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ai-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes ai-orbit {
+  from { transform: rotate(0deg) translateX(10px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(10px) rotate(-360deg); }
+}
+@keyframes ai-pulse-ring {
+  0%   { transform: scale(1);   opacity: .6; }
+  70%  { transform: scale(1.9); opacity: 0; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+.ai-cursor {
+  display: inline-block;
+  width: 2px; height: 0.9em;
+  background: currentColor;
+  vertical-align: text-bottom;
+  margin-left: 1px;
+  animation: ai-blink .9s step-end infinite;
+}
+.ai-thought {
+  animation: ai-thought-in 0.45s cubic-bezier(0.16,1,0.3,1) both;
+}
+.ai-shimmer-line {
+  background: linear-gradient(
+    90deg,
+    oklch(0.40 0.02 280 / .5) 0%,
+    oklch(0.60 0.05 220 / .9) 40%,
+    oklch(0.40 0.02 280 / .5) 100%
+  );
+  background-size: 200% auto;
+  animation: ai-shimmer 2s linear infinite;
+}
+.ai-orbit-dot {
+  animation: ai-orbit 2.4s linear infinite;
+}
+.ai-pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid oklch(0.65 0.21 220 / .5);
+  animation: ai-pulse-ring 2s cubic-bezier(0.215,0.61,0.355,1) infinite;
+}
+`
+
+const THINKING_STEPS = [
+  'Leyendo anomalías detectadas…',
+  'Clasificando patrones de error…',
+  'Correlacionando montos y tipos de cambio…',
+  'Evaluando impacto operacional…',
+  'Redactando explicación detallada…',
+]
+
+function ThinkingPanel(): JSX.Element {
+  const [visibleSteps, setVisibleSteps] = useState<number[]>([0])
+  const [typedText, setTypedText] = useState('')
+  const currentStep = visibleSteps[visibleSteps.length - 1] ?? 0
+  const fullText = THINKING_STEPS[currentStep] ?? ''
+
+  /* Efecto de typing para el step actual */
+  useEffect(() => {
+    setTypedText('')
+    let i = 0
+    const iv = setInterval(() => {
+      i++
+      setTypedText(fullText.slice(0, i))
+      if (i >= fullText.length) clearInterval(iv)
+    }, 28)
+    return () => clearInterval(iv)
+  }, [fullText])
+
+  /* Avanza al siguiente step cada ~1.8 s */
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setVisibleSteps((prev) => {
+        const next = (prev[prev.length - 1] ?? -1) + 1
+        if (next >= THINKING_STEPS.length) return prev
+        return [...prev, next]
+      })
+    }, 1800)
+    return () => clearInterval(iv)
+  }, [])
+
+  return (
+    <>
+      <style>{THINKING_STYLES}</style>
+      <div
+        className="relative overflow-hidden rounded-xl border border-sky-500/20 bg-sky-500/5 p-5"
+        aria-live="polite"
+        aria-label="La IA está pensando"
+      >
+        {/* Fondo de gradiente animado */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-30"
+          style={{
+            background:
+              'radial-gradient(ellipse 60% 50% at 20% 50%, oklch(0.55 0.18 220 / .18), transparent), radial-gradient(ellipse 50% 60% at 80% 40%, oklch(0.50 0.20 280 / .14), transparent)',
+          }}
+        />
+
+        {/* Encabezado */}
+        <div className="relative flex items-center gap-3">
+          {/* Ícono con anillos */}
+          <div className="relative flex items-center justify-center">
+            <div className="ai-pulse-ring relative flex size-9 items-center justify-center rounded-full bg-sky-500/20">
+              <Sparkles className="size-4 text-sky-300" />
+            </div>
+            <span
+              className="ai-orbit-dot absolute size-1.5 rounded-full bg-sky-400/80"
+              style={{ transformOrigin: '50% 50%' }}
+            />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-sky-400">
+              IA pensando
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Analizando {THINKING_STEPS.length} dimensiones…
+            </p>
+          </div>
+
+          {/* Puntos pulsantes tipo ellipsis */}
+          <div className="ml-auto flex items-center gap-1">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="size-1.5 rounded-full bg-sky-400"
+                style={{ animation: `ai-blink 1.2s ${i * 0.2}s ease-in-out infinite` }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Lista de pasos */}
+        <div className="relative mt-4 space-y-2">
+          {visibleSteps.map((stepIdx, i) => {
+            const isLast = i === visibleSteps.length - 1
+            const text = isLast ? typedText : THINKING_STEPS[stepIdx]
+            return (
+              <div
+                key={stepIdx}
+                className={cn('ai-thought flex items-start gap-2.5')}
+                style={{ animationDelay: `${i * 50}ms` }}
+              >
+                <span
+                  className={cn(
+                    'mt-1 size-1.5 shrink-0 rounded-full',
+                    isLast ? 'bg-sky-400' : 'bg-sky-600/60',
+                  )}
+                />
+                <p
+                  className={cn(
+                    'text-sm leading-relaxed',
+                    isLast ? 'text-sky-200' : 'text-muted-foreground',
+                  )}
+                >
+                  {text}
+                  {isLast && typedText.length < fullText.length && (
+                    <span className="ai-cursor" />
+                  )}
+                </p>
+                {!isLast && (
+                  <span className="ml-auto shrink-0 text-[10px] text-emerald-500">✓</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Barras shimmer decorativas */}
+        <div className="relative mt-5 space-y-2">
+          {[70, 50, 85].map((w, i) => (
+            <div
+              key={i}
+              className="ai-shimmer-line h-1.5 rounded-full"
+              style={{ width: `${w}%`, animationDelay: `${i * 0.3}s` }}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
 
 const labels: Record<AnomalyDTO['type'], string> = {
   NO_EXTRACT: 'Sin extracto',
@@ -38,7 +235,11 @@ const TYPE_TONE: Record<AnomalyDTO['type'], string> = {
   INVALID_RATE: 'bg-violet-500/10 text-violet-300 ring-violet-500/30',
 }
 
-export function AnomalyPanel(): JSX.Element {
+interface AnomalyPanelProps {
+  uploadId?: string
+}
+
+export function AnomalyPanel({ uploadId }: AnomalyPanelProps): JSX.Element {
   const [upload, setUpload] = useState<UploadSummary | null>(null)
   const [stats, setStats] = useState<ReconciliationStats | null>(null)
   const [anomalies, setAnomalies] = useState<AnomalyDTO[]>([])
@@ -48,29 +249,33 @@ export function AnomalyPanel(): JSX.Element {
   const [resolveNote, setResolveNote] = useState('')
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [aiText, setAiText] = useState<string>('')
-  const [aiGenerated, setAiGenerated] = useState(false)
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(
     null,
   )
+  const pendingAiTextRef = useRef('')
+  const flushFrameRef = useRef<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
     async function load(): Promise<void> {
       try {
-        const uploads = await api.listUploads()
-        const latest = uploads.find((item) => item.status === 'DONE') ?? null
-        if (!latest) {
+        const resolvedId = resolveUploadId(uploadId)
+        const targetUpload = resolvedId
+          ? await api.getUpload(resolvedId)
+          : (await api.listUploads()).find((item) => item.status === 'DONE') ?? null
+
+        if (!targetUpload || targetUpload.status !== 'DONE') {
           if (!cancelled) setStatus('empty')
           return
         }
 
         const [nextStats, rows] = await Promise.all([
-          api.reconciliationStats(latest.id),
-          api.listAnomalies(latest.id),
+          api.reconciliationStats(targetUpload.id),
+          api.listAnomalies(targetUpload.id),
         ])
         if (!cancelled) {
-          setUpload(latest)
+          setUpload(targetUpload)
           setStats(nextStats)
           setAnomalies(rows)
           setStatus('ready')
@@ -83,6 +288,12 @@ export function AnomalyPanel(): JSX.Element {
     void load()
     return () => {
       cancelled = true
+    }
+  }, [uploadId])
+
+  useEffect(() => {
+    return () => {
+      cancelFlushFrame()
     }
   }, [])
 
@@ -111,15 +322,24 @@ export function AnomalyPanel(): JSX.Element {
 
   const handleExplain = async (): Promise<void> => {
     if (!upload) return
+
+    pendingAiTextRef.current = ''
+    cancelFlushFrame()
     setAiStatus('loading')
     setAiText('')
-    setAiGenerated(false)
+
     try {
-      const result = await api.explainAnomalies(upload.id)
-      setAiText(result.explanation)
-      setAiGenerated(result.available)
+      await api.explainAnomaliesStream(upload.id, (chunk) => {
+        pendingAiTextRef.current += chunk
+        scheduleFlush()
+      })
+
+      flushPendingText()
       setAiStatus('done')
     } catch (error) {
+      pendingAiTextRef.current = ''
+      cancelFlushFrame()
+
       const message =
         error instanceof ApiCallError
           ? error.payload.message
@@ -150,11 +370,10 @@ export function AnomalyPanel(): JSX.Element {
   }
   if (status === 'empty') {
     return (
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          Procesa un Excel para ver anomalías.
-        </CardContent>
-      </Card>
+      <EmptyState
+        title="Aún no hay conciliación que revisar"
+        description="Procesa el Excel mensual y aquí verás las anomalías detectadas entre los pagos QR y el extracto bancario, con explicación por IA."
+      />
     )
   }
   if (status === 'error') {
@@ -174,7 +393,7 @@ export function AnomalyPanel(): JSX.Element {
         <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Upload conciliado
+              Archivo conciliado
             </p>
             <h2 className="text-base font-semibold">{upload?.filename}</h2>
             {upload?.period ? (
@@ -194,17 +413,8 @@ export function AnomalyPanel(): JSX.Element {
               disabled={aiStatus === 'loading' || totalAnomalies === 0}
               className="border-sky-500/40 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20 hover:text-sky-100"
             >
-              {aiStatus === 'loading' ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  Analizando…
-                </>
-              ) : (
-                <>
-                  <Sparkles />
-                  Explicar con IA
-                </>
-              )}
+              <Sparkles />
+              Explicar con IA
             </Button>
             <Button type="button" variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>
               <Download />
@@ -214,8 +424,11 @@ export function AnomalyPanel(): JSX.Element {
         </CardContent>
       </Card>
 
+      {aiStatus === 'loading' ? <ThinkingPanel /> : null}
+
       {aiStatus === 'done' || aiStatus === 'error' ? (
         <Alert
+          aria-live="polite"
           className={cn(
             'relative',
             aiStatus === 'error'
@@ -225,18 +438,18 @@ export function AnomalyPanel(): JSX.Element {
         >
           <Sparkles />
           <AlertTitle>
-            {aiStatus === 'error'
-              ? 'IA no disponible'
-              : aiGenerated
-                ? 'Explicación generada por IA'
-                : 'Resumen automático'}
+            {aiStatus === 'error' ? 'IA no disponible' : 'Análisis de anomalías'}
           </AlertTitle>
-          <AlertDescription className="leading-relaxed">{aiText}</AlertDescription>
+          <AlertDescription className="whitespace-pre-wrap leading-relaxed">
+            {aiText}
+          </AlertDescription>
           <button
             type="button"
             onClick={() => {
+              pendingAiTextRef.current = ''
+              cancelFlushFrame()
               setAiStatus('idle')
-              setAiGenerated(false)
+              setAiText('')
             }}
             className="absolute right-3 top-3 text-current opacity-60 transition-opacity hover:opacity-100"
             aria-label="Cerrar"
@@ -248,6 +461,7 @@ export function AnomalyPanel(): JSX.Element {
 
       {feedback ? (
         <Alert
+          aria-live="polite"
           className={cn(
             'relative',
             feedback.kind === 'error'
@@ -268,7 +482,14 @@ export function AnomalyPanel(): JSX.Element {
         </Alert>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="flex items-center gap-3">
+        <h3 className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Filtra por tipo de anomalía
+        </h3>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" role="group" aria-label="Filtros de anomalías">
         <FilterCard label="Total" value={totalAnomalies} active={type === 'ALL'} onClick={() => setType('ALL')} accent="primary" />
         <FilterCard label="Sin extracto" value={stats?.noExtract ?? 0} active={type === 'NO_EXTRACT'} onClick={() => setType('NO_EXTRACT')} accent="red" />
         <FilterCard label="Sin QR" value={stats?.noQr ?? 0} active={type === 'NO_QR'} onClick={() => setType('NO_QR')} accent="amber" />
@@ -277,7 +498,7 @@ export function AnomalyPanel(): JSX.Element {
 
       <Card>
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[860px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Tipo</TableHead>
@@ -351,10 +572,13 @@ export function AnomalyPanel(): JSX.Element {
                         <div className="flex flex-col items-end gap-2">
                           <Input
                             autoFocus
+                            name="resolve-note"
+                            aria-label="Motivo de resolución (opcional)"
+                            autoComplete="off"
                             value={resolveNote}
                             onChange={(e) => setResolveNote(e.target.value)}
-                            placeholder="Motivo (opcional)"
-                            className="h-8 w-48 text-xs"
+                            placeholder="Motivo (opcional)…"
+                            className="h-8 w-40 text-xs sm:w-48"
                           />
                           <div className="flex gap-1">
                             <Button
@@ -401,8 +625,32 @@ export function AnomalyPanel(): JSX.Element {
           </Table>
         </div>
       </Card>
-    </div>
+    </div >
   )
+
+  function scheduleFlush(): void {
+    if (flushFrameRef.current !== null) return
+
+    flushFrameRef.current = window.requestAnimationFrame(() => {
+      flushFrameRef.current = null
+      flushPendingText()
+    })
+  }
+
+  function flushPendingText(): void {
+    if (pendingAiTextRef.current === '') return
+
+    const nextText = pendingAiTextRef.current
+    pendingAiTextRef.current = ''
+    setAiText((prev) => prev + nextText)
+  }
+
+  function cancelFlushFrame(): void {
+    if (flushFrameRef.current === null) return
+
+    window.cancelAnimationFrame(flushFrameRef.current)
+    flushFrameRef.current = null
+  }
 }
 
 type Accent = 'primary' | 'red' | 'amber' | 'orange'
@@ -452,12 +700,14 @@ function FilterCard({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
+      title={`Filtrar: ${label}`}
       className={cn(
-        'group relative overflow-hidden rounded-lg border bg-card/40 p-4 text-left transition-all',
+        'group relative overflow-hidden rounded-lg border bg-card/40 p-4 text-left transition-[border-color,background-color,box-shadow]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         active
-          ? `${styles.activeBorder} ${styles.activeBg} shadow-md`
-          : 'border-border hover:border-border/70 hover:bg-accent/40',
+          ? `${styles.activeBorder} ${styles.activeBg} shadow-md ring-1 ${styles.activeBorder}`
+          : 'border-border hover:-translate-y-0.5 hover:border-border/70 hover:bg-accent/40 hover:shadow-sm',
       )}
     >
       <div
@@ -467,7 +717,21 @@ function FilterCard({
           active ? 'opacity-100' : 'opacity-0 group-hover:opacity-60',
         )}
       />
-      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {label}
+        </p>
+        {/* Indicador radio: deja claro que es un filtro seleccionable */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'mt-0.5 grid size-3.5 shrink-0 place-items-center rounded-full border transition-colors',
+            active ? `${styles.activeBorder} ${styles.activeBg}` : 'border-border',
+          )}
+        >
+          {active ? <span className={cn('size-1.5 rounded-full', styles.bar)} /> : null}
+        </span>
+      </div>
       <p
         className={cn(
           'mt-2 font-mono text-2xl font-semibold tabular-nums',
@@ -495,7 +759,7 @@ function AnomalyPanelSkeleton(): JSX.Element {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[0, 1, 2, 3].map((item) => (
           <div key={item} className="rounded-lg border border-line bg-panel p-4">
             <div className="h-3 w-24 rounded skeleton-block" />
@@ -504,8 +768,8 @@ function AnomalyPanelSkeleton(): JSX.Element {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line">
-        <table className="min-w-full divide-y divide-line text-sm">
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="min-w-[860px] divide-y divide-line text-sm">
           <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
             <tr>
               {['Tipo', 'Transaccion', 'QR BOB', 'Extracto BOB', 'Delta', 'Estado', 'Accion'].map((label, index) => {

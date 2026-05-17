@@ -26,6 +26,12 @@ export interface CreateTierPayload extends TierInput {
 
 export type UpdateTierPayload = Partial<CreateTierPayload>
 
+export interface PublishTierConfigPayload {
+  validFromPeriod: string
+  validToPeriod?: string | null
+  tiers: TierInput[]
+}
+
 const API_BASE = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
 export interface ApiError {
@@ -56,22 +62,78 @@ const handleResponse = async <T>(res: Response): Promise<T> => {
   throw new ApiCallError(res.status, payload)
 }
 
+const readErrorResponse = async (res: Response): Promise<never> => {
+  let payload: ApiError
+  try {
+    payload = (await res.json()) as ApiError
+  } catch {
+    payload = { error: 'UNKNOWN', message: res.statusText || 'Error desconocido' }
+  }
+
+  throw new ApiCallError(res.status, payload)
+}
+
 export const api = {
   async createUpload(
     file: File,
     period?: string,
     allowDuplicate = false,
+    onProgress?: (percent: number) => void,
   ): Promise<CreateUploadResponse> {
     const formData = new FormData()
     formData.append('file', file)
     if (period) formData.append('period', period)
     if (allowDuplicate) formData.append('allowDuplicate', 'true')
 
-    const res = await fetch(`${API_BASE}/api/uploads`, {
-      method: 'POST',
-      body: formData,
+    // Usamos XMLHttpRequest (no fetch) porque solo XHR expone el progreso
+    // real de subida del archivo vía `upload.onprogress`.
+    return new Promise<CreateUploadResponse>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_BASE}/api/uploads`)
+      xhr.responseType = 'text'
+
+      xhr.upload.onprogress = (event) => {
+        if (!onProgress || !event.lengthComputable) return
+        const percent = Math.round((event.loaded / event.total) * 100)
+        onProgress(Math.min(99, percent))
+      }
+
+      const fail = (payload: ApiError, status = 0): void => {
+        reject(new ApiCallError(status, payload))
+      }
+
+      xhr.onload = () => {
+        let parsed: unknown
+        try {
+          parsed = xhr.responseText ? JSON.parse(xhr.responseText) : {}
+        } catch {
+          fail({ error: 'UNKNOWN', message: 'Respuesta inválida del servidor.' }, xhr.status)
+          return
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress?.(100)
+          resolve(parsed as CreateUploadResponse)
+        } else {
+          const payload = (parsed ?? {}) as Partial<ApiError>
+          fail(
+            {
+              ...payload,
+              error: payload.error ?? 'UNKNOWN',
+              message: payload.message ?? xhr.statusText ?? 'Error desconocido',
+            },
+            xhr.status,
+          )
+        }
+      }
+
+      xhr.onerror = () =>
+        fail({ error: 'NETWORK', message: 'No se pudo conectar con el servidor.' })
+      xhr.ontimeout = () =>
+        fail({ error: 'TIMEOUT', message: 'La subida tardó demasiado. Inténtalo de nuevo.' })
+
+      xhr.send(formData)
     })
-    return handleResponse<CreateUploadResponse>(res)
   },
 
   async getUpload(uploadId: string): Promise<UploadSummary> {
@@ -119,6 +181,15 @@ export const api = {
     return handleResponse<CashbackTierDTO>(res)
   },
 
+  async publishTierConfiguration(payload: PublishTierConfigPayload): Promise<CashbackTierDTO[]> {
+    const res = await fetch(`${API_BASE}/api/tiers/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse<CashbackTierDTO[]>(res)
+  },
+
   async updateTier(id: string, payload: UpdateTierPayload): Promise<CashbackTierDTO> {
     const res = await fetch(`${API_BASE}/api/tiers/${encodeURIComponent(id)}`, {
       method: 'PATCH',
@@ -158,6 +229,45 @@ export const api = {
       body: JSON.stringify({ uploadId }),
     })
     return handleResponse(res)
+  },
+
+  async explainAnomaliesStream(uploadId: string, onChunk: (chunk: string) => void): Promise<string> {
+    const res = await fetch(`${API_BASE}/api/reconciliation/explain/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadId }),
+    })
+
+    if (!res.ok) {
+      return readErrorResponse(res)
+    }
+
+    if (!res.body) {
+      throw new Error('El navegador no soporta streaming para esta respuesta.')
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let fullText = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value, { stream: true })
+      if (chunk === '') continue
+
+      fullText += chunk
+      onChunk(chunk)
+    }
+
+    const tail = decoder.decode()
+    if (tail !== '') {
+      fullText += tail
+      onChunk(tail)
+    }
+
+    return fullText
   },
 
   async listAnomalies(uploadId: string): Promise<AnomalyDTO[]> {

@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css'
+import { OnboardingTour } from '../islands/shared/OnboardingTour'
 
 interface Props {
   title: string
@@ -49,7 +50,7 @@ const navItems: Array<{ id: NavId; href: string; label: string; hint: string; ic
     id: 'simulator',
     href: '/simulator',
     label: 'Simulador',
-    hint: 'Impacto what-if',
+    hint: 'Impacto ',
     icon: '<rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/>',
   },
 ]
@@ -57,10 +58,11 @@ const navItems: Array<{ id: NavId; href: string; label: string; hint: string; ic
 const currentItem = navItems.find((item) => item.id === activePage)
 ---
 
-<html lang="es" class="dark">
+<html lang="es" class="dark" style="color-scheme: dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171724" />
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/png" href="/icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -87,7 +89,13 @@ const currentItem = navItems.find((item) => item.id === activePage)
     <meta name="twitter:image" content="https://example.com/og-image.png" />
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased font-sans">
-    <div class="page-shell relative flex min-h-screen">
+    <a
+      href="#main-content"
+      class="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:text-primary-foreground focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
+      Saltar al contenido
+    </a>
+    <div class="page-shell relative flex h-screen overflow-hidden">
       {/* Decorative gradient glow */}
       <div
         aria-hidden="true"
@@ -101,26 +109,35 @@ const currentItem = navItems.find((item) => item.id === activePage)
             <img
               src="/logo.png"
               alt="Banexcoin · BanexReintegra"
+              width="140"
+              height="20"
               class="h-5 w-auto object-contain"
             />
           </a>
         </div>
 
-        <nav class="flex-1 space-y-1 p-3" aria-label="Navegación principal">
+        <nav class="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Navegación principal">
           {navItems.map((item) => {
             const isActive = item.id === activePage
             return (
               <a
                 href={item.href}
+                id={`nav-${item.id}`}
                 aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 class:list={[
-                  'nav-link group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
+                  'nav-link group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
                 ]}
               >
+                {isActive ? (
+                  <span
+                    aria-hidden="true"
+                    class="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-primary"
+                  />
+                ) : null}
                 <span
                   class:list={[
                     'nav-icon flex size-8 shrink-0 items-center justify-center rounded-md transition-colors',
@@ -139,6 +156,7 @@ const currentItem = navItems.find((item) => item.id === activePage)
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
+                    aria-hidden="true"
                     set:html={item.icon}
                   />
                 </span>
@@ -146,7 +164,6 @@ const currentItem = navItems.find((item) => item.id === activePage)
                   <span class="block font-medium">{item.label}</span>
                   <span class="block text-[11px] text-muted-foreground">{item.hint}</span>
                 </span>
-                {isActive ? <span class="size-1.5 rounded-full bg-primary shadow-[0_0_0_4px_oklch(0.665_0.205_35/0.18)]" /> : null}
               </a>
             )
           })}
@@ -155,26 +172,17 @@ const currentItem = navItems.find((item) => item.id === activePage)
       </aside>
 
       {/* Main */}
-      <main class="flex-1 min-w-0 flex flex-col">
+      <main id="main-content" class="flex-1 min-w-0 flex flex-col overflow-y-auto overscroll-contain">
         <header class="app-header sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl md:px-8">
           <div class="flex-1 min-w-0">
             <p class="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{currentItem?.hint ?? 'Operación'}</p>
             <h1 class="truncate text-lg font-semibold tracking-tight md:text-xl">{title}</h1>
           </div>
-          <a
-            href="/uploads/new"
-            class="banex-primary-button hidden md:inline-flex items-center gap-2 rounded-full px-5 h-9 text-sm font-semibold text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14" />
-              <path d="M12 5v14" />
-            </svg>
-            Nuevo upload
-          </a>
+         
         </header>
 
         {/* Mobile nav */}
-        <nav class="mobile-nav md:hidden flex gap-2 overflow-x-auto border-b border-border bg-background/60 px-4 py-3 backdrop-blur-xl" aria-label="Navegación móvil">
+        <nav class="mobile-nav md:hidden flex gap-2 overflow-x-auto overscroll-x-contain border-b border-border bg-background/60 px-4 py-3 backdrop-blur-xl" aria-label="Navegación móvil">
           {navItems.map((item) => {
             const isActive = item.id === activePage
             return (
@@ -195,11 +203,13 @@ const currentItem = navItems.find((item) => item.id === activePage)
         </nav>
 
         <section class="page-content flex-1 px-4 py-6 md:px-8 md:py-8">
-          <div class="page-frame mx-auto w-full max-w-7xl">
+          <div class="page-frame w-full min-w-0">
             <slot />
           </div>
         </section>
       </main>
     </div>
+
+    <OnboardingTour client:only="react" />
   </body>
 </html>

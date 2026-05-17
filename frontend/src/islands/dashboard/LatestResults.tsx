@@ -6,17 +6,16 @@ import type {
   UploadSummary,
 } from '@banex/types'
 import {
-  ArrowRight,
   ArrowUpRight,
   CircleAlert,
   CircleDollarSign,
   FileSpreadsheet,
-  Inbox,
   ShieldAlert,
   Users,
 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useCounter } from '../../lib/use-counter'
+import { EmptyState } from '../shared/EmptyState'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const money = (value: string | number, fractionDigits = 2) =>
   Number(value).toLocaleString('es-BO', {
@@ -158,35 +158,22 @@ export function LatestResults() {
 
   if (status === 'empty') {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center gap-4 py-14 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
-            <Inbox className="size-7" />
-          </div>
-          <div className="space-y-2">
-            <p className="text-base font-semibold">Todavía no hay uploads procesados</p>
-            <p className="mx-auto max-w-md text-sm text-muted-foreground">
-              Sube el Excel mensual para activar el cálculo de reintegros, conciliación y descargas operativas.
-            </p>
-          </div>
-          <Button asChild>
-            <a href="/uploads/new">
-              Subir Excel
-              <ArrowRight />
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
+      <EmptyState
+        title="Todavía no hay archivos procesados"
+        description="Sube el Excel mensual de pagos QR para activar el cálculo de reintegros, la conciliación bancaria y las descargas operativas."
+      />
     )
   }
 
   if (status === 'error') {
     return (
-      <Alert variant="destructive">
-        <CircleAlert />
-        <AlertTitle>No se pudieron cargar los resultados</AlertTitle>
-        <AlertDescription>Revisa la conexión con la API o inténtalo nuevamente.</AlertDescription>
-      </Alert>
+      <div aria-live="polite">
+        <Alert variant="destructive">
+          <CircleAlert />
+          <AlertTitle>No se pudieron cargar los resultados</AlertTitle>
+          <AlertDescription>Revisa la conexión con la API o inténtalo nuevamente.</AlertDescription>
+        </Alert>
+      </div>
     )
   }
 
@@ -311,15 +298,31 @@ export function LatestResults() {
               <Progress value={reconciliationRate} className="h-2" />
             </div>
             <div className="flex flex-wrap gap-2 pt-1">
-              <Button asChild variant="secondary" size="sm">
-                <a href={`/uploads/${state.upload?.id}`}>
-                  Ver resultados
-                  <ArrowUpRight />
-                </a>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <a href="/reconciliation">Ir a conciliación</a>
-              </Button>
+              <TooltipProvider delayDuration={120}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button asChild variant="secondary" size="sm">
+                      <a href={`/uploads/result?id=${encodeURIComponent(state.upload?.id ?? '')}`}>
+                        Ver resultados
+                        <ArrowUpRight />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    Abrir detalle completo del archivo procesado
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button asChild variant="ghost" size="sm">
+                      <a href="/reconciliation">Ir a conciliación</a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    Revisar anomalías y estado del cruce bancario
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </CardContent>
         </Card>
@@ -414,7 +417,10 @@ function LatestResultsSkeleton() {
           </CardHeader>
           <CardContent className="space-y-3">
             {Array.from({ length: 5 }).map((_, idx) => (
-              <div key={idx} className="grid grid-cols-[16px_64px_1fr_56px] items-center gap-3">
+              <div
+                key={idx}
+                className="grid grid-cols-[12px_minmax(48px,64px)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[16px_64px_1fr_56px] sm:gap-3"
+              >
                 <Skeleton className="size-2.5 rounded-full" />
                 <Skeleton className="h-4 w-14" />
                 <Skeleton className="h-1.5 w-full rounded-full" />
@@ -544,11 +550,11 @@ function KpiCard({
       <div className={`pointer-events-none absolute -left-10 top-0 size-28 rounded-full blur-3xl ${styles.glow}`} />
       <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${styles.tint} to-transparent opacity-80`} />
       {spark && spark.length > 1 ? (
-        <div className="pointer-events-none absolute right-4 top-3 opacity-75 transition-opacity group-hover:opacity-100">
+        <div className="pointer-events-none absolute right-4 top-3 hidden opacity-75 transition-opacity group-hover:opacity-100 sm:block">
           <Sparkline data={spark} stroke={styles.stroke} />
         </div>
       ) : null}
-      <CardContent className="relative flex min-h-[176px] flex-col justify-between gap-5 px-7 py-7 pl-9">
+      <CardContent className="relative flex min-h-[176px] flex-col justify-between gap-5 px-5 py-6 pl-7 sm:px-7 sm:py-7 sm:pl-9">
         <div className="flex items-center justify-between">
           <p className="max-w-[13rem] text-xs font-semibold uppercase leading-5 text-muted-foreground">
             {label}
@@ -561,7 +567,7 @@ function KpiCard({
         </div>
         <div className="flex flex-col gap-3">
           <div className="flex min-w-0 items-end gap-2">
-            <p className="min-w-0 truncate font-mono text-[38px] font-semibold leading-none tabular-nums text-foreground md:text-[42px]">
+            <p className="min-w-0 truncate font-mono text-[30px] font-semibold leading-none tabular-nums text-foreground min-[380px]:text-[34px] md:text-[42px]">
               {value}
             </p>
             {suffix ? (
@@ -715,7 +721,10 @@ function TierDistribution({
         const pct = total === 0 ? 0 : (b.count / total) * 100
         const color = TIER_COLOR[b.name] ?? '#94a3b8'
         return (
-          <div key={b.name} className="grid grid-cols-[16px_64px_1fr_56px] items-center gap-3">
+          <div
+            key={b.name}
+            className="grid grid-cols-[12px_minmax(48px,64px)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[16px_64px_1fr_56px] sm:gap-3"
+          >
             <span
               className="size-2.5 rounded-full"
               style={{ background: color }}

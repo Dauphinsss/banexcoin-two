@@ -25,3 +25,25 @@ export class TierInUseError extends Error {
     this.name = 'TierInUseError'
   }
 }
+
+export class TierPeriodLockedError extends Error {
+  constructor(
+    public readonly period: string,
+    public readonly uploadCount: number,
+  ) {
+    super(
+      `No se puede publicar una configuraciÃ³n desde ${period} porque existen ${uploadCount} uploads procesados desde ese perÃ­odo.`,
+    )
+    this.name = 'TierPeriodLockedError'
+  }
+}
+
+export class TierPeriodRangeError extends Error {
+  constructor(
+    public readonly validFromPeriod: string,
+    public readonly validToPeriod: string,
+  ) {
+    super(`El periodo final ${validToPeriod} no puede ser anterior al periodo inicial ${validFromPeriod}.`)
+    this.name = 'TierPeriodRangeError'
+  }
+}
