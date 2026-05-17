@@ -3,11 +3,12 @@ import ExcelJS from 'exceljs'
 import { detectPeriod } from '@banex/utils'
 import {
   type ParseResult,
+  SHEET_EXTRACTO_COBROS,
   SHEET_EXTRACTO_PAGOS,
   SHEET_PAGO_QR,
 } from './parser.types'
 import { parsePagoQRSheet } from './pago-qr.parser'
-import { parseExtractoPagosSheet } from './extracto-pagos.parser'
+import { parseExtractoSheet, parseExtractoPagosSheet } from './extracto-pagos.parser'
 
 @Injectable()
 export class ParserService {
@@ -48,6 +49,10 @@ export class ParserService {
     const extracto = extractoSheet
       ? parseExtractoPagosSheet(extractoSheet)
       : { rows: [], errors: [] }
+    const extractoCobrosSheet = findSheet(workbook, SHEET_EXTRACTO_COBROS)
+    const extractoCobros = extractoCobrosSheet
+      ? parseExtractoSheet(extractoCobrosSheet, SHEET_EXTRACTO_COBROS)
+      : { rows: [], errors: [] }
 
     const detection = detectPeriod(pagoQR.rows.map((r) => r.transactedAt))
 
@@ -56,7 +61,8 @@ export class ParserService {
       periodWarning: detection.warning?.message ?? null,
       qrRows: pagoQR.rows,
       extractRows: extracto.rows,
-      parseErrors: [...pagoQR.errors, ...extracto.errors],
+      collectionExtractRows: extractoCobros.rows,
+      parseErrors: [...pagoQR.errors, ...extracto.errors, ...extractoCobros.errors],
       metadata: {
         filename: metadata.filename,
         fileHash: metadata.fileHash,
@@ -66,7 +72,7 @@ export class ParserService {
     }
 
     this.logger.log(
-      `Parse OK · file=${metadata.fileHash.slice(0, 8)} · qrRows=${result.qrRows.length} · extractRows=${result.extractRows.length} · errors=${result.parseErrors.length}`,
+      `Parse OK · file=${metadata.fileHash.slice(0, 8)} · qrRows=${result.qrRows.length} · extractRows=${result.extractRows.length} · collectionExtractRows=${result.collectionExtractRows.length} · errors=${result.parseErrors.length}`,
     )
 
     return result
@@ -82,6 +88,7 @@ export class ParserService {
       periodWarning: null,
       qrRows: [],
       extractRows: [],
+      collectionExtractRows: [],
       parseErrors: errors,
       metadata: {
         filename: meta.filename,

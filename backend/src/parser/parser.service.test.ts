@@ -1,14 +1,20 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import ExcelJS from 'exceljs'
 import { ParserService } from './parser.service'
-import { SHEET_EXTRACTO_PAGOS, SHEET_PAGO_QR } from './parser.types'
+import {
+  SHEET_EXTRACTO_COBROS,
+  SHEET_EXTRACTO_PAGOS,
+  SHEET_PAGO_QR,
+} from './parser.types'
 
 const buildExcel = async (opts: {
   pagoQRHeaders?: readonly string[]
   pagoQRRows?: readonly unknown[][]
   extractoRows?: readonly unknown[][]
+  extractoCobrosRows?: readonly unknown[][]
   includePagoQR?: boolean
   includeExtracto?: boolean
+  includeExtractoCobros?: boolean
 }): Promise<Buffer> => {
   const wb = new ExcelJS.Workbook()
 
@@ -26,6 +32,15 @@ const buildExcel = async (opts: {
     sheet.addRow([]) // row 1 vacía
     sheet.addRow([null, 'Fecha', 'Hora', 'Codigo de transacción ', 'Importe en bolivianos'])
     for (const row of opts.extractoRows ?? []) {
+      sheet.addRow(row)
+    }
+  }
+
+  if (opts.includeExtractoCobros) {
+    const sheet = wb.addWorksheet(SHEET_EXTRACTO_COBROS)
+    sheet.addRow([])
+    sheet.addRow([null, 'Fecha', 'Hora', 'Codigo de transacción ', 'Importe en bolivianos'])
+    for (const row of opts.extractoCobrosRows ?? []) {
       sheet.addRow(row)
     }
   }
@@ -208,6 +223,42 @@ describe('ParserService.parseBuffer', () => {
     const row = result.extractRows[0]!
     expect(row.transactionId).toBe('207681530')
     expect(row.amountBOB).toBe('5')
+  })
+
+  it('parsea la hoja EXTRACTO DE COBROS sin mezclarla con conciliación de pagos', async () => {
+    const buffer = await buildExcel({
+      pagoQRRows: [validRow()],
+      includeExtracto: true,
+      extractoRows: [
+        [
+          2,
+          new Date(Date.UTC(2025, 3, 15)),
+          new Date(Date.UTC(2025, 3, 15, 9, 2, 15)),
+          207681530,
+          -5,
+        ],
+      ],
+      includeExtractoCobros: true,
+      extractoCobrosRows: [
+        [
+          2,
+          new Date(Date.UTC(2025, 3, 16)),
+          new Date(Date.UTC(2025, 3, 16, 10, 1, 0)),
+          307681530,
+          12.5,
+        ],
+      ],
+    })
+
+    const result = await service.parseBuffer(buffer, {
+      filename: 't.xlsx',
+      fileHash: 'h',
+    })
+
+    expect(result.extractRows).toHaveLength(1)
+    expect(result.collectionExtractRows).toHaveLength(1)
+    expect(result.collectionExtractRows[0]?.transactionId).toBe('307681530')
+    expect(result.collectionExtractRows[0]?.amountBOB).toBe('12.5')
   })
 
   it('falta la hoja Pago QR → un solo error y rows vacío', async () => {

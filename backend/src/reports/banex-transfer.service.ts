@@ -4,6 +4,14 @@ import ExcelJS from 'exceljs'
 import { PrismaService } from '../prisma/prisma.service'
 import { UploadNotFoundError } from '../uploads/errors/upload.errors'
 import type { ReportFile } from './report.types'
+import {
+  applyWorkbookMeta,
+  BRAND,
+  COL_WIDTH,
+  finishTable,
+  styleTableHeader,
+  styleTotalRow,
+} from './excel-style'
 
 /**
  * F6.2 · Genera el archivo de BanexTransfer listo para ejecutar pagos masivos.
@@ -56,14 +64,13 @@ export class BanexTransferService {
     const eligible = rebates.filter((r) => toNumber(r.rebateUSDT) > 0)
 
     const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'BanexReintegra'
-    workbook.created = new Date()
+    applyWorkbookMeta(workbook)
 
     const ws = workbook.addWorksheet('Transfers')
     ws.columns = [
       { header: 'createdAt', key: 'createdAt', width: 22 },
       { header: 'transferNumber', key: 'transferNumber', width: 14 },
-      { header: 'amount', key: 'amount', width: 14, style: { numFmt: '#,##0.00000000' } },
+      { header: 'amount', key: 'amount', width: COL_WIDTH.usdt, style: { numFmt: '#,##0.00000000' } },
       { header: 'senderAccount.accountNumber', key: 'senderAccount', width: 24 },
       { header: 'senderAccount.alias', key: 'senderAlias', width: 20 },
       { header: 'product.symbol', key: 'symbol', width: 12 },
@@ -72,7 +79,8 @@ export class BanexTransferService {
       { header: 'Tipo de servicio', key: 'serviceCode', width: 14 },
       { header: 'oms.name', key: 'omsName', width: 22 },
     ]
-    styleHeader(ws.getRow(1))
+    // Verde "cash": es un archivo de ejecución de pagos.
+    styleTableHeader(ws.getRow(1), { fill: 'FF0E9F6E' })
 
     const now = upload.createdAt.toISOString()
 
@@ -91,6 +99,9 @@ export class BanexTransferService {
       })
     })
 
+    finishTable(ws, ['transferNumber', 'amount'], eligible.length + 1, {
+      amount: BRAND.success,
+    })
     ws.views = [{ state: 'frozen', ySplit: 1 }]
     if (eligible.length > 0) {
       ws.autoFilter = { from: 'A1', to: `J${eligible.length + 1}` }
@@ -101,7 +112,7 @@ export class BanexTransferService {
       transferNumber: 'TOTAL',
       amount: eligible.reduce((sum, r) => sum + toNumber(r.rebateUSDT), 0),
     })
-    totalRow.font = { bold: true }
+    styleTotalRow(totalRow)
 
     const arrayBuffer = await workbook.xlsx.writeBuffer()
     const buffer = Buffer.from(arrayBuffer as ArrayBuffer)
@@ -118,17 +129,6 @@ export class BanexTransferService {
       buffer,
     }
   }
-}
-
-const styleHeader = (row: ExcelJS.Row): void => {
-  row.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  row.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF0E9F6E' }, // verde "cash" — es archivo de pagos
-  }
-  row.alignment = { vertical: 'middle' }
-  row.height = 22
 }
 
 const toNumber = (value: { toString: () => string } | null | undefined): number => {

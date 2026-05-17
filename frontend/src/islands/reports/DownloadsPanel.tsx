@@ -1,5 +1,13 @@
 import { useEffect, useState, type JSX } from 'react'
-import { ArrowRight, BarChart3, Download, Scale, Send, type LucideIcon } from 'lucide-react'
+import {
+  ArrowRight,
+  BarChart3,
+  Download,
+  Loader2,
+  Scale,
+  Send,
+  type LucideIcon,
+} from 'lucide-react'
 import type { UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
 import { Card, CardContent } from '@/components/ui/card'
@@ -81,7 +89,7 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
           <DownloadCard
             href={api.reportUrl(upload.id)}
             title="Reporte Excel"
-            description="4 hojas: reintegros, resumen por nivel, anomalías y errores de parseo."
+            description="Incluye reintegros, resumen por nivel, anomalías, errores de parseo y extractos de pagos/cobros."
             accent="primary"
             icon={BarChart3}
           />
@@ -136,6 +144,14 @@ const ACCENT: Record<Accent, { border: string; bg: string; icon: string; hoverBo
   },
 }
 
+const filenameFromDisposition = (header: string | null, fallback: string): string => {
+  if (!header) return fallback
+  const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(header)
+  if (star?.[1]) return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ''))
+  const plain = /filename="?([^";]+)"?/i.exec(header)
+  return plain?.[1]?.trim() ?? fallback
+}
+
 const DownloadCard = ({
   href,
   title,
@@ -150,31 +166,74 @@ const DownloadCard = ({
   icon: LucideIcon
 }): JSX.Element => {
   const styles = ACCENT[accent]
+  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+
+  // Descarga vía fetch+blob: el atributo `download` de <a> se ignora en
+  // enlaces cross-origin (frontend :4321 → API :3000), por eso forzamos
+  // el blob y disparamos la descarga con el nombre real del servidor.
+  const download = async (): Promise<void> => {
+    if (state === 'loading') return
+    setState('loading')
+    try {
+      const res = await fetch(href)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const name = filenameFromDisposition(
+        res.headers.get('content-disposition'),
+        `${title}.xlsx`,
+      )
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setState('idle')
+    } catch {
+      setState('error')
+    }
+  }
+
   return (
-    <a
-      href={href}
-      download
+    <button
+      type="button"
+      onClick={() => void download()}
+      disabled={state === 'loading'}
       className={cn(
-        'group block rounded-lg border p-4 transition-all',
+        'group block w-full rounded-lg border p-4 text-left transition-all',
         styles.border,
         styles.bg,
         styles.hoverBorder,
         'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20',
+        'disabled:cursor-progress disabled:opacity-80',
       )}
     >
       <div className="flex items-start gap-3">
         <div className={cn('grid size-9 shrink-0 place-items-center rounded-md ring-1', styles.icon)}>
-          <Icon className="size-4" />
+          {state === 'loading' ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Icon className="size-4" />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-medium text-foreground">{title}</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
-          <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary transition-transform group-hover:translate-x-0.5">
-            Descargar
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </p>
+          {state === 'error' ? (
+            <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-destructive">
+              Error al descargar · reintentar
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </p>
+          ) : (
+            <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary transition-transform group-hover:translate-x-0.5">
+              {state === 'loading' ? 'Generando…' : 'Descargar'}
+              {state === 'loading' ? null : <ArrowRight className="size-3.5" aria-hidden="true" />}
+            </p>
+          )}
         </div>
       </div>
-    </a>
+    </button>
   )
 }
