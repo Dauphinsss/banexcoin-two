@@ -199,7 +199,7 @@ export function WhatIfSimulator(): JSX.Element {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                Sandbox de cashback
+                Impacto simulado
               </p>
               <h2 className="mt-0.5 text-balance text-xl font-semibold leading-tight md:text-2xl">
                 {upload?.period ?? 'Último upload'}
@@ -271,7 +271,7 @@ export function WhatIfSimulator(): JSX.Element {
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
 
         {/* Panel izquierdo: solo controles, sticky, compacto */}
-        <div className="lg:sticky lg:top-[calc(64px+1.5rem)] lg:self-start lg:max-h-[calc(100vh-64px-3rem)] lg:overflow-y-auto lg:overscroll-contain">
+        <div className="lg:sticky lg:top-[calc(64px+1.5rem)] lg:self-start">
           <div className="relative overflow-hidden rounded-xl border border-border bg-card/70">
             <div className="pointer-events-none absolute -top-16 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full bg-primary/[0.06] blur-3xl" aria-hidden="true" />
             <div className="relative space-y-3 p-4">
@@ -445,7 +445,7 @@ export function WhatIfSimulator(): JSX.Element {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+                        <span className="w-12 shrink-0 text-right font-mono text-[11px] font-semibold tabular-nums text-foreground/80">
                           {pct.toFixed(0)}%
                         </span>
                       </div>
