@@ -33,6 +33,7 @@ export class UploadExceptionFilter implements ExceptionFilter {
         error: 'DUPLICATE_UPLOAD',
         message: exception.message,
         existingUploadId: exception.existingUploadId,
+        canReload: exception.canReload,
       })
       return
     }

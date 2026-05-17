@@ -45,7 +45,8 @@ export class UploadsController {
     @UploadedFile() file: Express.Multer.File,
     @Body() body: CreateUploadDto,
   ) {
-    return this.uploads.create(file, body.period)
+    const allowDuplicate = body.allowDuplicate === 'true' || body.allowDuplicate === '1'
+    return this.uploads.create(file, body.period, allowDuplicate)
   }
 
   @Get()
