@@ -478,7 +478,7 @@ export function AnomalyPanel(): JSX.Element {
         </Alert>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <FilterCard label="Total" value={totalAnomalies} active={type === 'ALL'} onClick={() => setType('ALL')} accent="primary" />
         <FilterCard label="Sin extracto" value={stats?.noExtract ?? 0} active={type === 'NO_EXTRACT'} onClick={() => setType('NO_EXTRACT')} accent="red" />
         <FilterCard label="Sin QR" value={stats?.noQr ?? 0} active={type === 'NO_QR'} onClick={() => setType('NO_QR')} accent="amber" />
@@ -487,7 +487,7 @@ export function AnomalyPanel(): JSX.Element {
 
       <Card>
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[860px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Tipo</TableHead>
@@ -564,7 +564,7 @@ export function AnomalyPanel(): JSX.Element {
                             value={resolveNote}
                             onChange={(e) => setResolveNote(e.target.value)}
                             placeholder="Motivo (opcional)"
-                            className="h-8 w-48 text-xs"
+                            className="h-8 w-40 text-xs sm:w-48"
                           />
                           <div className="flex gap-1">
                             <Button
@@ -729,7 +729,7 @@ function AnomalyPanelSkeleton(): JSX.Element {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[0, 1, 2, 3].map((item) => (
           <div key={item} className="rounded-lg border border-line bg-panel p-4">
             <div className="h-3 w-24 rounded skeleton-block" />
@@ -738,8 +738,8 @@ function AnomalyPanelSkeleton(): JSX.Element {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line">
-        <table className="min-w-full divide-y divide-line text-sm">
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="min-w-[860px] divide-y divide-line text-sm">
           <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
             <tr>
               {['Tipo', 'Transaccion', 'QR BOB', 'Extracto BOB', 'Delta', 'Estado', 'Accion'].map((label, index) => {

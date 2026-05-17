@@ -1,4 +1,4 @@
-import { useCallback, useState, type JSX } from 'react'
+import { useCallback, useEffect, useState, type JSX } from 'react'
 import { useDropzone, type FileRejection } from 'react-dropzone'
 import {
   AlertTriangle,
@@ -71,6 +71,11 @@ interface Preview {
 
 export default function UploadDropzone(): JSX.Element {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const analyze = useCallback(async (file: File) => {
     setStage({ kind: 'analyzing', file })
@@ -100,15 +105,12 @@ export default function UploadDropzone(): JSX.Element {
     [analyze],
   )
 
-  if (typeof window === 'undefined') {
-    return <UploadDropzoneSkeleton />
-  }
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: ACCEPTED_TYPES,
     maxSize: MAX_BYTES,
     multiple: false,
-    disabled: stage.kind === 'analyzing' || stage.kind === 'uploading',
+    disabled: !mounted || stage.kind === 'analyzing' || stage.kind === 'uploading',
   })
 
   const submit = useCallback(
@@ -145,6 +147,10 @@ export default function UploadDropzone(): JSX.Element {
   )
 
   const reset = useCallback(() => setStage({ kind: 'idle' }), [])
+
+  if (!mounted) {
+    return <UploadDropzoneSkeleton />
+  }
 
   return (
     <div className="w-full">
@@ -203,7 +209,7 @@ const DropzoneEmpty = ({
     <div
       {...rootProps}
       className={cn(
-        'group relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-8 py-16 text-center transition-all duration-200',
+        'group relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-4 py-12 text-center transition-all duration-200 sm:px-8 sm:py-16',
         isDragActive
           ? 'scale-[1.01] border-primary bg-primary/5 shadow-lg shadow-primary/10'
           : 'border-border bg-card/40 hover:border-primary/50 hover:bg-card/60',
@@ -247,7 +253,7 @@ const DropzoneEmpty = ({
 const UploadDropzoneSkeleton = (): JSX.Element => (
   <div className="w-full max-w-3xl mx-auto" aria-hidden="true">
     <div className="space-y-3">
-      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-line-strong bg-panel px-8 py-16 text-center">
+      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-line-strong bg-panel px-4 py-12 text-center sm:px-8 sm:py-16">
         <div className="size-10 rounded-md skeleton-block" />
         <div className="space-y-2">
           <div className="mx-auto h-4 w-72 max-w-full rounded skeleton-block" />
@@ -287,12 +293,12 @@ const PreviewState = ({
     <Card>
       <CardContent className="space-y-5 pt-6">
         <header className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <div className="grid size-10 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/25">
               <FileSpreadsheet className="size-5" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">{file.name}</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
               <p className="font-mono text-xs text-muted-foreground">
                 {(file.size / 1024 / 1024).toFixed(2)} MB
               </p>
@@ -373,11 +379,11 @@ const PreviewState = ({
           </div>
         </details>
 
-        <footer className="flex flex-wrap items-center justify-end gap-2 pt-1">
-          <Button type="button" variant="ghost" onClick={onCancel}>
+        <footer className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          <Button type="button" variant="ghost" onClick={onCancel} className="w-full sm:w-auto">
             Cancelar
           </Button>
-          <Button type="button" onClick={onConfirm} disabled={blocked}>
+          <Button type="button" onClick={onConfirm} disabled={blocked} className="w-full sm:w-auto">
             Procesar {preview.totalRows.toLocaleString('es-BO')} transacciones
           </Button>
         </footer>

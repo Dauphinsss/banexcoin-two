@@ -128,27 +128,27 @@ export function RebatesTable(): JSX.Element {
       <div className="space-y-4">
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-1">
+            <div className="min-w-0 space-y-1">
               <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 Último upload procesado
               </p>
-              <h2 className="text-base font-semibold">{upload?.filename}</h2>
+              <h2 className="truncate text-base font-semibold">{upload?.filename}</h2>
               <p className="font-mono text-xs text-muted-foreground">
                 {filteredSorted.length} de {rebates.length} reintegros
                 {upload?.period ? ` · período ${upload.period}` : null}
               </p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="relative">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <div className="relative min-w-0 sm:w-64">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="pl-9 sm:w-64"
+                  className="pl-9"
                   placeholder="Buscar usuario o cuenta"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </div>
-              <div className="relative">
+              <div className="relative min-w-0 sm:w-44">
                 <select
                   className="h-9 w-full appearance-none rounded-md border border-input bg-transparent pl-3 pr-9 text-sm text-foreground shadow-[inset_0_1px_2px_rgba(0,0,0,0.18)] transition-[color,box-shadow,border-color] outline-none hover:border-ring/60 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/25 dark:bg-input/30"
                   value={tier}
@@ -181,7 +181,7 @@ export function RebatesTable(): JSX.Element {
 
         <Card>
           <div className="max-h-[620px] overflow-auto">
-            <Table>
+            <Table className="min-w-[760px]">
               <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow>
                   <SortHeader label="Usuario" sortKey="username" active={sortKey} dir={sortDir} onSort={toggleSort} />
@@ -321,8 +321,8 @@ function RebatesTableSkeleton(): JSX.Element {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line">
-        <table className="min-w-full divide-y divide-line text-sm">
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="min-w-[760px] divide-y divide-line text-sm">
           <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
             <tr>
               {['Usuario', 'Total BOB', 'Nivel', '%', 'USDT', 'T/C', 'Tx'].map((label, index) => (

@@ -414,7 +414,10 @@ function LatestResultsSkeleton() {
           </CardHeader>
           <CardContent className="space-y-3">
             {Array.from({ length: 5 }).map((_, idx) => (
-              <div key={idx} className="grid grid-cols-[16px_64px_1fr_56px] items-center gap-3">
+              <div
+                key={idx}
+                className="grid grid-cols-[12px_minmax(48px,64px)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[16px_64px_1fr_56px] sm:gap-3"
+              >
                 <Skeleton className="size-2.5 rounded-full" />
                 <Skeleton className="h-4 w-14" />
                 <Skeleton className="h-1.5 w-full rounded-full" />
@@ -544,11 +547,11 @@ function KpiCard({
       <div className={`pointer-events-none absolute -left-10 top-0 size-28 rounded-full blur-3xl ${styles.glow}`} />
       <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${styles.tint} to-transparent opacity-80`} />
       {spark && spark.length > 1 ? (
-        <div className="pointer-events-none absolute right-4 top-3 opacity-75 transition-opacity group-hover:opacity-100">
+        <div className="pointer-events-none absolute right-4 top-3 hidden opacity-75 transition-opacity group-hover:opacity-100 sm:block">
           <Sparkline data={spark} stroke={styles.stroke} />
         </div>
       ) : null}
-      <CardContent className="relative flex min-h-[176px] flex-col justify-between gap-5 px-7 py-7 pl-9">
+      <CardContent className="relative flex min-h-[176px] flex-col justify-between gap-5 px-5 py-6 pl-7 sm:px-7 sm:py-7 sm:pl-9">
         <div className="flex items-center justify-between">
           <p className="max-w-[13rem] text-xs font-semibold uppercase leading-5 text-muted-foreground">
             {label}
@@ -561,7 +564,7 @@ function KpiCard({
         </div>
         <div className="flex flex-col gap-3">
           <div className="flex min-w-0 items-end gap-2">
-            <p className="min-w-0 truncate font-mono text-[38px] font-semibold leading-none tabular-nums text-foreground md:text-[42px]">
+            <p className="min-w-0 truncate font-mono text-[30px] font-semibold leading-none tabular-nums text-foreground min-[380px]:text-[34px] md:text-[42px]">
               {value}
             </p>
             {suffix ? (
@@ -715,7 +718,10 @@ function TierDistribution({
         const pct = total === 0 ? 0 : (b.count / total) * 100
         const color = TIER_COLOR[b.name] ?? '#94a3b8'
         return (
-          <div key={b.name} className="grid grid-cols-[16px_64px_1fr_56px] items-center gap-3">
+          <div
+            key={b.name}
+            className="grid grid-cols-[12px_minmax(48px,64px)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[16px_64px_1fr_56px] sm:gap-3"
+          >
             <span
               className="size-2.5 rounded-full"
               style={{ background: color }}

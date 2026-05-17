@@ -397,8 +397,8 @@ export function TiersEditor(): JSX.Element {
   return (
     <div className="space-y-5">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <Tabs value={view} onValueChange={(v) => setView(v as 'active' | 'history')}>
-          <TabsList>
+        <Tabs value={view} onValueChange={(v) => setView(v as 'active' | 'history')} className="min-w-0">
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="active">Niveles activos</TabsTrigger>
             <TabsTrigger value="history">Historial</TabsTrigger>
           </TabsList>
@@ -470,7 +470,7 @@ export function TiersEditor(): JSX.Element {
 
       <Card>
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Nivel</TableHead>
@@ -1110,8 +1110,8 @@ function TiersEditorSkeleton(): JSX.Element {
         <div className="h-10 w-32 rounded-md skeleton-block" />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-800">
-        <table className="min-w-full divide-y divide-slate-800 text-sm">
+      <div className="overflow-x-auto rounded-lg border border-slate-800">
+        <table className="min-w-[760px] divide-y divide-slate-800 text-sm">
           <thead className="bg-slate-950 text-left text-xs uppercase tracking-widest text-slate-500">
             <tr>
               {['Nivel', 'Nombre', 'Desde BOB', 'Hasta BOB', 'Reintegro', 'Vigencia', 'Acciones'].map((label, index) => {

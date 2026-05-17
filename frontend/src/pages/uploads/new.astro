@@ -4,21 +4,21 @@ import UploadDropzone from '../../islands/upload/UploadDropzone.tsx'
 ---
 
 <AppShell title="Subir Excel" activePage="uploads">
-  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-    <div class="space-y-6">
+  <div class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="min-w-0 space-y-6">
       <section class="relative overflow-hidden rounded-xl border border-border bg-card/70 shadow-xl shadow-black/10">
         <div
           aria-hidden="true"
           class="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-primary/15 blur-3xl"
         />
-        <div class="relative space-y-3 p-6 md:p-8">
+        <div class="relative min-w-0 space-y-3 p-5 sm:p-6 md:p-8">
           <div class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             Carga controlada
           </div>
-          <h2 class="text-2xl font-semibold tracking-tight md:text-3xl">
+          <h2 class="text-balance text-2xl font-semibold tracking-tight md:text-3xl">
             Cargar reporte mensual de pagos QR
           </h2>
-          <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
+          <p class="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground">
             El archivo se valida, se calcula su hash SHA-256 y se encola para
             procesamiento. Si ya fue subido antes, te llevamos a los resultados existentes.
           </p>
@@ -28,7 +28,7 @@ import UploadDropzone from '../../islands/upload/UploadDropzone.tsx'
       <UploadDropzone client:load />
     </div>
 
-    <aside class="rounded-xl border border-border bg-card/50 p-5">
+    <aside class="min-w-0 rounded-xl border border-border bg-card/50 p-5">
       <p class="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Flujo seguro</p>
       <ol class="mt-5 space-y-5 text-sm">
         <li class="flex gap-3">
