@@ -23,6 +23,7 @@ El sistema:
 - Detecta periodo y valida estructura.
 - Calcula reintegros por niveles.
 - Concilia pagos QR contra extractos.
+- Explica anomalías con Gemini si la integración está configurada.
 - Persiste resultados auditables.
 - Genera reportes descargables.
 
@@ -31,6 +32,7 @@ Límites importantes:
 - No integra directamente con el core de Banexcoin.
 - No ejecuta pagos reales.
 - No debe filtrar PII ni datos financieros sensibles en logs o prompts.
+- La explicación con IA debe usar resúmenes agregados, no filas completas del Excel.
 - PostgreSQL es la base de datos objetivo.
 
 ## Estructura Del Repositorio
@@ -111,5 +113,6 @@ Si solo se modifica documentación:
 - El procesamiento actual se orquesta desde `UploadsService`.
 - `UploadsService` tiene demasiadas responsabilidades y debe refactorizarse más adelante.
 - `TierAgent` y `ReconcileAgent` existen como servicios especializados.
+- `AnomalyExplainerAgent` existe como integración opcional con Gemini bajo demanda.
 - La persistencia dedicada y un orquestador separado quedan pendientes.
 - El frontend consume rutas implementadas desde `frontend/src/lib/api.ts`.

@@ -50,7 +50,7 @@ bun install             # instala todo el monorepo
 ### 4. Base de datos
 
 ```bash
-bun run db:push         # crea/sincroniza backend/prisma/dev.db
+bun run db:push         # aplica/sincroniza el schema en PostgreSQL
 bun run db:seed         # carga los 5 niveles de cashback iniciales
 ```
 

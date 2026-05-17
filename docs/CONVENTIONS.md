@@ -88,6 +88,14 @@ Reglas:
 - Hashes pueden registrarse truncados cuando sea útil para soporte.
 - Los logs deben ayudar a depurar sin romper confidencialidad.
 
+## IA Y Prompts
+
+- `GEMINI_API_KEY` habilita explicación opcional de anomalías.
+- Enviar solo resúmenes agregados al modelo.
+- No enviar filas completas del Excel, cuentas completas, usernames ni identificadores sensibles.
+- La IA nunca debe bloquear conciliación, reportes ni lectura de resultados.
+- Si Gemini falla o no está configurado, devolver una respuesta controlada.
+
 ## Testing
 
 - Toda lógica financiera no trivial debe tener tests.

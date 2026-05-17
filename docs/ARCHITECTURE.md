@@ -77,6 +77,7 @@ Responsabilidad:
 - Parsear archivos.
 - Calcular reintegros.
 - Conciliar transacciones.
+- Explicar anomalías con Gemini cuando `GEMINI_API_KEY` está configurada.
 - Generar reportes.
 - Persistir datos transaccionalmente.
 
@@ -122,7 +123,7 @@ Módulos actuales:
 - `UploadsModule`: recepción de archivos y orquestación del procesamiento actual.
 - `TiersModule`: configuración y validación de niveles de cashback.
 - `JobsModule`: agentes especializados actuales para cálculo y conciliación.
-- `ReconciliationModule`: consulta y resolución de anomalías.
+- `ReconciliationModule`: consulta, resolución y explicación opcional de anomalías.
 - `ReportsModule`: generación de archivos descargables.
 
 Reglas de dependencia:

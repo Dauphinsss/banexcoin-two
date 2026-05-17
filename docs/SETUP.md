@@ -31,6 +31,8 @@ cp frontend/.env.example frontend/.env
 
 Después, configurar `DATABASE_URL` con una URL PostgreSQL válida.
 
+`GEMINI_API_KEY` es opcional. Si no está configurada, el backend responde con fallback controlado en la explicación de anomalías.
+
 ## Instalar Y Preparar
 
 ```bash
