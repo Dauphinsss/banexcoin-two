@@ -40,14 +40,27 @@ describe('AnomalyExplainerAgent', () => {
     })
   })
 
-  it('falla de forma controlada si falta GEMINI_API_KEY', async () => {
+  it('devuelve diagnóstico local útil si falta GEMINI_API_KEY', async () => {
     const agent = makeAgent([makeAnomaly()])
 
-    await expect(agent.explain('upload-1')).resolves.toEqual({
-      available: false,
-      cached: false,
-      explanation: 'La explicación con IA no está disponible: falta configurar GEMINI_API_KEY.',
-    })
+    const result = await agent.explain('upload-1')
+
+    expect(result.available).toBe(false)
+    expect(result.cached).toBe(false)
+    expect(result.explanation).toContain('Resumen automático')
+    expect(result.explanation).toContain('monto distinto')
+    expect(result.explanation).toContain('delta promedio')
+  })
+
+  it('usa diagnóstico local para muestras pequeñas aunque exista GEMINI_API_KEY', async () => {
+    const config = { get: vi.fn(() => 'fake-key') } as unknown as ConfigService
+    const agent = makeAgent([makeAnomaly()], config)
+
+    const result = await agent.explain('upload-1')
+
+    expect(result.available).toBe(false)
+    expect(result.explanation).toContain('Resumen automático')
+    expect((config.get as unknown as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled()
   })
 
   it('construye un resumen agregado sin exponer ids de transacción', () => {
@@ -81,6 +94,7 @@ describe('AnomalyExplainerAgent', () => {
 
     expect(summary).toContain('Total de anomalías: 2.')
     expect(summary).toContain('1 resueltas y 1 pendientes')
+    expect(summary).toContain('Monto QR sin extracto: Bs 25.00.')
     expect(summary).not.toContain('tx-sensitive')
     expect(summary).not.toContain('tx-other-sensitive')
   })
