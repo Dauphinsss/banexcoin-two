@@ -6,13 +6,17 @@ import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
 
 <AppShell title="Reintegros" activePage="rebates">
   <div class="space-y-6">
-    <div>
-      <h2 class="text-xl font-semibold tracking-tight text-main">Tabla de reintegros</h2>
-      <p class="mt-2 max-w-2xl text-sm text-muted">
+    <section class="space-y-2">
+      <div class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+        Usuarios y pagos
+      </div>
+      <h2 class="text-2xl font-semibold tracking-tight md:text-3xl">Tabla de reintegros</h2>
+      <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
         Usuarios calculados desde el último upload procesado, con nivel asignado,
-        monto a pagar y tipo de cambio promedio.
+        monto a pagar y tipo de cambio promedio. Haz click en una fila para ver
+        el detalle del usuario.
       </p>
-    </div>
+    </section>
 
     <DownloadsPanel client:visible />
 

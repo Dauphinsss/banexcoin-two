@@ -1,7 +1,32 @@
-import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX, type ReactNode } from 'react'
+import { Plus, Sparkles, X } from 'lucide-react'
 import { validateTiers, type TierConflict } from '@banex/utils'
 import type { CashbackTierDTO } from '@banex/types'
 import { api, ApiCallError, type CreateTierPayload } from '../../lib/api'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 
 interface DraftTier {
   level: string
@@ -43,6 +68,15 @@ export function TiersEditor(): JSX.Element {
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(
     null,
   )
+  const [simulatorDraft, setSimulatorDraft] = useState<
+    Array<{
+      level: number
+      name: string
+      minAmountBOB: string
+      maxAmountBOB: string | null
+      rebatePercent: string
+    }> | null
+  >(null)
 
   const load = async (): Promise<void> => {
     try {
@@ -59,14 +93,8 @@ export function TiersEditor(): JSX.Element {
     void load()
   }, [])
 
-  // Handoff desde el simulador (F8.1): si llega ?from=simulator y hay un draft
-  // guardado, lo mostramos como aviso para que Lorena lo aplique manualmente
-  // revisando período de vigencia.
-  const [simulatorDraft, setSimulatorDraft] = useState<
-    Array<{ level: number; name: string; minAmountBOB: string; maxAmountBOB: string | null; rebatePercent: string }> | null
-  >(null)
-
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     if (params.get('from') !== 'simulator') return
     const raw = sessionStorage.getItem('banex:simulator-draft')
@@ -98,8 +126,6 @@ export function TiersEditor(): JSX.Element {
     setFeedback(null)
   }
 
-  // Validación inline en cliente: usa la MISMA función pura del backend.
-  // Cuando hay modal abierto, valida el set resultante (activos + draft).
   const validation = useMemo(() => {
     const base = tiers.map((t) => ({
       id: t.id,
@@ -112,8 +138,7 @@ export function TiersEditor(): JSX.Element {
 
     if (!modal) return validateTiers(base)
 
-    const others =
-      modal.mode === 'edit' ? base.filter((t) => t.id !== modal.id) : base
+    const others = modal.mode === 'edit' ? base.filter((t) => t.id !== modal.id) : base
 
     return validateTiers([
       ...others,
@@ -165,7 +190,6 @@ export function TiersEditor(): JSX.Element {
     PERIOD_REGEX.test(draft.validFromPeriod) &&
     (draft.validToPeriod.trim() === '' || PERIOD_REGEX.test(draft.validToPeriod))
 
-  // Solo bloquean los conflictos de severidad error que tocan al draft.
   const draftId = modal?.mode === 'edit' ? modal.id : 'DRAFT'
   const draftBlocked = validation.conflicts.some(
     (c) => c.severity === 'error' && c.tierIds.includes(draftId),
@@ -220,367 +244,380 @@ export function TiersEditor(): JSX.Element {
     }
   }
 
-  if (status === 'loading')
-    return <p className="text-sm text-slate-400">Cargando niveles...</p>
-  if (status === 'error')
-    return <p className="text-sm text-red-300">No se pudieron cargar los niveles.</p>
+  if (status === 'loading') {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-80 w-full" />
+      </div>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>No se pudieron cargar los niveles.</AlertTitle>
+      </Alert>
+    )
+  }
 
   const globalWarnings = validation.conflicts.filter(
     (c) => c.severity === 'warning' && c.tierIds.length === 0,
   )
+  const draftConflicts = validation.conflicts.filter((c) => c.tierIds.includes(draftId))
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <div className="inline-flex rounded-md border border-slate-800 bg-slate-900/40 p-1 text-sm">
-          <button
-            type="button"
-            onClick={() => setView('active')}
-            className={`px-3 py-1.5 rounded ${view === 'active' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Niveles activos
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('history')}
-            className={`px-3 py-1.5 rounded ${view === 'history' ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Historial
-          </button>
-        </div>
+        <Tabs value={view} onValueChange={(v) => setView(v as 'active' | 'history')}>
+          <TabsList>
+            <TabsTrigger value="active">Niveles activos</TabsTrigger>
+            <TabsTrigger value="history">Historial</TabsTrigger>
+          </TabsList>
+        </Tabs>
         {view === 'active' ? (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="h-10 px-4 rounded-md bg-blue-600 text-sm font-medium text-white hover:bg-blue-500"
-          >
+          <Button type="button" onClick={openCreate}>
+            <Plus />
             Añadir nivel
-          </button>
+          </Button>
         ) : null}
       </div>
 
       {feedback ? (
-        <div
-          className={`rounded-md border px-4 py-2 text-sm ${
+        <Alert
+          className={cn(
+            'relative',
             feedback.kind === 'error'
-              ? 'border-red-500/40 bg-red-500/10 text-red-200'
-              : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
-          }`}
+              ? 'border-destructive/40 bg-destructive/10'
+              : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100',
+          )}
         >
-          <div className="flex items-center justify-between gap-3">
-            <span>{feedback.message}</span>
-            <button
-              type="button"
-              onClick={() => setFeedback(null)}
-              className="text-current opacity-60 hover:opacity-100"
-            >
-              ×
-            </button>
-          </div>
-        </div>
+          <AlertDescription>{feedback.message}</AlertDescription>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="absolute right-3 top-3 text-current opacity-60 transition-opacity hover:opacity-100"
+            aria-label="Cerrar"
+          >
+            <X className="size-4" />
+          </button>
+        </Alert>
       ) : null}
 
       {simulatorDraft && simulatorDraft.length > 0 ? (
-        <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-100">
-          <div className="flex items-center justify-between gap-3">
-            <p className="font-medium">
-              Configuración propuesta desde el simulador ({simulatorDraft.length} niveles)
+        <Alert className="relative border-sky-500/40 bg-sky-500/10 text-sky-100 [&>svg]:text-sky-300">
+          <Sparkles />
+          <AlertTitle>
+            Configuración propuesta desde el simulador ({simulatorDraft.length} niveles)
+          </AlertTitle>
+          <AlertDescription>
+            <p className="mb-3 text-xs text-sky-200/80">
+              Revisa cada nivel y aplícalo con su período de vigencia.
             </p>
-            <button
-              type="button"
-              onClick={() => setSimulatorDraft(null)}
-              className="text-current opacity-60 hover:opacity-100"
-            >
-              ×
-            </button>
-          </div>
-          <p className="mt-1 text-xs text-blue-200/80">
-            Revisa cada nivel y aplícalo con su período de vigencia.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {simulatorDraft.map((t) => (
-              <button
-                key={t.level}
-                type="button"
-                onClick={() => applySimulatorTier(t)}
-                className="rounded-md border border-blue-500/40 bg-blue-500/15 px-3 py-1.5 font-mono text-xs text-blue-100 hover:bg-blue-500/25"
-              >
-                {t.name}: {t.rebatePercent}%
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="flex flex-wrap gap-2">
+              {simulatorDraft.map((t) => (
+                <button
+                  key={t.level}
+                  type="button"
+                  onClick={() => applySimulatorTier(t)}
+                  className="rounded-md border border-sky-500/40 bg-sky-500/15 px-3 py-1.5 font-mono text-xs text-sky-100 transition-colors hover:bg-sky-500/25"
+                >
+                  {t.name}: {t.rebatePercent}%
+                </button>
+              ))}
+            </div>
+          </AlertDescription>
+          <button
+            type="button"
+            onClick={() => setSimulatorDraft(null)}
+            className="absolute right-3 top-3 text-current opacity-60 transition-opacity hover:opacity-100"
+            aria-label="Cerrar"
+          >
+            <X className="size-4" />
+          </button>
+        </Alert>
       ) : null}
 
       {view === 'active' && globalWarnings.length > 0 ? (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
-          {globalWarnings.map((c, i) => (
-            <p key={i}>{c.message}</p>
-          ))}
-        </div>
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-100">
+          <AlertDescription>
+            {globalWarnings.map((c, i) => (
+              <p key={i}>{c.message}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      {view === 'active' ? (
-        <div className="overflow-hidden rounded-lg border border-slate-800">
-          <table className="min-w-full divide-y divide-slate-800 text-sm">
-            <thead className="bg-slate-950 text-left text-xs uppercase tracking-widest text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Nivel</th>
-                <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3 text-right">Desde BOB</th>
-                <th className="px-4 py-3 text-right">Hasta BOB</th>
-                <th className="px-4 py-3 text-right">Reintegro</th>
-                <th className="px-4 py-3">Vigencia</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-900 bg-slate-900/30">
-              {tiers.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-8 text-center text-slate-400" colSpan={7}>
-                    No hay niveles activos. Añade el primero.
-                  </td>
-                </tr>
-              ) : (
-                tiers.map((tier) => {
-                  const rowConflicts = conflictsFor(tier.id)
-                  const hasError = rowConflicts.some((c) => c.severity === 'error')
-                  const hasWarning = rowConflicts.some((c) => c.severity === 'warning')
-                  const rowClass = hasError
-                    ? 'bg-red-500/10'
-                    : hasWarning
-                      ? 'bg-amber-500/10'
-                      : 'hover:bg-slate-800/40'
-                  return (
-                    <tr key={tier.id} className={`align-top ${rowClass}`}>
-                      <td className="px-4 py-3 font-mono text-slate-300">{tier.level}</td>
-                      <td className="px-4 py-3 font-medium text-slate-100">
-                        {tier.name}
-                        {rowConflicts.length > 0 ? (
-                          <div className="mt-1 space-y-0.5">
-                            {rowConflicts.map((c, i) => (
-                              <p
-                                key={i}
-                                className={`text-[11px] ${c.severity === 'error' ? 'text-red-300' : 'text-amber-300'}`}
-                              >
-                                {c.message}
-                              </p>
-                            ))}
+      <Card>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nivel</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead className="text-right">Desde BOB</TableHead>
+                <TableHead className="text-right">Hasta BOB</TableHead>
+                <TableHead className="text-right">Reintegro</TableHead>
+                <TableHead>Vigencia</TableHead>
+                {view === 'active' ? (
+                  <TableHead className="text-right">Acciones</TableHead>
+                ) : (
+                  <TableHead>Estado</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {view === 'active' ? (
+                tiers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                      No hay niveles activos. Añade el primero.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  tiers.map((tier) => {
+                    const rowConflicts = conflictsFor(tier.id)
+                    const hasError = rowConflicts.some((c) => c.severity === 'error')
+                    const hasWarning = rowConflicts.some((c) => c.severity === 'warning')
+                    return (
+                      <TableRow
+                        key={tier.id}
+                        className={cn(
+                          'align-top',
+                          hasError && 'bg-destructive/10',
+                          !hasError && hasWarning && 'bg-amber-500/10',
+                        )}
+                      >
+                        <TableCell className="font-mono text-sm">{tier.level}</TableCell>
+                        <TableCell>
+                          <p className="font-medium">{tier.name}</p>
+                          {rowConflicts.length > 0 ? (
+                            <div className="mt-1 space-y-0.5">
+                              {rowConflicts.map((c, i) => (
+                                <p
+                                  key={i}
+                                  className={cn(
+                                    'text-[11px]',
+                                    c.severity === 'error' ? 'text-red-300' : 'text-amber-300',
+                                  )}
+                                >
+                                  {c.message}
+                                </p>
+                              ))}
+                            </div>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums">
+                          {tier.minAmountBOB}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums">
+                          {tier.maxAmountBOB ?? (
+                            <span className="text-muted-foreground">Sin tope</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums text-emerald-400">
+                          {tier.rebatePercent}%
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {tier.validFromPeriod}
+                          {' – '}
+                          {tier.validToPeriod ?? (
+                            <span className="text-muted-foreground">actual</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEdit(tier)}
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => void handleDeactivate(tier)}
+                            >
+                              Desactivar
+                            </Button>
                           </div>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
-                        {tier.minAmountBOB}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
-                        {tier.maxAmountBOB ?? 'Sin tope'}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-emerald-200">
-                        {tier.rebatePercent}%
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        {tier.validFromPeriod} – {tier.validToPeriod ?? 'actual'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-3">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(tier)}
-                            className="text-xs text-blue-400 hover:text-blue-300"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleDeactivate(tier)}
-                            className="text-xs text-red-400 hover:text-red-300"
-                          >
-                            Desactivar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )
+              ) : history.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                    No hay historial.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                history.map((tier) => (
+                  <TableRow key={tier.id} className="align-top">
+                    <TableCell className="font-mono text-sm">{tier.level}</TableCell>
+                    <TableCell className="font-medium">{tier.name}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">
+                      {tier.minAmountBOB}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">
+                      {tier.maxAmountBOB ?? (
+                        <span className="text-muted-foreground">Sin tope</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums text-emerald-400">
+                      {tier.rebatePercent}%
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {tier.validFromPeriod}
+                      {' – '}
+                      {tier.validToPeriod ?? (
+                        <span className="text-muted-foreground">actual</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {tier.active ? (
+                        <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
+                          Activo
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-muted-foreground">
+                          Inactivo
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-slate-800">
-          <table className="min-w-full divide-y divide-slate-800 text-sm">
-            <thead className="bg-slate-950 text-left text-xs uppercase tracking-widest text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Nivel</th>
-                <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3 text-right">Desde BOB</th>
-                <th className="px-4 py-3 text-right">Hasta BOB</th>
-                <th className="px-4 py-3 text-right">Reintegro</th>
-                <th className="px-4 py-3">Vigencia</th>
-                <th className="px-4 py-3">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-900 bg-slate-900/30">
-              {history.map((tier) => (
-                <tr key={tier.id} className="align-top">
-                  <td className="px-4 py-3 font-mono text-slate-300">{tier.level}</td>
-                  <td className="px-4 py-3 font-medium text-slate-100">{tier.name}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
-                    {tier.minAmountBOB}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
-                    {tier.maxAmountBOB ?? 'Sin tope'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-emerald-200">
-                    {tier.rebatePercent}%
-                  </td>
-                  <td className="px-4 py-3 text-slate-300">
-                    {tier.validFromPeriod} – {tier.validToPeriod ?? 'actual'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {tier.active ? (
-                      <span className="text-xs text-emerald-300">Activo</span>
-                    ) : (
-                      <span className="text-xs text-slate-500">Inactivo</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      </Card>
 
-      {modal ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={closeModal}
-        >
-          <div
-            className="w-full max-w-lg rounded-lg border border-slate-800 bg-slate-900 p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-base font-semibold text-slate-100">
-              {modal.mode === 'create' ? 'Añadir nivel' : 'Editar nivel'}
-            </h3>
+      <Dialog open={modal !== null} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{modal?.mode === 'create' ? 'Añadir nivel' : 'Editar nivel'}</DialogTitle>
+          </DialogHeader>
 
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <Field label="Nivel">
-                <input
-                  type="number"
-                  min={1}
-                  value={draft.level}
-                  onChange={(e) => setDraft((d) => ({ ...d, level: e.target.value }))}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Nombre">
-                <input
-                  type="text"
-                  value={draft.name}
-                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Desde BOB">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={draft.minAmountBOB}
-                  onChange={(e) => setDraft((d) => ({ ...d, minAmountBOB: e.target.value }))}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Hasta BOB (vacío = sin tope)">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={draft.maxAmountBOB}
-                  onChange={(e) => setDraft((d) => ({ ...d, maxAmountBOB: e.target.value }))}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Reintegro %">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={draft.rebatePercent}
-                  onChange={(e) => setDraft((d) => ({ ...d, rebatePercent: e.target.value }))}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Vigente desde (YYYY-MM)">
-                <input
-                  type="text"
-                  placeholder="2025-05"
-                  value={draft.validFromPeriod}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, validFromPeriod: e.target.value }))
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Vigente hasta (opcional)">
-                <input
-                  type="text"
-                  placeholder="vacío = sin fin"
-                  value={draft.validToPeriod}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, validToPeriod: e.target.value }))
-                  }
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-
-            {validation.conflicts.filter((c) => c.tierIds.includes(draftId)).length > 0 ? (
-              <div className="mt-4 space-y-1">
-                {validation.conflicts
-                  .filter((c) => c.tierIds.includes(draftId))
-                  .map((c, i) => (
-                    <p
-                      key={i}
-                      className={`text-xs ${c.severity === 'error' ? 'text-red-300' : 'text-amber-300'}`}
-                    >
-                      {c.severity === 'error' ? '✕' : '⚠'} {c.message}
-                    </p>
-                  ))}
-              </div>
-            ) : null}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="h-10 px-4 rounded-md border border-slate-700 text-sm text-slate-200 hover:bg-slate-800"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={!draftFormValid || draftBlocked || saving}
-                onClick={() => void handleSave()}
-                className="h-10 px-4 rounded-md bg-blue-600 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Nivel" htmlFor="tier-level">
+              <Input
+                id="tier-level"
+                type="number"
+                min={1}
+                value={draft.level}
+                onChange={(e) => setDraft((d) => ({ ...d, level: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Nombre" htmlFor="tier-name">
+              <Input
+                id="tier-name"
+                type="text"
+                value={draft.name}
+                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Desde BOB" htmlFor="tier-min">
+              <Input
+                id="tier-min"
+                type="text"
+                inputMode="decimal"
+                value={draft.minAmountBOB}
+                onChange={(e) => setDraft((d) => ({ ...d, minAmountBOB: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Hasta BOB (vacío = sin tope)" htmlFor="tier-max">
+              <Input
+                id="tier-max"
+                type="text"
+                inputMode="decimal"
+                value={draft.maxAmountBOB}
+                onChange={(e) => setDraft((d) => ({ ...d, maxAmountBOB: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Reintegro %" htmlFor="tier-rebate">
+              <Input
+                id="tier-rebate"
+                type="text"
+                inputMode="decimal"
+                value={draft.rebatePercent}
+                onChange={(e) => setDraft((d) => ({ ...d, rebatePercent: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Vigente desde (YYYY-MM)" htmlFor="tier-from">
+              <Input
+                id="tier-from"
+                type="text"
+                placeholder="2025-05"
+                value={draft.validFromPeriod}
+                onChange={(e) => setDraft((d) => ({ ...d, validFromPeriod: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Vigente hasta (opcional)" htmlFor="tier-to">
+              <Input
+                id="tier-to"
+                type="text"
+                placeholder="vacío = sin fin"
+                value={draft.validToPeriod}
+                onChange={(e) => setDraft((d) => ({ ...d, validToPeriod: e.target.value }))}
+              />
+            </FormField>
           </div>
-        </div>
-      ) : null}
+
+          {draftConflicts.length > 0 ? (
+            <div className="space-y-1 rounded-md border border-border bg-muted/30 p-3">
+              {draftConflicts.map((c, i) => (
+                <p
+                  key={i}
+                  className={cn(
+                    'text-xs',
+                    c.severity === 'error' ? 'text-red-300' : 'text-amber-300',
+                  )}
+                >
+                  {c.severity === 'error' ? '✕' : '⚠'} {c.message}
+                </p>
+              ))}
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeModal}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={!draftFormValid || draftBlocked || saving}
+              onClick={() => void handleSave()}
+            >
+              {saving ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-const inputClass =
-  'h-9 w-full rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100 outline-none focus:border-blue-500'
-
-function Field({ label, children }: { label: string; children: JSX.Element }): JSX.Element {
+function FormField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string
+  htmlFor: string
+  children: ReactNode
+}): JSX.Element {
   return (
-    <label className="block">
-      <span className="text-xs text-slate-400">{label}</span>
-      <div className="mt-1">{children}</div>
-    </label>
+    <div className="space-y-1.5">
+      <Label htmlFor={htmlFor} className="text-xs text-muted-foreground">
+        {label}
+      </Label>
+      {children}
+    </div>
   )
 }
 

@@ -1,8 +1,157 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
+/* ───────────────────────────────────────────────────────────
+   shadcn/ui v4 tokens — Banexcoin brand
+   Brand source: #171724 base, #FF5D30 / #FF8E0A accents
+   ─────────────────────────────────────────────────────────── */
+
 :root {
-  /* Banexcoin official site source: #171724 base, #262634 border,
-     #FF5D30 and #FF8E0A brand accents. */
+  --radius: 0.625rem;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.665 0.205 35);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.665 0.205 35);
+
+  --chart-1: oklch(0.665 0.205 35);
+  --chart-2: oklch(0.732 0.180 55);
+  --chart-3: oklch(0.65 0.17 155);
+  --chart-4: oklch(0.55 0.20 280);
+  --chart-5: oklch(0.70 0.15 200);
+
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.665 0.205 35);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.665 0.205 35);
+}
+
+.dark {
+  /* Banexcoin dark canvas */
+  --background: oklch(0.18 0.015 280);             /* #171724 */
+  --foreground: oklch(0.985 0 0);
+
+  /* Cards/panels: slightly lighter than app bg */
+  --card: oklch(0.22 0.015 280);                   /* ~#1f1f2f */
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.24 0.015 280);
+  --popover-foreground: oklch(0.985 0 0);
+
+  /* Brand orange */
+  --primary: oklch(0.665 0.205 35);                /* #FF5D30 */
+  --primary-foreground: oklch(0.145 0 0);
+
+  --secondary: oklch(0.28 0.015 280);              /* hover panel */
+  --secondary-foreground: oklch(0.985 0 0);
+
+  --muted: oklch(0.26 0.015 280);
+  --muted-foreground: oklch(0.72 0.01 280);        /* soft gray */
+
+  --accent: oklch(0.30 0.015 280);
+  --accent-foreground: oklch(0.985 0 0);
+
+  --destructive: oklch(0.665 0.205 35);            /* brand orange doubles as danger */
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.32 0.015 280);                 /* #404054 */
+  --input: oklch(0.30 0.015 280);
+  --ring: oklch(0.732 0.180 55);                   /* #FF8E0A hover */
+
+  --chart-1: oklch(0.732 0.180 55);                /* warm orange */
+  --chart-2: oklch(0.70 0.17 155);                 /* success green */
+  --chart-3: oklch(0.65 0.20 280);                 /* violet */
+  --chart-4: oklch(0.55 0.18 200);                 /* cyan */
+  --chart-5: oklch(0.78 0.13 95);                  /* amber */
+
+  --sidebar: oklch(0.20 0.015 280);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.665 0.205 35);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.28 0.015 280);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.32 0.015 280);
+  --sidebar-ring: oklch(0.732 0.180 55);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* ───────────────────────────────────────────────────────────
+   Legacy Banexcoin utility classes — kept alive for islands
+   not yet migrated to shadcn. Will be removed once all
+   islands are using shadcn components.
+   ─────────────────────────────────────────────────────────── */
+
+:root {
   --color-app: 23 23 36;
   --color-app-muted: 23 23 36;
   --color-panel: 31 31 47;
@@ -28,134 +177,116 @@
   --color-inverse: 255 255 255;
 }
 
-  .app-canvas {
-    background-color: rgb(var(--color-app));
-  }
-
-  .app-canvas::before {
-    background-color: rgb(var(--color-panel) / 0.18);
-    content: "";
-    inset: 0;
-    pointer-events: none;
-    position: fixed;
-  }
-
-  .brand-mark {
-    background-color: rgb(var(--color-brand));
-    box-shadow: 0 12px 30px rgb(var(--color-brand) / 0.24);
-  }
-
-  .surface-card {
-    background-color: rgb(var(--color-panel) / 0.68);
-    border-color: rgb(var(--color-panel-line));
-    box-shadow: 0 24px 80px rgb(0 0 0 / 0.18);
-  }
-
-  .surface-card-quiet {
-    background: rgb(var(--color-panel) / 0.42);
-    border-color: rgb(var(--color-panel-line));
-  }
-
-  .status-dot {
-    background: rgb(var(--color-success));
-    box-shadow: 0 0 0 5px rgb(var(--color-success) / 0.12);
-  }
-
-  .bg-app { background-color: rgb(var(--color-app)); }
-  .bg-app-muted { background-color: rgb(var(--color-app-muted) / 0.6); }
-  .bg-app-glass { background-color: rgb(var(--color-app-muted) / 0.95); }
-  .bg-panel { background-color: rgb(var(--color-panel) / 0.4); }
-  .bg-panel-muted { background-color: rgb(var(--color-panel) / 0.3); }
-  .bg-panel-strong { background-color: rgb(var(--color-panel) / 0.5); }
-  .bg-panel-solid { background-color: rgb(var(--color-panel)); }
-  .bg-panel-inset { background-color: rgb(var(--color-app) / 0.4); }
-  .bg-panel-inset-strong { background-color: rgb(var(--color-app) / 0.5); }
-  .bg-panel-hover { background-color: rgb(var(--color-panel-hover) / 0.6); }
-  .bg-overlay { background-color: rgb(var(--color-overlay) / 0.6); }
-  .bg-overlay-strong { background-color: rgb(var(--color-overlay) / 0.7); }
-  .bg-brand { background-color: rgb(var(--color-brand)); }
-  .bg-brand-hover { background-color: rgb(var(--color-brand-hover)); }
-  .bg-brand-soft { background-color: rgb(var(--color-brand) / 0.1); }
-  .bg-brand-active { background-color: rgb(var(--color-brand) / 0.2); }
-  .bg-brand-selected { background-color: rgb(var(--color-brand) / 0.15); }
-  .bg-success { background-color: rgb(var(--color-success)); }
-  .bg-success-hover { background-color: rgb(var(--color-success) / 0.85); }
-  .bg-success-soft { background-color: rgb(var(--color-success) / 0.1); }
-  .bg-success-faint { background-color: rgb(var(--color-success) / 0.05); }
-  .bg-success-selected { background-color: rgb(var(--color-success) / 0.15); }
-  .bg-warning-soft { background-color: rgb(var(--color-warning) / 0.1); }
-  .bg-warning-faint { background-color: rgb(var(--color-warning) / 0.05); }
-  .bg-warning-selected { background-color: rgb(var(--color-warning) / 0.15); }
-  .bg-danger-soft { background-color: rgb(var(--color-danger) / 0.1); }
-  .bg-danger-selected { background-color: rgb(var(--color-danger) / 0.15); }
-  .bg-orange-selected { background-color: rgb(var(--color-orange) / 0.15); }
-  .bg-chart-track { background-color: rgb(var(--color-panel-line)); }
-  .bg-chart-fill { background-color: rgb(var(--color-brand-hover)); }
-
-  .text-main { color: rgb(var(--color-text-main)); }
-  .text-soft { color: rgb(var(--color-text-soft)); }
-  .text-muted { color: rgb(var(--color-text-muted)); }
-  .text-faint { color: rgb(var(--color-text-faint)); }
-  .text-inverse { color: rgb(var(--color-inverse)); }
-  .text-brand { color: rgb(var(--color-brand-hover)); }
-  .text-brand-soft { color: rgb(var(--color-brand-soft)); }
-  .text-success { color: rgb(var(--color-success-soft)); }
-  .text-success-strong { color: rgb(var(--color-success)); }
-  .text-warning { color: rgb(var(--color-warning-soft)); }
-  .text-warning-strong { color: rgb(var(--color-warning)); }
-  .text-danger { color: rgb(var(--color-danger-soft)); }
-
-  .border-line { border-color: rgb(var(--color-panel-line)); }
-  .border-app { border-color: rgb(var(--color-app)); }
-  .border-line-strong { border-color: rgb(var(--color-panel-line-strong)); }
-  .border-brand { border-color: rgb(var(--color-brand-hover)); }
-  .border-brand-soft { border-color: rgb(var(--color-brand-hover) / 0.4); }
-  .border-brand-muted { border-color: rgb(var(--color-brand-hover) / 0.3); }
-  .border-brand-active { border-color: rgb(var(--color-brand-hover) / 0.5); }
-  .border-success-soft { border-color: rgb(var(--color-success) / 0.4); }
-  .border-success-muted { border-color: rgb(var(--color-success) / 0.3); }
-  .border-success-active { border-color: rgb(var(--color-success) / 0.5); }
-  .border-warning-soft { border-color: rgb(var(--color-warning) / 0.4); }
-  .border-warning-active { border-color: rgb(var(--color-warning) / 0.5); }
-  .border-danger-soft { border-color: rgb(var(--color-danger) / 0.4); }
-  .border-danger-active { border-color: rgb(var(--color-danger) / 0.5); }
-  .border-orange-active { border-color: rgb(var(--color-orange) / 0.5); }
-  .border-violet-soft { border-color: rgb(var(--color-violet) / 0.4); }
-  .border-violet-hover { border-color: rgb(var(--color-violet) / 0.8); }
-
-  .divide-line > :not(:last-child) { border-color: rgb(var(--color-panel-line)); }
-  .divide-line-dark > :not(:last-child) { border-color: rgb(var(--color-app)); }
-  .accent-brand { accent-color: rgb(var(--color-brand-hover)); }
-
-  .hover-bg-panel-hover:hover { background-color: rgb(var(--color-panel-hover) / 0.6); }
-  .hover-bg-panel-hover-soft:hover { background-color: rgb(var(--color-panel-hover) / 0.5); }
-  .hover-bg-panel-hover-muted:hover { background-color: rgb(var(--color-panel) / 0.6); }
-  .hover-bg-chart-track:hover { background-color: rgb(var(--color-panel-line)); }
-  .hover-bg-brand-hover:hover { background-color: rgb(var(--color-brand-hover)); }
-  .hover-bg-success-hover:hover { background-color: rgb(var(--color-success) / 0.85); }
-  .hover-bg-brand-soft:hover { background-color: rgb(var(--color-brand-hover) / 0.05); }
-  .hover-bg-success-soft:hover { background-color: rgb(var(--color-success) / 0.05); }
-  .hover-bg-violet-soft:hover { background-color: rgb(var(--color-violet) / 0.05); }
-  .hover-text-main:hover { color: rgb(var(--color-text-main)); }
-  .hover-text-soft:hover { color: rgb(var(--color-text-soft)); }
-  .hover-text-inverse:hover { color: rgb(var(--color-inverse)); }
-  .hover-text-brand:hover { color: rgb(var(--color-brand-soft)); }
-  .hover-border-line-hover:hover { border-color: rgb(var(--color-text-faint)); }
-  .hover-border-brand:hover { border-color: rgb(var(--color-brand-hover)); }
-  .hover-border-brand-soft:hover { border-color: rgb(var(--color-brand-hover) / 0.8); }
-  .hover-border-success-soft:hover { border-color: rgb(var(--color-success) / 0.8); }
-  .hover-border-violet-soft:hover { border-color: rgb(var(--color-violet) / 0.8); }
-  .focus-border-brand:focus { border-color: rgb(var(--color-brand-hover)); }
+.app-canvas { background-color: rgb(var(--color-app)); }
+.app-canvas::before {
+  background-color: rgb(var(--color-panel) / 0.18);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+}
+.brand-mark {
+  background-color: rgb(var(--color-brand));
+  box-shadow: 0 12px 30px rgb(var(--color-brand) / 0.24);
+}
+.surface-card {
+  background-color: rgb(var(--color-panel) / 0.68);
+  border-color: rgb(var(--color-panel-line));
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.18);
+}
+.surface-card-quiet {
+  background: rgb(var(--color-panel) / 0.42);
+  border-color: rgb(var(--color-panel-line));
+}
+.status-dot {
+  background: rgb(var(--color-success));
+  box-shadow: 0 0 0 5px rgb(var(--color-success) / 0.12);
+}
+.bg-app { background-color: rgb(var(--color-app)); }
+.bg-app-muted { background-color: rgb(var(--color-app-muted) / 0.6); }
+.bg-app-glass { background-color: rgb(var(--color-app-muted) / 0.95); }
+.bg-panel { background-color: rgb(var(--color-panel) / 0.4); }
+.bg-panel-muted { background-color: rgb(var(--color-panel) / 0.3); }
+.bg-panel-strong { background-color: rgb(var(--color-panel) / 0.5); }
+.bg-panel-solid { background-color: rgb(var(--color-panel)); }
+.bg-panel-inset { background-color: rgb(var(--color-app) / 0.4); }
+.bg-panel-inset-strong { background-color: rgb(var(--color-app) / 0.5); }
+.bg-panel-hover { background-color: rgb(var(--color-panel-hover) / 0.6); }
+.bg-overlay { background-color: rgb(var(--color-overlay) / 0.6); }
+.bg-overlay-strong { background-color: rgb(var(--color-overlay) / 0.7); }
+.bg-brand { background-color: rgb(var(--color-brand)); }
+.bg-brand-hover { background-color: rgb(var(--color-brand-hover)); }
+.bg-brand-soft { background-color: rgb(var(--color-brand) / 0.1); }
+.bg-brand-active { background-color: rgb(var(--color-brand) / 0.2); }
+.bg-brand-selected { background-color: rgb(var(--color-brand) / 0.15); }
+.bg-success { background-color: rgb(var(--color-success)); }
+.bg-success-hover { background-color: rgb(var(--color-success) / 0.85); }
+.bg-success-soft { background-color: rgb(var(--color-success) / 0.1); }
+.bg-success-faint { background-color: rgb(var(--color-success) / 0.05); }
+.bg-success-selected { background-color: rgb(var(--color-success) / 0.15); }
+.bg-warning-soft { background-color: rgb(var(--color-warning) / 0.1); }
+.bg-warning-faint { background-color: rgb(var(--color-warning) / 0.05); }
+.bg-warning-selected { background-color: rgb(var(--color-warning) / 0.15); }
+.bg-danger-soft { background-color: rgb(var(--color-danger) / 0.1); }
+.bg-danger-selected { background-color: rgb(var(--color-danger) / 0.15); }
+.bg-orange-selected { background-color: rgb(var(--color-orange) / 0.15); }
+.bg-chart-track { background-color: rgb(var(--color-panel-line)); }
+.bg-chart-fill { background-color: rgb(var(--color-brand-hover)); }
+.text-main { color: rgb(var(--color-text-main)); }
+.text-soft { color: rgb(var(--color-text-soft)); }
+.text-muted { color: rgb(var(--color-text-muted)); }
+.text-faint { color: rgb(var(--color-text-faint)); }
+.text-inverse { color: rgb(var(--color-inverse)); }
+.text-brand { color: rgb(var(--color-brand-hover)); }
+.text-brand-soft { color: rgb(var(--color-brand-soft)); }
+.text-success { color: rgb(var(--color-success-soft)); }
+.text-success-strong { color: rgb(var(--color-success)); }
+.text-warning { color: rgb(var(--color-warning-soft)); }
+.text-warning-strong { color: rgb(var(--color-warning)); }
+.text-danger { color: rgb(var(--color-danger-soft)); }
+.border-line { border-color: rgb(var(--color-panel-line)); }
+.border-app { border-color: rgb(var(--color-app)); }
+.border-line-strong { border-color: rgb(var(--color-panel-line-strong)); }
+.border-brand { border-color: rgb(var(--color-brand-hover)); }
+.border-brand-soft { border-color: rgb(var(--color-brand-hover) / 0.4); }
+.border-brand-muted { border-color: rgb(var(--color-brand-hover) / 0.3); }
+.border-brand-active { border-color: rgb(var(--color-brand-hover) / 0.5); }
+.border-success-soft { border-color: rgb(var(--color-success) / 0.4); }
+.border-success-muted { border-color: rgb(var(--color-success) / 0.3); }
+.border-success-active { border-color: rgb(var(--color-success) / 0.5); }
+.border-warning-soft { border-color: rgb(var(--color-warning) / 0.4); }
+.border-warning-active { border-color: rgb(var(--color-warning) / 0.5); }
+.border-danger-soft { border-color: rgb(var(--color-danger) / 0.4); }
+.border-danger-active { border-color: rgb(var(--color-danger) / 0.5); }
+.border-orange-active { border-color: rgb(var(--color-orange) / 0.5); }
+.border-violet-soft { border-color: rgb(var(--color-violet) / 0.4); }
+.border-violet-hover { border-color: rgb(var(--color-violet) / 0.8); }
+.divide-line > :not(:last-child) { border-color: rgb(var(--color-panel-line)); }
+.divide-line-dark > :not(:last-child) { border-color: rgb(var(--color-app)); }
+.accent-brand { accent-color: rgb(var(--color-brand-hover)); }
+.hover-bg-panel-hover:hover { background-color: rgb(var(--color-panel-hover) / 0.6); }
+.hover-bg-panel-hover-soft:hover { background-color: rgb(var(--color-panel-hover) / 0.5); }
+.hover-bg-panel-hover-muted:hover { background-color: rgb(var(--color-panel) / 0.6); }
+.hover-bg-chart-track:hover { background-color: rgb(var(--color-panel-line)); }
+.hover-bg-brand-hover:hover { background-color: rgb(var(--color-brand-hover)); }
+.hover-bg-success-hover:hover { background-color: rgb(var(--color-success) / 0.85); }
+.hover-bg-brand-soft:hover { background-color: rgb(var(--color-brand-hover) / 0.05); }
+.hover-bg-success-soft:hover { background-color: rgb(var(--color-success) / 0.05); }
+.hover-bg-violet-soft:hover { background-color: rgb(var(--color-violet) / 0.05); }
+.hover-text-main:hover { color: rgb(var(--color-text-main)); }
+.hover-text-soft:hover { color: rgb(var(--color-text-soft)); }
+.hover-text-inverse:hover { color: rgb(var(--color-inverse)); }
+.hover-text-brand:hover { color: rgb(var(--color-brand-soft)); }
+.hover-border-line-hover:hover { border-color: rgb(var(--color-text-faint)); }
+.hover-border-brand:hover { border-color: rgb(var(--color-brand-hover)); }
+.hover-border-brand-soft:hover { border-color: rgb(var(--color-brand-hover) / 0.8); }
+.hover-border-success-soft:hover { border-color: rgb(var(--color-success) / 0.8); }
+.hover-border-violet-soft:hover { border-color: rgb(var(--color-violet) / 0.8); }
+.focus-border-brand:focus { border-color: rgb(var(--color-brand-hover)); }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {

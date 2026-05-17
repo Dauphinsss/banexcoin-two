@@ -6,11 +6,13 @@
  * - 12 movimientos de muestra cubriendo todos los tipos del Excel
  * - extractos de muestra para conciliacion
  *
- * Ejecutar con: `bun run --cwd backend prisma:seed`.
+ * Ejecutar manualmente con: `bun run --cwd backend prisma:seed`.
+ * Este comando borra todos los datos antes de cargar la semilla.
  */
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
+const DEMO_UPLOAD_HASH = 'seed-hackaton-2026-canonical-ledger-v1'
 
 const SEED_TIERS = [
   { level: 1, name: 'Basico', minAmountBOB: '0', maxAmountBOB: '500', rebatePercent: '1.00' },
@@ -509,6 +511,23 @@ const SEED_EXTRACT_ENTRIES = [
   },
 ] as const
 
+async function resetDatabase(): Promise<void> {
+  await prisma.$transaction([
+    prisma.monthlyRebateItem.deleteMany(),
+    prisma.reconciliationAnomaly.deleteMany(),
+    prisma.generatedReport.deleteMany(),
+    prisma.parseError.deleteMany(),
+    prisma.bankExtractEntry.deleteMany(),
+    prisma.qrTransactionDetail.deleteMany(),
+    prisma.transferDetail.deleteMany(),
+    prisma.monthlyRebate.deleteMany(),
+    prisma.ledgerTransaction.deleteMany(),
+    prisma.upload.deleteMany(),
+    prisma.cashbackTier.deleteMany(),
+    prisma.userAccount.deleteMany(),
+  ])
+}
+
 async function seedCashbackTiers(): Promise<void> {
   const validFromPeriod = '2025-01'
   const validToPeriod = null
@@ -553,22 +572,6 @@ async function seedCashbackTiers(): Promise<void> {
 
 async function seedTransactionsScenario(): Promise<void> {
   for (const user of SEED_USERS) {
-    const existing = await prisma.userAccount.findUnique({
-      where: { accountNumber: user.accountNumber },
-    })
-
-    if (existing) {
-      await prisma.userAccount.update({
-        where: { id: existing.id },
-        data: {
-          username: user.username,
-          displayName: user.displayName,
-          active: true,
-        },
-      })
-      continue
-    }
-
     await prisma.userAccount.create({
       data: {
         accountNumber: user.accountNumber,
@@ -579,23 +582,13 @@ async function seedTransactionsScenario(): Promise<void> {
     })
   }
 
-  const existingUpload = await prisma.upload.findUnique({
-    where: { fileHash: 'seed-hackaton-2026-canonical-ledger-v1' },
-  })
-
-  if (existingUpload) {
-    await prisma.upload.delete({
-      where: { id: existingUpload.id },
-    })
-  }
-
   const upload = await prisma.upload.create({
     data: {
       originalName: 'Reportes Banexcoin Bolivia Hackaton 2026.xlsx',
       storagePath: './data/uploads/seed-hackaton-2026.xlsx',
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       fileSizeBytes: 245760,
-      fileHash: 'seed-hackaton-2026-canonical-ledger-v1',
+      fileHash: DEMO_UPLOAD_HASH,
       period: '2025-05',
       status: 'DONE',
       rowCount: 18,
@@ -817,6 +810,7 @@ async function seedTransactionsScenario(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  await resetDatabase()
   await seedCashbackTiers()
   await seedTransactionsScenario()
 

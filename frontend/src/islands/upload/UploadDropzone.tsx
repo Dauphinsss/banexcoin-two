@@ -1,9 +1,30 @@
 import { useCallback, useState, type JSX } from 'react'
 import { useDropzone, type FileRejection } from 'react-dropzone'
-import { Check, FileUp, TriangleAlert, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileSpreadsheet,
+  FileUp,
+  Loader2,
+  X,
+} from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { detectPeriod } from '@banex/utils'
 import { api, ApiCallError } from '../../lib/api'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { cn } from '@/lib/utils'
 
 const ACCEPTED_TYPES = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
@@ -79,10 +100,8 @@ export default function UploadDropzone(): JSX.Element {
     [analyze],
   )
 
-  // Guard against server-side rendering: only render dropzone on client side
   if (typeof window === 'undefined') {
-    // Server-side fallback UI
-    return <div className="w-full max-w-3xl mx-auto">Cargando...</div>;
+    return <div className="w-full max-w-3xl mx-auto text-sm text-muted-foreground">Cargando…</div>
   }
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -92,40 +111,43 @@ export default function UploadDropzone(): JSX.Element {
     disabled: stage.kind === 'analyzing' || stage.kind === 'uploading',
   })
 
-  const submit = useCallback(async (allowDuplicate = false) => {
-    if (stage.kind !== 'preview' && stage.kind !== 'duplicate') return
+  const submit = useCallback(
+    async (allowDuplicate = false) => {
+      if (stage.kind !== 'preview' && stage.kind !== 'duplicate') return
 
-    const file = stage.file
-    const preview = stage.preview
-    setStage({ kind: 'uploading', file, preview })
+      const file = stage.file
+      const preview = stage.preview
+      setStage({ kind: 'uploading', file, preview })
 
-    try {
-      const response = await api.createUpload(
-        file,
-        preview.detectedPeriod ?? undefined,
-        allowDuplicate,
-      )
-      setStage({ kind: 'success', uploadId: response.uploadId })
-    } catch (error) {
-      if (error instanceof ApiCallError && error.payload.error === 'DUPLICATE_UPLOAD') {
-        setStage({
-          kind: 'duplicate',
+      try {
+        const response = await api.createUpload(
           file,
-          preview,
-          existingUploadId: String(error.payload.existingUploadId ?? ''),
-          canReload: error.payload.canReload === true,
-        })
-        return
+          preview.detectedPeriod ?? undefined,
+          allowDuplicate,
+        )
+        setStage({ kind: 'success', uploadId: response.uploadId })
+      } catch (error) {
+        if (error instanceof ApiCallError && error.payload.error === 'DUPLICATE_UPLOAD') {
+          setStage({
+            kind: 'duplicate',
+            file,
+            preview,
+            existingUploadId: String(error.payload.existingUploadId ?? ''),
+            canReload: error.payload.canReload === true,
+          })
+          return
+        }
+        const message = error instanceof Error ? error.message : 'Falló la carga.'
+        setStage({ kind: 'error', message, previousFile: file })
       }
-      const message = error instanceof Error ? error.message : 'Falló la carga.'
-      setStage({ kind: 'error', message, previousFile: file })
-    }
-  }, [stage])
+    },
+    [stage],
+  )
 
   const reset = useCallback(() => setStage({ kind: 'idle' }), [])
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full">
       {stage.kind === 'idle' || stage.kind === 'error' ? (
         <DropzoneEmpty
           rootProps={getRootProps()}
@@ -180,46 +202,58 @@ const DropzoneEmpty = ({
   <div className="space-y-3">
     <div
       {...rootProps}
-      className={`
-        flex flex-col items-center justify-center gap-3
-        rounded-xl border-2 border-dashed
-        px-8 py-16 text-center cursor-pointer
-        transition-all duration-150
-        ${isDragActive
-          ? 'border-brand bg-brand-soft scale-[1.01]'
-          : 'border-line-strong hover-border-line-hover bg-panel'}
-      `}
+      className={cn(
+        'group relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-8 py-16 text-center transition-all duration-200',
+        isDragActive
+          ? 'scale-[1.01] border-primary bg-primary/5 shadow-lg shadow-primary/10'
+          : 'border-border bg-card/40 hover:border-primary/50 hover:bg-card/60',
+      )}
     >
       <input {...inputProps} />
-      <FileUp className="size-10 text-faint" aria-hidden="true" />
-      <div className="space-y-1">
-        <p className="text-soft font-medium">
-          Arrastra el reporte mensual de pagos QR
+      <div
+        className={cn(
+          'grid size-16 place-items-center rounded-full transition-all',
+          isDragActive
+            ? 'bg-primary/20 text-primary ring-4 ring-primary/15'
+            : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary',
+        )}
+      >
+        <FileUp className="size-7" aria-hidden="true" />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-base font-semibold text-foreground">
+          {isDragActive ? 'Suelta el archivo aquí' : 'Arrastra el reporte mensual de pagos QR'}
         </p>
-        <p className="text-sm text-muted">
-          Excel (.xlsx), máximo 50 MB. Procesamiento independiente del core Banexcoin.
+        <p className="text-sm text-muted-foreground">
+          Excel (.xlsx / .xls), máximo 50 MB. Procesamiento aislado del core Banexcoin.
         </p>
       </div>
-      <button
-        type="button"
-        className="mt-4 px-4 py-2 rounded-md bg-brand hover-bg-brand-hover text-inverse text-sm font-medium"
-      >
+      <Button type="button" className="mt-2">
+        <FileSpreadsheet />
         Seleccionar archivo
-      </button>
+      </Button>
     </div>
 
     {errorMessage ? (
-      <div className="rounded-md border border-danger-soft bg-danger-soft px-4 py-3 text-sm text-danger">
-        {errorMessage}
-      </div>
+      <Alert variant="destructive">
+        <AlertTriangle />
+        <AlertTitle>No se pudo procesar el archivo</AlertTitle>
+        <AlertDescription>{errorMessage}</AlertDescription>
+      </Alert>
     ) : null}
   </div>
 )
 
 const AnalyzingState = ({ filename }: { filename: string }): JSX.Element => (
-  <div className="rounded-xl border border-line-strong bg-panel p-8 text-center">
-    <p className="text-muted text-sm">Analizando {filename}...</p>
-  </div>
+  <Card>
+    <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+      <Loader2 className="size-8 animate-spin text-primary" />
+      <div className="space-y-1">
+        <p className="text-base font-medium">Analizando archivo</p>
+        <p className="font-mono text-xs text-muted-foreground">{filename}</p>
+      </div>
+    </CardContent>
+  </Card>
 )
 
 const PreviewState = ({
@@ -234,100 +268,106 @@ const PreviewState = ({
   onConfirm: () => void
 }): JSX.Element => {
   const blocked = preview.missingHeaders.length > 0 || preview.totalRows === 0
-
   return (
-    <div className="space-y-4 rounded-xl border border-line-strong bg-panel p-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-main font-medium">{file.name}</p>
-          <p className="text-xs text-muted font-mono">
-            {(file.size / 1024 / 1024).toFixed(2)} MB
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-muted hover-text-soft"
-          aria-label="Cancelar"
-        >
-          <X className="size-5" aria-hidden="true" />
-        </button>
-      </header>
+    <Card>
+      <CardContent className="space-y-5 pt-6">
+        <header className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="grid size-10 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/25">
+              <FileSpreadsheet className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">{file.name}</p>
+              <p className="font-mono text-xs text-muted-foreground">
+                {(file.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onCancel}
+            aria-label="Cancelar"
+          >
+            <X />
+          </Button>
+        </header>
 
-      {preview.missingHeaders.length > 0 ? (
-        <div className="rounded-md border border-danger-soft bg-danger-soft px-4 py-3 text-sm text-danger">
-          <p className="font-medium">Faltan columnas obligatorias en la hoja "Pago QR":</p>
-          <ul className="mt-1 list-disc list-inside font-mono text-xs">
-            {preview.missingHeaders.map((h) => (
-              <li key={h}>{h}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <dl className="grid grid-cols-3 gap-4 text-sm">
-        <Stat label="Transacciones" value={preview.totalRows.toLocaleString('es-BO')} />
-        <Stat label="Usuarios únicos" value={preview.uniqueUsers.toLocaleString('es-BO')} />
-        <Stat
-          label="Período"
-          value={preview.detectedPeriod ?? 'No detectado'}
-        />
-      </dl>
-
-      {preview.periodWarning ? (
-        <div className="rounded-md border border-warning-soft bg-warning-soft px-4 py-3 text-sm text-warning">
-          {preview.periodWarning}
-        </div>
-      ) : null}
-
-      <details className="rounded-md border border-line-strong bg-panel-inset-strong p-3">
-        <summary className="cursor-pointer text-sm text-muted">
-          Vista previa de las primeras {preview.previewRows.length} filas
-        </summary>
-        <div className="mt-3 overflow-x-auto">
-          <table className="text-xs font-mono">
-            <thead>
-              <tr className="text-muted">
-                {preview.headers.slice(0, 8).map((h) => (
-                  <th key={h} className="px-2 py-1 text-left border-b border-line">
-                    {h}
-                  </th>
+        {preview.missingHeaders.length > 0 ? (
+          <Alert variant="destructive">
+            <AlertTriangle />
+            <AlertTitle>Faltan columnas obligatorias en la hoja "Pago QR"</AlertTitle>
+            <AlertDescription>
+              <ul className="mt-2 list-disc space-y-0.5 pl-5 font-mono text-xs">
+                {preview.missingHeaders.map((h) => (
+                  <li key={h}>{h}</li>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {preview.previewRows.map((row, i) => (
-                <tr key={i} className="text-muted">
-                  {preview.headers.slice(0, 8).map((h) => (
-                    <td key={h} className="px-2 py-1 border-b border-app">
-                      {formatCellValue(row[h])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+              </ul>
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-      <footer className="flex items-center justify-end gap-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 rounded-md text-sm text-muted hover-text-inverse"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={blocked}
-          className="px-5 py-2 rounded-md text-sm font-medium bg-brand hover-bg-brand-hover text-inverse disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Procesar {preview.totalRows.toLocaleString('es-BO')} transacciones
-        </button>
-      </footer>
-    </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Stat label="Transacciones" value={preview.totalRows.toLocaleString('es-BO')} />
+          <Stat label="Usuarios únicos" value={preview.uniqueUsers.toLocaleString('es-BO')} />
+          <Stat
+            label="Período"
+            value={preview.detectedPeriod ?? 'No detectado'}
+            mono={!!preview.detectedPeriod}
+          />
+        </div>
+
+        {preview.periodWarning ? (
+          <Alert>
+            <AlertTriangle />
+            <AlertDescription>{preview.periodWarning}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <details className="group rounded-md border border-border bg-muted/30">
+          <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-muted-foreground transition-colors hover:text-foreground">
+            <span>Vista previa de las primeras {preview.previewRows.length} filas</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </summary>
+          <div className="overflow-x-auto border-t border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {preview.headers.slice(0, 8).map((h) => (
+                    <TableHead key={h} className="whitespace-nowrap font-mono text-[11px] uppercase tracking-wider">
+                      {h}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {preview.previewRows.map((row, i) => (
+                  <TableRow key={i}>
+                    {preview.headers.slice(0, 8).map((h) => (
+                      <TableCell key={h} className="font-mono text-xs">
+                        {formatCellValue(row[h])}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </details>
+
+        <footer className="flex flex-wrap items-center justify-end gap-2 pt-1">
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button type="button" onClick={onConfirm} disabled={blocked}>
+            Procesar {preview.totalRows.toLocaleString('es-BO')} transacciones
+          </Button>
+        </footer>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -338,12 +378,18 @@ const UploadingState = ({
   filename: string
   preview: Preview
 }): JSX.Element => (
-  <div className="rounded-xl border border-line-strong bg-panel p-8 text-center space-y-2">
-    <p className="text-main font-medium">Subiendo {filename}…</p>
-    <p className="text-sm text-muted">
-      {preview.totalRows.toLocaleString('es-BO')} transacciones en camino.
-    </p>
-  </div>
+  <Card>
+    <CardContent className="space-y-4 py-10 text-center">
+      <Loader2 className="mx-auto size-8 animate-spin text-primary" />
+      <div className="space-y-1">
+        <p className="text-base font-medium">Subiendo {filename}…</p>
+        <p className="text-sm text-muted-foreground">
+          {preview.totalRows.toLocaleString('es-BO')} transacciones en camino.
+        </p>
+      </div>
+      <Progress value={undefined} className="mx-auto max-w-sm" />
+    </CardContent>
+  </Card>
 )
 
 const SuccessState = ({
@@ -353,20 +399,25 @@ const SuccessState = ({
   uploadId: string
   onUploadAnother: () => void
 }): JSX.Element => (
-  <div className="rounded-xl border border-success-soft bg-success-faint p-8 text-center space-y-4">
-    <Check className="mx-auto size-8 text-success-strong" aria-hidden="true" />
-    <div>
-      <p className="text-main font-medium">Archivo procesado correctamente.</p>
-      <p className="text-xs text-muted font-mono mt-1">ID: {uploadId}</p>
-    </div>
-    <button
-      type="button"
-      onClick={onUploadAnother}
-      className="px-4 py-2 rounded-md text-sm font-medium bg-brand hover-bg-brand-hover text-inverse"
-    >
-      Subir otro
-    </button>
-  </div>
+  <Card className="border-emerald-500/30 bg-emerald-500/5">
+    <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+      <div className="grid size-14 place-items-center rounded-full bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30">
+        <CheckCircle2 className="size-7" />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-base font-semibold">Archivo procesado correctamente</p>
+        <p className="font-mono text-xs text-muted-foreground">ID: {uploadId}</p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button asChild>
+          <a href={`/uploads/${uploadId}`}>Ver resultados</a>
+        </Button>
+        <Button type="button" variant="outline" onClick={onUploadAnother}>
+          Subir otro
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
 )
 
 const DuplicateState = ({
@@ -380,56 +431,57 @@ const DuplicateState = ({
   onReload: () => void
   onTryAnother: () => void
 }): JSX.Element => (
-  <div className="rounded-xl border border-warning-soft bg-warning-faint p-8 text-center space-y-4">
-    <TriangleAlert className="mx-auto size-8 text-warning-strong" aria-hidden="true" />
-    <div>
-      <p className="text-main font-medium">Estas subiendo el mismo archivo.</p>
-      {canReload ? (
-        <p className="mt-1 text-sm text-muted">
-          Estas en modo test. Quieres aplicarlo de todas formas y reemplazar sus resultados?
-        </p>
-      ) : (
-        <p className="mt-1 text-sm text-muted">
-          La recarga esta restringida para este entorno.
-        </p>
-      )}
-      <p className="text-xs text-muted font-mono mt-1">ID existente: {existingUploadId}</p>
-    </div>
-    <div className="flex justify-center gap-3">
-      {canReload ? (
-        <button
-          type="button"
-          onClick={onReload}
-          className="px-4 py-2 rounded-md text-sm font-medium bg-brand hover-bg-brand-hover text-inverse"
-        >
-          Si, aplicar de todas formas
-        </button>
-      ) : null}
-      <a
-        href={`/uploads/${existingUploadId}`}
-        className={`px-4 py-2 rounded-md text-sm font-medium ${
-          canReload
-            ? 'border border-line-strong text-muted hover-text-inverse'
-            : 'bg-brand hover-bg-brand-hover text-inverse'
-        }`}
-      >
-        Ver resultados existentes
-      </a>
-      <button
-        type="button"
-        onClick={onTryAnother}
-        className="px-4 py-2 rounded-md text-sm text-muted hover-text-inverse"
-      >
-        Subir otro archivo
-      </button>
-    </div>
-  </div>
+  <Card className="border-amber-500/30 bg-amber-500/5">
+    <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+      <div className="grid size-14 place-items-center rounded-full bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30">
+        <AlertTriangle className="size-7" />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-base font-semibold">Estás subiendo el mismo archivo</p>
+        {canReload ? (
+          <p className="mx-auto max-w-md text-sm text-muted-foreground">
+            Estás en modo test. ¿Quieres aplicarlo de todas formas y reemplazar los resultados existentes?
+          </p>
+        ) : (
+          <p className="mx-auto max-w-md text-sm text-muted-foreground">
+            La recarga está restringida para este entorno.
+          </p>
+        )}
+        <Badge variant="secondary" className="mt-1 font-mono">
+          ID existente: {existingUploadId}
+        </Badge>
+      </div>
+      <div className="flex flex-wrap justify-center gap-2">
+        {canReload ? (
+          <Button type="button" onClick={onReload}>
+            Sí, aplicar de todas formas
+          </Button>
+        ) : null}
+        <Button asChild variant={canReload ? 'outline' : 'default'}>
+          <a href={`/uploads/${existingUploadId}`}>Ver resultados existentes</a>
+        </Button>
+        <Button type="button" variant="ghost" onClick={onTryAnother}>
+          Subir otro archivo
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
 )
 
-const Stat = ({ label, value }: { label: string; value: string }): JSX.Element => (
-  <div className="rounded-md border border-line-strong bg-panel-inset px-4 py-3">
-    <dt className="text-xs uppercase tracking-wide text-faint">{label}</dt>
-    <dd className="mt-1 font-mono tabular-nums text-main">{value}</dd>
+const Stat = ({
+  label,
+  value,
+  mono = true,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}): JSX.Element => (
+  <div className="rounded-md border border-border bg-muted/30 px-4 py-3">
+    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+    <p className={cn('mt-1 text-base font-semibold tabular-nums text-foreground', mono && 'font-mono')}>
+      {value}
+    </p>
   </div>
 )
 

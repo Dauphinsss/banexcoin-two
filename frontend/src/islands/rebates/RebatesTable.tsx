@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowRight, Download, Search } from 'lucide-react'
 import type { MonthlyRebateDTO, UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
-import {
-  formatBOB,
-  formatPercent,
-  formatRate,
-  formatUSDT,
-} from '../../lib/format'
+import { formatBOB, formatPercent, formatRate, formatUSDT } from '../../lib/format'
 import { UserDrawer } from './UserDrawer'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { cn } from '@/lib/utils'
 
 type SortKey =
   | 'username'
@@ -101,56 +112,78 @@ export function RebatesTable(): JSX.Element {
     URL.revokeObjectURL(url)
   }
 
-  if (status === 'loading') return <p className="text-sm text-muted">Cargando reintegros...</p>
+  if (status === 'loading') {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
   if (status === 'empty') return <EmptyState />
-  if (status === 'error') return <p className="text-sm text-danger">No se pudieron cargar los reintegros.</p>
+  if (status === 'error') {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>No se pudieron cargar los reintegros.</AlertDescription>
+      </Alert>
+    )
+  }
 
   return (
     <>
       <div className="space-y-4">
-        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
-          <div>
-            <p className="text-sm text-muted">Último upload procesado</p>
-            <h2 className="mt-1 text-base font-semibold text-main">{upload?.filename}</h2>
-            <p className="text-xs text-faint font-mono mt-1">
-              {filteredSorted.length} de {rebates.length} reintegros
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              className="h-10 rounded-md border border-line-strong bg-app px-3 text-sm text-main outline-none focus-border-brand"
-              placeholder="Buscar usuario o cuenta"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <select
-              className="h-10 rounded-md border border-line-strong bg-app px-3 text-sm text-main outline-none focus-border-brand"
-              value={tier}
-              onChange={(event) => setTier(event.target.value)}
-            >
-              {tiers.map((item) => (
-                <option key={item} value={item}>
-                  {item === 'ALL' ? 'Todos los niveles' : item}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={exportCSV}
-              disabled={filteredSorted.length === 0}
-              className="h-10 px-4 rounded-md border border-line-strong bg-panel-solid text-sm text-soft hover-bg-chart-track disabled:opacity-40 disabled:cursor-not-allowed"
-              title={`Exportar ${filteredSorted.length} filas a CSV`}
-            >
-              Exportar CSV
-            </button>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Último upload procesado
+              </p>
+              <h2 className="text-base font-semibold">{upload?.filename}</h2>
+              <p className="font-mono text-xs text-muted-foreground">
+                {filteredSorted.length} de {rebates.length} reintegros
+                {upload?.period ? ` · período ${upload.period}` : null}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9 sm:w-64"
+                  placeholder="Buscar usuario o cuenta"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </div>
+              <select
+                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                value={tier}
+                onChange={(event) => setTier(event.target.value)}
+              >
+                {tiers.map((item) => (
+                  <option key={item} value={item} className="bg-popover text-popover-foreground">
+                    {item === 'ALL' ? 'Todos los niveles' : item}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={exportCSV}
+                disabled={filteredSorted.length === 0}
+                title={`Exportar ${filteredSorted.length} filas a CSV`}
+              >
+                <Download />
+                Exportar CSV
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="overflow-hidden rounded-lg border border-line">
+        <Card>
           <div className="max-h-[620px] overflow-auto">
-            <table className="min-w-full divide-y divide-line text-sm">
-              <thead className="sticky top-0 bg-app text-left text-xs uppercase tracking-widest text-faint z-10">
-                <tr>
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-card">
+                <TableRow>
                   <SortHeader label="Usuario" sortKey="username" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Total BOB" sortKey="totalSpentBOB" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Nivel" sortKey="tierName" active={sortKey} dir={sortDir} onSort={toggleSort} />
@@ -158,53 +191,56 @@ export function RebatesTable(): JSX.Element {
                   <SortHeader label="USDT" sortKey="rebateUSDT" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="T/C ⌀" sortKey="avgExchangeRate" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Tx" sortKey="transactionCount" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line-dark bg-panel-muted">
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredSorted.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-8 text-center text-muted" colSpan={7}>
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                       No hay reintegros que coincidan con los filtros.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   filteredSorted.map((row) => (
-                    <tr
+                    <TableRow
                       key={row.id}
-                      className="hover-bg-panel-hover cursor-pointer"
+                      className="group cursor-pointer"
                       onClick={() => setSelected(row)}
                     >
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-main">{row.username}</div>
-                        <div className="font-mono text-xs text-faint">{row.userId}</div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-soft">
+                      <TableCell>
+                        <p className="font-medium text-foreground">{row.username}</p>
+                        <p className="font-mono text-xs text-muted-foreground">{row.userId}</p>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">
                         {formatBOB(row.totalSpentBOB)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="rounded-md border border-brand-muted bg-brand-soft px-2 py-1 text-xs text-brand-soft">
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className="border-primary/30 bg-primary/10 text-primary"
+                        >
                           {row.tierName ?? 'Sin nivel'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-soft">
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">
                         {formatPercent(row.rebatePercent)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-success">
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-emerald-400">
                         {formatUSDT(row.rebateUSDT)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-muted">
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
                         {formatRate(row.avgExchangeRate)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-muted">
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
                         {row.transactionCount}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
-        </div>
+        </Card>
       </div>
 
       {upload && (
@@ -234,34 +270,38 @@ const SortHeader = ({
   onSort: (key: SortKey) => void
 }): JSX.Element => {
   const isActive = active === key
-  const arrow = isActive ? (dir === 'asc' ? '▲' : '▼') : ''
+  const Arrow = !isActive ? ArrowUpDown : dir === 'asc' ? ArrowUp : ArrowDown
   return (
-    <th className={`px-4 py-3 ${align === 'right' ? 'text-right' : 'text-left'}`}>
+    <TableHead className={align === 'right' ? 'text-right' : 'text-left'}>
       <button
         type="button"
         onClick={() => onSort(key)}
-        className={`inline-flex items-center gap-1 hover-text-soft ${
-          isActive ? 'text-soft' : ''
-        }`}
+        className={cn(
+          'inline-flex items-center gap-1 text-xs uppercase tracking-wider transition-colors hover:text-foreground',
+          isActive ? 'text-foreground' : 'text-muted-foreground',
+          align === 'right' ? 'flex-row-reverse' : '',
+        )}
       >
         {label}
-        <span className="text-[10px]">{arrow}</span>
+        <Arrow className="size-3" />
       </button>
-    </th>
+    </TableHead>
   )
 }
 
 function EmptyState(): JSX.Element {
   return (
-    <div className="rounded-lg border border-line bg-panel p-6">
-      <p className="text-sm text-muted">Procesa un Excel para ver la tabla de reintegros.</p>
-      <a
-        className="mt-4 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-medium text-inverse hover-bg-brand-hover"
-        href="/uploads/new"
-      >
-        Subir Excel
-      </a>
-    </div>
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+        <p className="text-sm text-muted-foreground">Procesa un Excel para ver la tabla de reintegros.</p>
+        <Button asChild>
+          <a href="/uploads/new">
+            Subir Excel
+            <ArrowRight />
+          </a>
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -331,8 +371,6 @@ const buildCSV = (rows: MonthlyRebateDTO[]): string => {
 }
 
 const csvCell = (value: string): string => {
-  // CSV injection prevention (CONVENTIONS.md sección 7.5)
-  // y escape de comas/comillas
   const needsQuote = /[",\r\n=+\-@]/.test(value)
   const safe = /^[=+\-@]/.test(value) ? `'${value}` : value
   return needsQuote ? `"${safe.replace(/"/g, '""')}"` : safe
