@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowRight, ChevronDown, Download, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Download, Search } from 'lucide-react'
 import type { MonthlyRebateDTO, UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
 import { formatBOB, formatPercent, formatRate, formatUSDT } from '../../lib/format'
 import { UserDrawer } from './UserDrawer'
+import { EmptyState } from '../shared/EmptyState'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn } from '@/lib/utils'
+import { cn, resolveUploadId } from '@/lib/utils'
 
 type SortKey =
   | 'username'
@@ -50,8 +51,9 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
 
     async function load(): Promise<void> {
       try {
-        const targetUpload = uploadId
-          ? await api.getUpload(uploadId)
+        const resolvedId = resolveUploadId(uploadId)
+        const targetUpload = resolvedId
+          ? await api.getUpload(resolvedId)
           : (await api.listUploads()).find((item) => item.status === 'DONE') ?? null
 
         if (!targetUpload || targetUpload.status !== 'DONE') {
@@ -95,6 +97,19 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
     return [...filtered].sort((a, b) => compare(a, b, sortKey, sortDir))
   }, [rebates, query, tier, sortKey, sortDir])
 
+  // KPIs sobre el conjunto filtrado: dan contexto inmediato sin que el
+  // usuario tenga que sumar mentalmente las filas.
+  const totals = useMemo(() => {
+    const usdt = filteredSorted.reduce((sum, r) => sum + Number(r.rebateUSDT), 0)
+    const spent = filteredSorted.reduce((sum, r) => sum + Number(r.totalSpentBOB), 0)
+    const tx = filteredSorted.reduce((sum, r) => sum + r.transactionCount, 0)
+    return {
+      usdt,
+      users: filteredSorted.length,
+      avgTicket: tx === 0 ? 0 : spent / tx,
+    }
+  }, [filteredSorted])
+
   const toggleSort = (key: SortKey): void => {
     if (sortKey === key) {
       setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
@@ -121,7 +136,13 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
   if (status === 'loading') {
     return <RebatesTableSkeleton />
   }
-  if (status === 'empty') return <EmptyState />
+  if (status === 'empty')
+    return (
+      <EmptyState
+        title="Aún no hay reintegros para mostrar"
+        description="Procesa el Excel mensual de pagos QR y aquí verás la tabla de reintegros por usuario, con filtros y exportación a CSV."
+      />
+    )
   if (status === 'error') {
     return (
       <div aria-live="polite">
@@ -195,6 +216,26 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
           </CardContent>
         </Card>
 
+        <div className="grid gap-3 sm:grid-cols-3">
+          <KpiTile
+            label="Reintegro total"
+            value={`${formatUSDT(totals.usdt)}`}
+            unit="USDT"
+            accent="emerald"
+          />
+          <KpiTile
+            label="Usuarios beneficiados"
+            value={totals.users.toLocaleString('es-BO')}
+            accent="primary"
+          />
+          <KpiTile
+            label="Ticket promedio"
+            value={formatBOB(totals.avgTicket)}
+            unit="BOB"
+            accent="violet"
+          />
+        </div>
+
         <Card>
           <div className="max-h-[620px] overflow-auto">
             <Table className="min-w-[760px]">
@@ -207,12 +248,13 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
                   <SortHeader label="USDT" sortKey="rebateUSDT" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="T/C ⌀" sortKey="avgExchangeRate" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Tx" sortKey="transactionCount" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <TableHead className="w-8" aria-label="Ver detalle" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSorted.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                       No hay reintegros que coincidan con los filtros.
                     </TableCell>
                   </TableRow>
@@ -220,7 +262,7 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
                   filteredSorted.map((row) => (
                     <TableRow
                       key={row.id}
-                      className="group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-inset"
+                      className="group cursor-pointer transition-colors hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-inset"
                       role="button"
                       tabIndex={0}
                       aria-label={`Ver detalle de ${row.username}`}
@@ -258,6 +300,12 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
                         {row.transactionCount}
+                      </TableCell>
+                      <TableCell className="w-8 pr-3 text-right">
+                        <ChevronRight
+                          className="ml-auto size-4 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary"
+                          aria-hidden="true"
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -314,19 +362,42 @@ const SortHeader = ({
   )
 }
 
-function EmptyState(): JSX.Element {
+const KPI_ACCENT = {
+  primary: 'text-primary',
+  emerald: 'text-emerald-400',
+  violet: 'text-violet-400',
+} as const
+
+function KpiTile({
+  label,
+  value,
+  unit,
+  accent,
+}: {
+  label: string
+  value: string
+  unit?: string
+  accent: keyof typeof KPI_ACCENT
+}): JSX.Element {
   return (
-    <Card className="border-dashed">
-      <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-        <p className="text-sm text-muted-foreground">Procesa un Excel para ver la tabla de reintegros.</p>
-        <Button asChild>
-          <a href="/uploads/new">
-            Subir Excel
-            <ArrowRight />
-          </a>
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl border border-border bg-card/60 px-4 py-3.5">
+      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1.5 flex items-baseline gap-1.5">
+        <span
+          className={cn(
+            'font-mono text-xl font-semibold tabular-nums md:text-2xl',
+            KPI_ACCENT[accent],
+          )}
+        >
+          {value}
+        </span>
+        {unit ? (
+          <span className="text-xs font-medium uppercase text-muted-foreground">{unit}</span>
+        ) : null}
+      </p>
+    </div>
   )
 }
 
@@ -339,6 +410,7 @@ function RebatesTableSkeleton(): JSX.Element {
     { key: 'usdt', align: 'right' as const },
     { key: 'rate', align: 'right' as const },
     { key: 'tx', align: 'right' as const },
+    { key: 'chevron', align: 'right' as const },
   ]
 
   return (
@@ -402,6 +474,7 @@ function RebatesTableSkeleton(): JSX.Element {
                   <TableCell className="text-right">
                     <Skeleton className="ml-auto h-4 w-8" />
                   </TableCell>
+                  <TableCell className="w-8" />
                 </TableRow>
               ))}
             </TableBody>

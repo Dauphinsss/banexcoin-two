@@ -3,10 +3,10 @@ import { ArrowDown, ArrowRight, ArrowUp, RotateCcw, Save } from 'lucide-react'
 import { calculateRebates, type RebateResult } from '@banex/utils'
 import type { CashbackTierDTO, UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '../shared/EmptyState'
 
 interface MinimalTransaction {
   userId: number
@@ -154,11 +154,10 @@ export function WhatIfSimulator(): JSX.Element {
   }
   if (status === 'empty') {
     return (
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          Procesa un Excel para simular impacto.
-        </CardContent>
-      </Card>
+      <EmptyState
+        title="Aún no hay datos para simular"
+        description="Procesa el Excel mensual y aquí podrás ajustar los niveles de cashback en vivo para ver cómo cambia el costo total antes de publicar."
+      />
     )
   }
   if (status === 'error') {

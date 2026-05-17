@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css'
+import { OnboardingTour } from '../islands/shared/OnboardingTour'
 
 interface Props {
   title: string
@@ -121,15 +122,22 @@ const currentItem = navItems.find((item) => item.id === activePage)
             return (
               <a
                 href={item.href}
+                id={`nav-${item.id}`}
                 aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 class:list={[
-                  'nav-link group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
+                  'nav-link group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
                 ]}
               >
+                {isActive ? (
+                  <span
+                    aria-hidden="true"
+                    class="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-primary"
+                  />
+                ) : null}
                 <span
                   class:list={[
                     'nav-icon flex size-8 shrink-0 items-center justify-center rounded-md transition-colors',
@@ -156,7 +164,6 @@ const currentItem = navItems.find((item) => item.id === activePage)
                   <span class="block font-medium">{item.label}</span>
                   <span class="block text-[11px] text-muted-foreground">{item.hint}</span>
                 </span>
-                {isActive ? <span class="size-1.5 rounded-full bg-primary shadow-[0_0_0_4px_oklch(0.665_0.205_35/0.18)]" /> : null}
               </a>
             )
           })}
@@ -202,5 +209,7 @@ const currentItem = navItems.find((item) => item.id === activePage)
         </section>
       </main>
     </div>
+
+    <OnboardingTour client:only="react" />
   </body>
 </html>

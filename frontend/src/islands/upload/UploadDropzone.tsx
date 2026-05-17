@@ -487,7 +487,7 @@ const SuccessState = ({
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <Button asChild>
-          <a href={`/uploads/${uploadId}`}>Ver resultados</a>
+          <a href={`/uploads/result?id=${encodeURIComponent(uploadId)}`}>Ver resultados</a>
         </Button>
         <Button type="button" variant="outline" onClick={onUploadAnother}>
           Subir otro
@@ -535,7 +535,7 @@ const DuplicateState = ({
           </Button>
         ) : null}
         <Button asChild variant={canReload ? 'outline' : 'default'}>
-          <a href={`/uploads/${existingUploadId}`}>Ver resultados existentes</a>
+          <a href={`/uploads/result?id=${encodeURIComponent(existingUploadId)}`}>Ver resultados existentes</a>
         </Button>
         <Button type="button" variant="ghost" onClick={onTryAnother}>
           Subir otro archivo

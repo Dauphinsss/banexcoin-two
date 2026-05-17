@@ -6,17 +6,16 @@ import type {
   UploadSummary,
 } from '@banex/types'
 import {
-  ArrowRight,
   ArrowUpRight,
   CircleAlert,
   CircleDollarSign,
   FileSpreadsheet,
-  Inbox,
   ShieldAlert,
   Users,
 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useCounter } from '../../lib/use-counter'
+import { EmptyState } from '../shared/EmptyState'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const money = (value: string | number, fractionDigits = 2) =>
   Number(value).toLocaleString('es-BO', {
@@ -158,25 +158,10 @@ export function LatestResults() {
 
   if (status === 'empty') {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center gap-4 py-14 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
-            <Inbox className="size-7" />
-          </div>
-          <div className="space-y-2">
-            <p className="text-base font-semibold">Todavía no hay archivos procesados</p>
-            <p className="mx-auto max-w-md text-sm text-muted-foreground">
-              Sube el Excel mensual para activar el cálculo de reintegros, conciliación y descargas operativas.
-            </p>
-          </div>
-          <Button asChild>
-            <a href="/uploads/new">
-              Subir Excel
-              <ArrowRight />
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
+      <EmptyState
+        title="Todavía no hay archivos procesados"
+        description="Sube el Excel mensual de pagos QR para activar el cálculo de reintegros, la conciliación bancaria y las descargas operativas."
+      />
     )
   }
 
@@ -313,15 +298,31 @@ export function LatestResults() {
               <Progress value={reconciliationRate} className="h-2" />
             </div>
             <div className="flex flex-wrap gap-2 pt-1">
-              <Button asChild variant="secondary" size="sm">
-                <a href={`/uploads/${state.upload?.id}`}>
-                  Ver resultados
-                  <ArrowUpRight />
-                </a>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <a href="/reconciliation">Ir a conciliación</a>
-              </Button>
+              <TooltipProvider delayDuration={120}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button asChild variant="secondary" size="sm">
+                      <a href={`/uploads/result?id=${encodeURIComponent(state.upload?.id ?? '')}`}>
+                        Ver resultados
+                        <ArrowUpRight />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    Abrir detalle completo del archivo procesado
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button asChild variant="ghost" size="sm">
+                      <a href="/reconciliation">Ir a conciliación</a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    Revisar anomalías y estado del cruce bancario
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </CardContent>
         </Card>
