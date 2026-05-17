@@ -68,5 +68,6 @@ jobs:
           docker run -d \
             --name nestjs_api \
             -p 80:3000 \
+            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             --restart always \
             $ECR_REGISTRY/$ECR_REPOSITORY:latest
