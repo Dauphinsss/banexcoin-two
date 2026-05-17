@@ -70,5 +70,7 @@ jobs:
             -p 3000:3000 \
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             -e CORS_ORIGIN="*" \
+            -e THROTTLE_TTL_MS=60000 \
+            -e THROTTLE_LIMIT=100 \
             --restart always \
             $ECR_REGISTRY/$ECR_REPOSITORY:latest
