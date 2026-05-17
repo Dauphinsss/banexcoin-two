@@ -432,13 +432,10 @@ export function AnomalyPanel(): JSX.Element {
           <AlertTitle>
             {aiStatus === 'error'
               ? 'IA no disponible'
-              : aiStatus === 'loading'
-                ? 'Analizando con Cerebras'
-                : 'Análisis de anomalías'}
+              : 'Análisis de anomalías'}
           </AlertTitle>
           <AlertDescription className="whitespace-pre-wrap leading-relaxed">
             {aiText}
-            {aiStatus === 'loading' ? <span className="ml-0.5 inline-block animate-pulse">|</span> : null}
           </AlertDescription>
           <button
             type="button"
