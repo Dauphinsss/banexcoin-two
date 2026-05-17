@@ -7,7 +7,6 @@ test.describe('reconciliation fullstack', () => {
     await expect(page.getByRole('heading', { name: 'Anomalías de conciliación' })).toBeVisible()
     await expect(page.getByText('Reportes Banexcoin Bolivia Hackaton 2026.xlsx')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Monto distinto 1' }).click()
     await expect(page.getByText('6846097010')).toBeVisible()
 
     const resolveButton = page.getByRole('button', { name: 'Marcar resuelta' })

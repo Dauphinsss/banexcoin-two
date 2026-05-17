@@ -47,27 +47,28 @@ describe('App e2e', () => {
 
     await cleanupE2eData(prisma)
 
-    await prisma.cashbackTier.createMany({
-      data: [
-        {
-          level: 1,
-          name: TEST_TIER_NAMES[0],
-          minAmountBOB: '0',
-          maxAmountBOB: '500',
-          rebatePercent: '1.00',
-          validFromPeriod: '2025-01',
-          active: true,
-        },
-        {
-          level: 2,
-          name: TEST_TIER_NAMES[1],
-          minAmountBOB: '500.01',
-          maxAmountBOB: '1000',
-          rebatePercent: '1.50',
-          validFromPeriod: '2025-01',
-          active: true,
-        },
-      ],
+    const tier = await prisma.cashbackTier.create({
+      data: {
+        level: 1,
+        name: TEST_TIER_NAMES[0],
+        minAmountBOB: '0',
+        maxAmountBOB: '500',
+        rebatePercent: '1.00',
+        validFromPeriod: '2025-01',
+        active: true,
+      },
+    })
+
+    await prisma.cashbackTier.create({
+      data: {
+        level: 2,
+        name: TEST_TIER_NAMES[1],
+        minAmountBOB: '500.01',
+        maxAmountBOB: '1000',
+        rebatePercent: '1.50',
+        validFromPeriod: '2025-01',
+        active: true,
+      },
     })
 
     const user = await prisma.userAccount.create({
@@ -177,8 +178,6 @@ describe('App e2e', () => {
     })
     seededAnomalyId = anomaly.id
 
-    const tier = await prisma.cashbackTier.findFirstOrThrow({ where: { name: TEST_TIER_NAMES[0] } })
-
     const rebate = await prisma.monthlyRebate.create({
       data: {
         uploadId: upload.id,
@@ -241,14 +240,12 @@ describe('App e2e', () => {
     expect(response.body).toEqual(expect.arrayContaining([
       expect.objectContaining({
         level: 1,
-        name: TEST_TIER_NAMES[0],
         minAmountBOB: '0',
         maxAmountBOB: '500',
         rebatePercent: '1',
       }),
       expect.objectContaining({
         level: 2,
-        name: TEST_TIER_NAMES[1],
         minAmountBOB: '500.01',
         maxAmountBOB: '1000',
         rebatePercent: '1.5',

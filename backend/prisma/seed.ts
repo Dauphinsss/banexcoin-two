@@ -571,135 +571,136 @@ async function seedCashbackTiers(): Promise<void> {
 }
 
 async function seedTransactionsScenario(): Promise<void> {
-  for (const user of SEED_USERS) {
-    await prisma.userAccount.create({
+  await prisma.$transaction(async (txClient) => {
+    for (const user of SEED_USERS) {
+      await txClient.userAccount.create({
+        data: {
+          accountNumber: user.accountNumber,
+          username: user.username,
+          displayName: user.displayName,
+          active: true,
+        },
+      })
+    }
+
+    const upload = await txClient.upload.create({
       data: {
-        accountNumber: user.accountNumber,
-        username: user.username,
-        displayName: user.displayName,
-        active: true,
+        originalName: 'Reportes Banexcoin Bolivia Hackaton 2026.xlsx',
+        storagePath: './data/uploads/seed-hackaton-2026.xlsx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        fileSizeBytes: 245760,
+        fileHash: DEMO_UPLOAD_HASH,
+        period: '2025-05',
+        status: 'DONE',
+        rowCount: 18,
+        transactionRowCount: SEED_TRANSACTIONS.length,
+        extractRowCount: SEED_EXTRACT_ENTRIES.length,
+        parseErrorCount: 0,
+        anomalyCount: 1,
+        processedAt: new Date('2025-05-16T18:00:00.000Z'),
       },
     })
-  }
 
-  const upload = await prisma.upload.create({
-    data: {
-      originalName: 'Reportes Banexcoin Bolivia Hackaton 2026.xlsx',
-      storagePath: './data/uploads/seed-hackaton-2026.xlsx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      fileSizeBytes: 245760,
-      fileHash: DEMO_UPLOAD_HASH,
-      period: '2025-05',
-      status: 'DONE',
-      rowCount: 18,
-      transactionRowCount: SEED_TRANSACTIONS.length,
-      extractRowCount: SEED_EXTRACT_ENTRIES.length,
-      parseErrorCount: 0,
-      anomalyCount: 1,
-      processedAt: new Date('2025-05-16T18:00:00.000Z'),
-    },
-  })
-
-  const accounts = await prisma.userAccount.findMany({
-    where: {
-      accountNumber: {
-        in: SEED_USERS.map((user) => user.accountNumber),
+    const accounts = await txClient.userAccount.findMany({
+      where: {
+        accountNumber: {
+          in: SEED_USERS.map((user) => user.accountNumber),
+        },
       },
-    },
-  })
+    })
 
-  const accountsByNumber = new Map(accounts.map((account) => [account.accountNumber, account]))
+    const accountsByNumber = new Map(accounts.map((account) => [account.accountNumber, account]))
 
-  const ledgerByKey = new Map<string, { id: string; serviceCode: string; transactionId: string }>()
+    const ledgerByKey = new Map<string, { id: string; serviceCode: string; transactionId: string }>()
 
-  for (const tx of SEED_TRANSACTIONS) {
-    const userAccountId = tx.accountNumber ? accountsByNumber.get(tx.accountNumber)?.id ?? null : null
+    for (const tx of SEED_TRANSACTIONS) {
+      const userAccountId = tx.accountNumber ? accountsByNumber.get(tx.accountNumber)?.id ?? null : null
 
-    const ledger = await prisma.ledgerTransaction.create({
-      data: {
-        uploadId: upload.id,
-        userAccountId,
+      const ledger = await txClient.ledgerTransaction.create({
+        data: {
+          uploadId: upload.id,
+          userAccountId,
+          serviceCode: tx.serviceCode,
+          serviceName: tx.serviceName,
+          sourceSheet: tx.sourceSheet,
+          sourceRowNumber: tx.sourceRowNumber,
+          transactionId: tx.transactionId,
+          referenceNumber: tx.referenceNumber ?? null,
+          status: tx.status ?? null,
+          direction: tx.direction ?? null,
+          productSymbol: tx.productSymbol ?? null,
+          blockchain: tx.blockchain ?? null,
+          amountBOB: tx.amountBOB ?? null,
+          amountUSDT: tx.amountUSDT ?? null,
+          feeBOB: tx.feeBOB ?? null,
+          feeUSDT: tx.feeUSDT ?? null,
+          netAmountBOB: tx.netAmountBOB ?? null,
+          netAmountUSDT: tx.netAmountUSDT ?? null,
+          exchangeRate: tx.exchangeRate ?? null,
+          transactedAt: tx.transactedAt,
+          rawRow: JSON.stringify(tx.rawRow),
+        },
+      })
+
+      ledgerByKey.set(`${tx.serviceCode}:${tx.transactionId}`, {
+        id: ledger.id,
         serviceCode: tx.serviceCode,
-        serviceName: tx.serviceName,
-        sourceSheet: tx.sourceSheet,
-        sourceRowNumber: tx.sourceRowNumber,
         transactionId: tx.transactionId,
-        referenceNumber: tx.referenceNumber ?? null,
-        status: tx.status ?? null,
-        direction: tx.direction ?? null,
-        productSymbol: tx.productSymbol ?? null,
-        blockchain: tx.blockchain ?? null,
-        amountBOB: tx.amountBOB ?? null,
-        amountUSDT: tx.amountUSDT ?? null,
-        feeBOB: tx.feeBOB ?? null,
-        feeUSDT: tx.feeUSDT ?? null,
-        netAmountBOB: tx.netAmountBOB ?? null,
-        netAmountUSDT: tx.netAmountUSDT ?? null,
-        exchangeRate: tx.exchangeRate ?? null,
-        transactedAt: tx.transactedAt,
-        rawRow: JSON.stringify(tx.rawRow),
-      },
-    })
+      })
 
-    ledgerByKey.set(`${tx.serviceCode}:${tx.transactionId}`, {
-      id: ledger.id,
-      serviceCode: tx.serviceCode,
-      transactionId: tx.transactionId,
-    })
+      if (tx.qrDetail) {
+        await txClient.qrTransactionDetail.create({
+          data: {
+            ledgerTransactionId: ledger.id,
+            quoteNumber: tx.qrDetail.quoteNumber ?? null,
+            sideClient: tx.qrDetail.sideClient ?? null,
+            currencyCode: tx.qrDetail.currencyCode ?? null,
+            paidAmountBOB: tx.qrDetail.paidAmountBOB ?? null,
+            exchangedAmountUSDT: tx.qrDetail.exchangedAmountUSDT ?? null,
+            createdAtSource: tx.qrDetail.createdAtSource ?? null,
+            updatedAtSource: tx.qrDetail.updatedAtSource ?? null,
+          },
+        })
+      }
 
-    if (tx.qrDetail) {
-      await prisma.qrTransactionDetail.create({
+      if (tx.transferDetail) {
+        const senderUserAccountId = tx.transferDetail.senderAccountNumber
+          ? accountsByNumber.get(tx.transferDetail.senderAccountNumber)?.id ?? null
+          : null
+        const receiverUserAccountId = tx.transferDetail.receiverAccountNumber
+          ? accountsByNumber.get(tx.transferDetail.receiverAccountNumber)?.id ?? null
+          : null
+
+        await txClient.transferDetail.create({
+          data: {
+            ledgerTransactionId: ledger.id,
+            transferNumber: tx.transferDetail.transferNumber ?? null,
+            senderUserAccountId,
+            receiverUserAccountId,
+            senderAlias: tx.transferDetail.senderAlias ?? null,
+            receiverAlias: tx.transferDetail.receiverAlias ?? null,
+          },
+        })
+      }
+    }
+
+    for (const entry of SEED_EXTRACT_ENTRIES) {
+      await txClient.bankExtractEntry.create({
         data: {
-          ledgerTransactionId: ledger.id,
-          quoteNumber: tx.qrDetail.quoteNumber ?? null,
-          sideClient: tx.qrDetail.sideClient ?? null,
-          currencyCode: tx.qrDetail.currencyCode ?? null,
-          paidAmountBOB: tx.qrDetail.paidAmountBOB ?? null,
-          exchangedAmountUSDT: tx.qrDetail.exchangedAmountUSDT ?? null,
-          createdAtSource: tx.qrDetail.createdAtSource ?? null,
-          updatedAtSource: tx.qrDetail.updatedAtSource ?? null,
+          uploadId: upload.id,
+          extractKind: entry.extractKind,
+          sourceSheet: entry.sourceSheet,
+          sourceRowNumber: entry.sourceRowNumber,
+          transactionId: entry.transactionId,
+          transactedAt: entry.transactedAt,
+          amountBOB: entry.amountBOB,
+          rawRow: JSON.stringify(entry.rawRow),
         },
       })
     }
-
-    if (tx.transferDetail) {
-      const senderUserAccountId = tx.transferDetail.senderAccountNumber
-        ? accountsByNumber.get(tx.transferDetail.senderAccountNumber)?.id ?? null
-        : null
-      const receiverUserAccountId = tx.transferDetail.receiverAccountNumber
-        ? accountsByNumber.get(tx.transferDetail.receiverAccountNumber)?.id ?? null
-        : null
-
-      await prisma.transferDetail.create({
-        data: {
-          ledgerTransactionId: ledger.id,
-          transferNumber: tx.transferDetail.transferNumber ?? null,
-          senderUserAccountId,
-          receiverUserAccountId,
-          senderAlias: tx.transferDetail.senderAlias ?? null,
-          receiverAlias: tx.transferDetail.receiverAlias ?? null,
-        },
-      })
-    }
-  }
-
-  for (const entry of SEED_EXTRACT_ENTRIES) {
-    await prisma.bankExtractEntry.create({
-      data: {
-        uploadId: upload.id,
-        extractKind: entry.extractKind,
-        sourceSheet: entry.sourceSheet,
-        sourceRowNumber: entry.sourceRowNumber,
-        transactionId: entry.transactionId,
-        transactedAt: entry.transactedAt,
-        amountBOB: entry.amountBOB,
-        rawRow: JSON.stringify(entry.rawRow),
-      },
-    })
-  }
 
   const matchedTransactionIds = ['207681530', '207692950']
-  await prisma.ledgerTransaction.updateMany({
+    await txClient.ledgerTransaction.updateMany({
     where: {
       uploadId: upload.id,
       transactionId: { in: matchedTransactionIds },
@@ -707,17 +708,17 @@ async function seedTransactionsScenario(): Promise<void> {
     data: { reconciledWithExtract: true },
   })
 
-  const mismatchLedger = await prisma.ledgerTransaction.findFirstOrThrow({
+    const mismatchLedger = await txClient.ledgerTransaction.findFirstOrThrow({
     where: { uploadId: upload.id, transactionId: '6846097010' },
     select: { id: true },
   })
 
-  const mismatchExtract = await prisma.bankExtractEntry.findFirstOrThrow({
+    const mismatchExtract = await txClient.bankExtractEntry.findFirstOrThrow({
     where: { uploadId: upload.id, transactionId: '6846097010' },
     select: { id: true },
   })
 
-  await prisma.reconciliationAnomaly.create({
+    await txClient.reconciliationAnomaly.create({
     data: {
       uploadId: upload.id,
       ledgerTransactionId: mismatchLedger.id,
@@ -731,7 +732,7 @@ async function seedTransactionsScenario(): Promise<void> {
     },
   })
 
-  const cashbackTier = await prisma.cashbackTier.findFirst({
+    const cashbackTier = await txClient.cashbackTier.findFirst({
     where: {
       level: 1,
       validFromPeriod: '2025-01',
@@ -742,7 +743,7 @@ async function seedTransactionsScenario(): Promise<void> {
   const cristina = accountsByNumber.get('10003')
 
   if (cashbackTier && victor && cristina) {
-    const victorRebate = await prisma.monthlyRebate.create({
+      const victorRebate = await txClient.monthlyRebate.create({
       data: {
         uploadId: upload.id,
         userAccountId: victor.id,
@@ -758,7 +759,7 @@ async function seedTransactionsScenario(): Promise<void> {
       },
     })
 
-    const cristinaRebate = await prisma.monthlyRebate.create({
+      const cristinaRebate = await txClient.monthlyRebate.create({
       data: {
         uploadId: upload.id,
         userAccountId: cristina.id,
@@ -781,7 +782,7 @@ async function seedTransactionsScenario(): Promise<void> {
       const ledger = ledgerByKey.get(key)
       if (!ledger) continue
 
-      await prisma.monthlyRebateItem.create({
+        await txClient.monthlyRebateItem.create({
         data: {
           monthlyRebateId: victorRebate.id,
           ledgerTransactionId: ledger.id,
@@ -796,7 +797,7 @@ async function seedTransactionsScenario(): Promise<void> {
       const ledger = ledgerByKey.get(key)
       if (!ledger) continue
 
-      await prisma.monthlyRebateItem.create({
+        await txClient.monthlyRebateItem.create({
         data: {
           monthlyRebateId: cristinaRebate.id,
           ledgerTransactionId: ledger.id,
@@ -806,7 +807,11 @@ async function seedTransactionsScenario(): Promise<void> {
         },
       })
     }
-  }
+    }
+  }, {
+    maxWait: 10_000,
+    timeout: 30_000,
+  })
 }
 
 async function main(): Promise<void> {
