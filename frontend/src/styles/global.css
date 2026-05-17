@@ -144,6 +144,17 @@
   border-color: var(--color-border);
 }
 
+/* Tailwind v4 Preflight elimina cursor:pointer de botones y links.
+   Lo restauramos globalmente para mantener UX estándar. */
+button:not([disabled]),
+a[href],
+[role="button"],
+[role="link"],
+label[for],
+summary {
+  cursor: pointer;
+}
+
 html {
   scroll-behavior: smooth;
 }
