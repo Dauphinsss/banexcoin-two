@@ -208,9 +208,8 @@ export class UploadsService {
     }
   }
 
-  async list(status?: UploadStatus): Promise<UploadSummary[]> {
+  async list(): Promise<UploadSummary[]> {
     const uploads = await this.prisma.upload.findMany({
-      where: status ? { status } : undefined,
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: {

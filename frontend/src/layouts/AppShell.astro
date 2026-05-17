@@ -2,7 +2,6 @@
 import '../styles/global.css'
 import MobileNav from '../islands/MobileNav'
 import { OnboardingTour } from '../islands/shared/OnboardingTour'
-import { UploadDocumentSelector } from '../islands/shared/UploadDocumentSelector'
 
 interface Props {
   title: string
@@ -78,9 +77,6 @@ const navItems: Array<{
 ]
 
 const currentItem = navItems.find((item) => item.id === activePage)
-const showDocumentSelector = activePage
-  ? ['dashboard', 'rebates', 'reconciliation', 'simulator'].includes(activePage)
-  : false
 ---
 
 <html lang="es" class="dark" style="color-scheme: dark">
@@ -228,14 +224,13 @@ const showDocumentSelector = activePage
               <h1 class="mt-0.5 truncate text-lg font-bold tracking-tight md:text-2xl bg-gradient-to-r from-foreground via-foreground to-foreground/80 bg-clip-text text-transparent">{title}</h1>
             </div>
 
-            {showDocumentSelector ? <UploadDocumentSelector client:load /> : (
+            {/* Desktop Section Badge */}
             <div class="hidden shrink-0 md:flex">
               <div class="flex items-center gap-3 rounded-lg border border-primary/15 bg-primary/5 px-4 py-2 backdrop-blur-sm">
                 <div class="h-2 w-2 rounded-full bg-primary/60"></div>
                 <span class="text-xs font-medium text-primary/80">{currentItem?.label ?? 'Sección'}</span>
               </div>
             </div>
-            )}
 
             {/* Mobile Menu Button - Right Side */}
             <div class="flex md:hidden shrink-0">

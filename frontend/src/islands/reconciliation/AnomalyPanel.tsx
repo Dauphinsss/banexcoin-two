@@ -264,7 +264,7 @@ export function AnomalyPanel({ uploadId }: AnomalyPanelProps): JSX.Element {
         const resolvedId = resolveUploadId(uploadId)
         const targetUpload = resolvedId
           ? await api.getUpload(resolvedId)
-          : (await api.listUploads({ status: 'DONE' }))[0] ?? null
+          : (await api.listUploads()).find((item) => item.status === 'DONE') ?? null
 
         if (!targetUpload || targetUpload.status !== 'DONE') {
           if (!cancelled) setStatus('empty')

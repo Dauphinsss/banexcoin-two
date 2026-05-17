@@ -5,7 +5,6 @@ import type {
   MonthlyRebateDTO,
   QRTransactionDTO,
   ReconciliationStats,
-  UploadStatus,
   UploadSummary,
 } from '@banex/types'
 import type { TierValidationOutput } from '@banex/utils'
@@ -142,9 +141,8 @@ export const api = {
     return handleResponse<UploadSummary>(res)
   },
 
-  async listUploads(params?: { status?: UploadStatus }): Promise<UploadSummary[]> {
-    const query = params?.status ? `?status=${encodeURIComponent(params.status)}` : ''
-    const res = await fetch(`${API_BASE}/api/uploads${query}`)
+  async listUploads(): Promise<UploadSummary[]> {
+    const res = await fetch(`${API_BASE}/api/uploads`)
     return handleResponse<UploadSummary[]>(res)
   },
 

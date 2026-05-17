@@ -1,12 +1,10 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
   Inject,
   Param,
   Post,
-  Query,
   UploadedFile,
   UseFilters,
   UseInterceptors,
@@ -14,18 +12,9 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ConfigService } from '@nestjs/config'
 import { memoryStorage } from 'multer'
-import type { UploadStatus } from '@banex/types'
 import { CreateUploadDto } from './dto/create-upload.dto'
 import { UploadsService } from './uploads.service'
 import { UploadExceptionFilter } from './filters/upload-exception.filter'
-
-const UPLOAD_STATUSES: readonly UploadStatus[] = [
-  'PENDING',
-  'PROCESSING',
-  'DONE',
-  'FAILED',
-  'SUPERSEDED',
-]
 
 @Controller('uploads')
 @UseFilters(UploadExceptionFilter)
@@ -61,12 +50,8 @@ export class UploadsController {
   }
 
   @Get()
-  async list(@Query('status') status?: string) {
-    if (status && !UPLOAD_STATUSES.includes(status as UploadStatus)) {
-      throw new BadRequestException('status no es valido.')
-    }
-
-    return this.uploads.list(status as UploadStatus | undefined)
+  async list() {
+    return this.uploads.list()
   }
 
   @Get(':id')

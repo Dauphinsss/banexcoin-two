@@ -99,10 +99,6 @@ describe('UploadsService', () => {
         errorMessage: null,
       },
     ])
-    await expect(service.list('DONE')).resolves.toHaveLength(1)
-    expect(prisma.upload.findMany).toHaveBeenLastCalledWith(
-      expect.objectContaining({ where: { status: 'DONE' } }),
-    )
     await expect(service.findById('upload-1')).resolves.toMatchObject({ id: 'upload-1' })
     await expect(service.findById('missing')).rejects.toBeInstanceOf(UploadNotFoundError)
   })

@@ -7,7 +7,7 @@ import { formatPeriodLabel } from '../../lib/format'
 import { LevelBadge, getLevelColor } from '../../components/LevelBadge'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { cn, resolveUploadId } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { EmptyState } from '../shared/EmptyState'
 
 interface MinimalTransaction {
@@ -70,15 +70,9 @@ export function WhatIfSimulator(): JSX.Element {
 
     async function load(): Promise<void> {
       try {
-        const resolvedId = resolveUploadId()
-        const latest = resolvedId
-          ? await api.getUpload(resolvedId)
-          : (await api.listUploads({ status: 'DONE' }))[0] ?? null
+        const uploads = await api.listUploads()
+        const latest = uploads.find((item) => item.status === 'DONE') ?? null
         if (!latest) {
-          if (!cancelled) setStatus('empty')
-          return
-        }
-        if (latest.status !== 'DONE') {
           if (!cancelled) setStatus('empty')
           return
         }
