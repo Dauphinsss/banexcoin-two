@@ -48,7 +48,7 @@ type Stage =
   | { kind: 'idle' }
   | { kind: 'analyzing'; file: File }
   | { kind: 'preview'; file: File; preview: Preview }
-  | { kind: 'uploading'; file: File; preview: Preview }
+  | { kind: 'uploading'; file: File; preview: Preview; progress: number }
   | { kind: 'success'; uploadId: string }
   | {
       kind: 'duplicate'
@@ -119,13 +119,18 @@ export default function UploadDropzone(): JSX.Element {
 
       const file = stage.file
       const preview = stage.preview
-      setStage({ kind: 'uploading', file, preview })
+      setStage({ kind: 'uploading', file, preview, progress: 0 })
 
       try {
         const response = await api.createUpload(
           file,
           preview.detectedPeriod ?? undefined,
           allowDuplicate,
+          (progress) => {
+            setStage((current) =>
+              current.kind === 'uploading' ? { ...current, progress } : current,
+            )
+          },
         )
         setStage({ kind: 'success', uploadId: response.uploadId })
       } catch (error) {
@@ -175,7 +180,11 @@ export default function UploadDropzone(): JSX.Element {
       ) : null}
 
       {stage.kind === 'uploading' ? (
-        <UploadingState filename={stage.file.name} preview={stage.preview} />
+        <UploadingState
+          filename={stage.file.name}
+          preview={stage.preview}
+          progress={stage.progress}
+        />
       ) : null}
 
       {stage.kind === 'success' ? (
@@ -209,16 +218,16 @@ const DropzoneEmpty = ({
     <div
       {...rootProps}
       className={cn(
-        'group relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-4 py-12 text-center transition-all duration-200 sm:px-8 sm:py-16',
+        'group relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-4 py-12 text-center transition-[border-color,background-color,box-shadow,transform] duration-200 sm:px-8 sm:py-16',
         isDragActive
           ? 'scale-[1.01] border-primary bg-primary/5 shadow-lg shadow-primary/10'
           : 'border-border bg-card/40 hover:border-primary/50 hover:bg-card/60',
       )}
     >
-      <input {...inputProps} />
+      <input {...inputProps} aria-label="Subir archivo Excel de pagos QR" />
       <div
         className={cn(
-          'grid size-16 place-items-center rounded-full transition-all',
+          'grid size-16 place-items-center rounded-full transition-[background-color,color,box-shadow]',
           isDragActive
             ? 'bg-primary/20 text-primary ring-4 ring-primary/15'
             : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary',
@@ -240,13 +249,15 @@ const DropzoneEmpty = ({
       </Button>
     </div>
 
-    {errorMessage ? (
-      <Alert variant="destructive">
-        <AlertTriangle />
-        <AlertTitle>No se pudo procesar el archivo</AlertTitle>
-        <AlertDescription>{errorMessage}</AlertDescription>
-      </Alert>
-    ) : null}
+    <div aria-live="polite">
+      {errorMessage ? (
+        <Alert variant="destructive">
+          <AlertTriangle />
+          <AlertTitle>No se pudo procesar el archivo</AlertTitle>
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+    </div>
   </div>
 )
 
@@ -270,7 +281,7 @@ const AnalyzingState = ({ filename }: { filename: string }): JSX.Element => (
     <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
       <Loader2 className="size-8 animate-spin text-primary" />
       <div className="space-y-1">
-        <p className="text-base font-medium">Analizando archivo</p>
+        <p className="text-base font-medium">Analizando archivo…</p>
         <p className="font-mono text-xs text-muted-foreground">{filename}</p>
       </div>
     </CardContent>
@@ -318,7 +329,7 @@ const PreviewState = ({
         {preview.missingHeaders.length > 0 ? (
           <Alert variant="destructive">
             <AlertTriangle />
-            <AlertTitle>Faltan columnas obligatorias en la hoja "Pago QR"</AlertTitle>
+            <AlertTitle>Faltan columnas obligatorias en la hoja “Pago QR”</AlertTitle>
             <AlertDescription>
               <ul className="mt-2 list-disc space-y-0.5 pl-5 font-mono text-xs">
                 {preview.missingHeaders.map((h) => (
@@ -349,7 +360,7 @@ const PreviewState = ({
         <details className="group rounded-md border border-border bg-muted/30">
           <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-muted-foreground transition-colors hover:text-foreground">
             <span>Vista previa de las primeras {preview.previewRows.length} filas</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform group-open:rotate-180">
               <path d="m6 9 6 6 6-6"/>
             </svg>
           </summary>
@@ -395,23 +406,68 @@ const PreviewState = ({
 const UploadingState = ({
   filename,
   preview,
+  progress,
 }: {
   filename: string
   preview: Preview
-}): JSX.Element => (
-  <Card>
-    <CardContent className="space-y-4 py-10 text-center">
-      <Loader2 className="mx-auto size-8 animate-spin text-primary" />
-      <div className="space-y-1">
-        <p className="text-base font-medium">Subiendo {filename}…</p>
-        <p className="text-sm text-muted-foreground">
-          {preview.totalRows.toLocaleString('es-BO')} transacciones en camino.
-        </p>
-      </div>
-      <Progress value={undefined} className="mx-auto max-w-sm" />
-    </CardContent>
-  </Card>
-)
+  progress: number
+}): JSX.Element => {
+  // Una vez el archivo terminó de subir (100%), el backend aún procesa
+  // las filas: mostramos un mensaje distinto y la barra "llena" pulsando.
+  const finishedUploading = progress >= 100
+
+  return (
+    <Card>
+      <CardContent className="space-y-6 py-10">
+        <div className="flex items-start gap-4">
+          <div className="relative grid size-12 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/25">
+            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="truncate text-base font-semibold text-foreground">
+              {finishedUploading ? 'Procesando en el servidor…' : 'Subiendo archivo…'}
+            </p>
+            <p className="truncate font-mono text-xs text-muted-foreground">{filename}</p>
+            <p className="text-sm text-muted-foreground">
+              {preview.totalRows.toLocaleString('es-BO')} transacciones en camino.
+            </p>
+          </div>
+          <span
+            className="shrink-0 font-mono text-2xl font-semibold tabular-nums text-primary"
+            aria-hidden="true"
+          >
+            {progress}%
+          </span>
+        </div>
+
+        <div
+          className="space-y-2"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+          aria-label="Progreso de subida del archivo"
+        >
+          <Progress
+            value={progress}
+            className={cn(
+              'h-2.5 transition-opacity',
+              finishedUploading && 'animate-pulse',
+            )}
+          />
+          <p
+            className="text-right text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
+            aria-live="polite"
+          >
+            {finishedUploading
+              ? 'Subida completa · calculando reintegros'
+              : `Transferido ${progress}% del archivo`}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 const SuccessState = ({
   uploadId,
@@ -465,7 +521,7 @@ const DuplicateState = ({
           </p>
         ) : (
           <p className="mx-auto max-w-md text-sm text-muted-foreground">
-            La recarga está restringida para este entorno.
+            Este archivo ya fue procesado en este entorno. Revisa el resultado existente o sube un archivo distinto.
           </p>
         )}
         <Badge variant="secondary" className="mt-1 font-mono">

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -30,7 +31,11 @@ type SortKey =
 
 type SortDir = 'asc' | 'desc'
 
-export function RebatesTable(): JSX.Element {
+interface RebatesTableProps {
+  uploadId?: string
+}
+
+export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
   const [upload, setUpload] = useState<UploadSummary | null>(null)
   const [rebates, setRebates] = useState<MonthlyRebateDTO[]>([])
   const [query, setQuery] = useState('')
@@ -45,16 +50,18 @@ export function RebatesTable(): JSX.Element {
 
     async function load(): Promise<void> {
       try {
-        const uploads = await api.listUploads()
-        const latest = uploads.find((item) => item.status === 'DONE') ?? null
-        if (!latest) {
+        const targetUpload = uploadId
+          ? await api.getUpload(uploadId)
+          : (await api.listUploads()).find((item) => item.status === 'DONE') ?? null
+
+        if (!targetUpload || targetUpload.status !== 'DONE') {
           if (!cancelled) setStatus('empty')
           return
         }
 
-        const rows = await api.listRebates(latest.id)
+        const rows = await api.listRebates(targetUpload.id)
         if (!cancelled) {
-          setUpload(latest)
+          setUpload(targetUpload)
           setRebates(rows)
           setStatus('ready')
         }
@@ -67,7 +74,7 @@ export function RebatesTable(): JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [uploadId])
 
   const tiers = useMemo(
     () => ['ALL', ...Array.from(new Set(rebates.map((row) => row.tierName ?? 'Sin nivel')))],
@@ -117,9 +124,11 @@ export function RebatesTable(): JSX.Element {
   if (status === 'empty') return <EmptyState />
   if (status === 'error') {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>No se pudieron cargar los reintegros.</AlertDescription>
-      </Alert>
+      <div aria-live="polite">
+        <Alert variant="destructive">
+          <AlertDescription>No se pudieron cargar los reintegros.</AlertDescription>
+        </Alert>
+      </div>
     )
   }
 
@@ -130,7 +139,7 @@ export function RebatesTable(): JSX.Element {
           <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0 space-y-1">
               <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Último upload procesado
+                Último archivo procesado
               </p>
               <h2 className="truncate text-base font-semibold">{upload?.filename}</h2>
               <p className="font-mono text-xs text-muted-foreground">
@@ -142,14 +151,21 @@ export function RebatesTable(): JSX.Element {
               <div className="relative min-w-0 sm:w-64">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
+                  type="search"
+                  name="rebate-search"
+                  aria-label="Buscar usuario o cuenta"
+                  autoComplete="off"
+                  spellCheck={false}
                   className="pl-9"
-                  placeholder="Buscar usuario o cuenta"
+                  placeholder="Buscar usuario o cuenta…"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </div>
               <div className="relative min-w-0 sm:w-44">
                 <select
+                  aria-label="Filtrar por nivel"
+                  name="rebate-tier-filter"
                   className="h-9 w-full appearance-none rounded-md border border-input bg-transparent pl-3 pr-9 text-sm text-foreground shadow-[inset_0_1px_2px_rgba(0,0,0,0.18)] transition-[color,box-shadow,border-color] outline-none hover:border-ring/60 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/25 dark:bg-input/30"
                   value={tier}
                   onChange={(event) => setTier(event.target.value)}
@@ -204,8 +220,17 @@ export function RebatesTable(): JSX.Element {
                   filteredSorted.map((row) => (
                     <TableRow
                       key={row.id}
-                      className="group cursor-pointer"
+                      className="group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-inset"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Ver detalle de ${row.username}`}
                       onClick={() => setSelected(row)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setSelected(row)
+                        }
+                      }}
                     >
                       <TableCell>
                         <p className="font-medium text-foreground">{row.username}</p>
@@ -306,50 +331,83 @@ function EmptyState(): JSX.Element {
 }
 
 function RebatesTableSkeleton(): JSX.Element {
+  const columns = [
+    { key: 'user', align: 'left' as const },
+    { key: 'bob', align: 'right' as const },
+    { key: 'tier', align: 'left' as const },
+    { key: 'pct', align: 'right' as const },
+    { key: 'usdt', align: 'right' as const },
+    { key: 'rate', align: 'right' as const },
+    { key: 'tx', align: 'right' as const },
+  ]
+
   return (
     <div className="space-y-4" aria-hidden="true">
-      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
-        <div>
-          <div className="h-4 w-36 rounded skeleton-block" />
-          <div className="mt-3 h-5 w-72 max-w-full rounded skeleton-block" />
-          <div className="mt-2 h-3 w-32 rounded skeleton-block" />
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="h-10 w-full rounded-md skeleton-block sm:w-56" />
-          <div className="h-10 w-full rounded-md skeleton-block sm:w-44" />
-          <div className="h-10 w-full rounded-md skeleton-block sm:w-32" />
-        </div>
-      </div>
+      {/* Espejo del toolbar Card real */}
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0 space-y-2">
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="h-5 w-64 max-w-full" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <Skeleton className="h-9 w-full rounded-md sm:w-64" />
+            <Skeleton className="h-9 w-full rounded-md sm:w-44" />
+            <Skeleton className="h-9 w-full rounded-md sm:w-36" />
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="overflow-x-auto rounded-lg border border-line">
-        <table className="min-w-[760px] divide-y divide-line text-sm">
-          <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
-            <tr>
-              {['Usuario', 'Total BOB', 'Nivel', '%', 'USDT', 'T/C', 'Tx'].map((label, index) => (
-                <th key={label} className={`px-4 py-3 ${index === 0 || index === 2 ? 'text-left' : 'text-right'}`}>
-                  <div className={`h-3 rounded skeleton-block ${index === 0 ? 'w-20' : 'ml-auto w-14'}`} />
-                </th>
+      {/* Espejo de la tabla Card real */}
+      <Card>
+        <div className="max-h-[620px] overflow-auto">
+          <Table className="min-w-[760px]">
+            <TableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow>
+                {columns.map((col) => (
+                  <TableHead
+                    key={col.key}
+                    className={col.align === 'right' ? 'text-right' : 'text-left'}
+                  >
+                    <Skeleton
+                      className={cn('h-3 w-14', col.align === 'right' && 'ml-auto')}
+                    />
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 8 }).map((_, row) => (
+                <TableRow key={row}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="mt-2 h-3 w-20" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-6 w-20 rounded-md" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-12" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-8" />
+                  </TableCell>
+                </TableRow>
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line-dark bg-panel-muted">
-            {Array.from({ length: 7 }).map((_, row) => (
-              <tr key={row}>
-                <td className="px-4 py-3">
-                  <div className="h-4 w-36 rounded skeleton-block" />
-                  <div className="mt-2 h-3 w-20 rounded skeleton-block" />
-                </td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-24 rounded skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="h-6 w-20 rounded-md skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-12 rounded skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-24 rounded skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-16 rounded skeleton-block" /></td>
-                <td className="px-4 py-3"><div className="ml-auto h-4 w-8 rounded skeleton-block" /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   )
 }

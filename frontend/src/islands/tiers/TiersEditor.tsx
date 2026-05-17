@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type JSX, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, GripVertical, Plus, Sparkles, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, GripVertical, Plus, Sparkles, TriangleAlert, X } from 'lucide-react'
 import { validateTiers, type TierConflict } from '@banex/utils'
 import type { CashbackTierDTO } from '@banex/types'
 import { api, ApiCallError, type CreateTierPayload, type TierInput } from '../../lib/api'
@@ -312,8 +312,8 @@ export function TiersEditor(): JSX.Element {
         kind: 'success',
         message:
           publishToPeriod.trim() === ''
-            ? `Configuracion publicada desde ${publishPeriod}.`
-            : `Configuracion publicada desde ${publishPeriod} hasta ${publishToPeriod}.`,
+            ? `Configuración publicada desde ${publishPeriod}.`
+            : `Configuración publicada desde ${publishPeriod} hasta ${publishToPeriod}.`,
       })
     } catch (error) {
       setFeedback({ kind: 'error', message: errorMessage(error) })
@@ -406,13 +406,14 @@ export function TiersEditor(): JSX.Element {
         {view === 'active' ? (
           <Button type="button" onClick={openPublish}>
             <Sparkles />
-            Publicar configuracion
+            Publicar configuración
           </Button>
         ) : null}
       </div>
 
       {feedback ? (
         <Alert
+          aria-live="polite"
           className={cn(
             'relative',
             feedback.kind === 'error'
@@ -436,11 +437,11 @@ export function TiersEditor(): JSX.Element {
         <Alert className="relative border-sky-500/40 bg-sky-500/10 text-sky-100 [&>svg]:text-sky-300">
           <Sparkles />
           <AlertTitle>
-            Configuracion propuesta desde el simulador ({simulatorDraft.length} niveles)
+            Configuración propuesta desde el simulador ({simulatorDraft.length} niveles)
           </AlertTitle>
           <AlertDescription>
             <p className="mb-3 text-xs text-sky-200/80">
-              Revisala y publícala como una configuracion completa desde el periodo que corresponda.
+              Revísala y publícala como una configuración completa desde el período que corresponda.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" onClick={applySimulatorConfiguration}>
@@ -491,7 +492,7 @@ export function TiersEditor(): JSX.Element {
                 tiers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                      No hay niveles activos. Publica la primera configuracion.
+                      No hay niveles activos. Publica la primera configuración.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -630,7 +631,7 @@ export function TiersEditor(): JSX.Element {
       <Dialog open={publishOpen} onOpenChange={(open) => !open && closePublish()}>
         <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>Publicar configuracion de niveles</DialogTitle>
+            <DialogTitle>Publicar configuración de niveles</DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 overflow-hidden">
@@ -665,7 +666,7 @@ export function TiersEditor(): JSX.Element {
             (!PERIOD_REGEX.test(publishToPeriod) || publishToPeriod < publishPeriod) ? (
               <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-100">
                 <AlertDescription>
-                  El periodo final debe tener formato YYYY-MM y no puede ser anterior al inicio.
+                  El período final debe tener formato YYYY-MM y no puede ser anterior al inicio.
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -843,7 +844,7 @@ export function TiersEditor(): JSX.Element {
               disabled={!publishFormValid || publishBlocked || saving}
               onClick={() => void handlePublish()}
             >
-              {saving ? 'Publicando...' : 'Publicar configuracion'}
+              {saving ? 'Publicando…' : 'Publicar configuración'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -926,11 +927,12 @@ export function TiersEditor(): JSX.Element {
                 <p
                   key={i}
                   className={cn(
-                    'text-xs',
+                    'flex items-start gap-1.5 text-xs',
                     c.severity === 'error' ? 'text-red-300' : 'text-amber-300',
                   )}
                 >
-                  {c.severity === 'error' ? 'x' : '!'} {c.message}
+                  <TriangleAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                  <span>{c.message}</span>
                 </p>
               ))}
             </div>
@@ -945,7 +947,7 @@ export function TiersEditor(): JSX.Element {
               disabled={!draftFormValid || draftBlocked || saving}
               onClick={() => void handleSave()}
             >
-              {saving ? 'Guardando...' : 'Guardar'}
+              {saving ? 'Guardando…' : 'Guardar'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -978,7 +980,7 @@ const errorMessage = (error: unknown): string =>
     ? error.payload.message
     : error instanceof Error
       ? error.message
-      : 'Operacion fallida.'
+      : 'Operación fallida.'
 
 function tierLifecycleStatus(tier: CashbackTierDTO): {
   label: string

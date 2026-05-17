@@ -33,6 +33,11 @@ Después, configurar `DATABASE_URL` con una URL PostgreSQL válida.
 
 `CEREBRAS_API_KEY` es opcional. Si no está configurada, el backend responde con fallback controlado en la explicación de anomalías.
 
+`UPLOAD_DUPLICATE_MODE` controla qué pasa si subes el mismo archivo otra vez:
+
+- `prod`: bloquea la recarga y conserva el resultado existente.
+- `test`: permite reprocesarlo si confirmas la acción desde la UI.
+
 ## Instalar Y Preparar
 
 ```bash

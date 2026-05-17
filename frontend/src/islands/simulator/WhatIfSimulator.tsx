@@ -163,9 +163,11 @@ export function WhatIfSimulator(): JSX.Element {
   }
   if (status === 'error') {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>No se pudo cargar el simulador.</AlertDescription>
-      </Alert>
+      <div aria-live="polite">
+        <Alert variant="destructive">
+          <AlertDescription>No se pudo cargar el simulador.</AlertDescription>
+        </Alert>
+      </div>
     )
   }
 
@@ -550,6 +552,8 @@ function Slider({
       <input
         className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
         type="range"
+        aria-label={label}
+        aria-valuetext={format(value)}
         min={min}
         max={max}
         step={step}

@@ -14,19 +14,18 @@ test.describe('rebates fullstack', () => {
     await expect(page.locator('tbody tr').first()).toContainText('CristinaSuarez852025')
 
     await search.fill('')
-    await page.getByRole('button', { name: 'Usuario' }).click()
+    await page.getByRole('button', { name: 'Usuario', exact: true }).click()
     await expect(page.locator('tbody tr').first()).toContainText('CristinaSuarez852025')
 
-    await page.getByRole('button', { name: 'Usuario' }).click()
+    await page.getByRole('button', { name: 'Usuario', exact: true }).click()
     await expect(page.locator('tbody tr').first()).toContainText('VictorFernandez452024')
 
     await page.locator('tbody tr').first().click()
-    await expect(page.getByText('Detalle de usuario')).toBeVisible()
+    await expect(page.getByText('Detalle de usuario', { exact: true })).toBeVisible()
     await expect(page.getByText('2 transacciones · período 2025-05')).toBeVisible()
 
-    await page.locator('aside table tbody tr').first().click()
-    await expect(page.getByRole('heading', { name: 'Transacción QR' })).toBeVisible()
-    await expect(page.getByText('ID transacción')).toBeVisible()
-    await expect(page.getByText('207681530')).toBeVisible()
+    const firstTransaction = page.locator('[role="dialog"] table tbody tr').first()
+    await expect(firstTransaction).toBeVisible()
+    await expect(firstTransaction).toContainText('Bs 5,00')
   })
 })

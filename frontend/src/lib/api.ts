@@ -78,17 +78,62 @@ export const api = {
     file: File,
     period?: string,
     allowDuplicate = false,
+    onProgress?: (percent: number) => void,
   ): Promise<CreateUploadResponse> {
     const formData = new FormData()
     formData.append('file', file)
     if (period) formData.append('period', period)
     if (allowDuplicate) formData.append('allowDuplicate', 'true')
 
-    const res = await fetch(`${API_BASE}/api/uploads`, {
-      method: 'POST',
-      body: formData,
+    // Usamos XMLHttpRequest (no fetch) porque solo XHR expone el progreso
+    // real de subida del archivo vía `upload.onprogress`.
+    return new Promise<CreateUploadResponse>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_BASE}/api/uploads`)
+      xhr.responseType = 'text'
+
+      xhr.upload.onprogress = (event) => {
+        if (!onProgress || !event.lengthComputable) return
+        const percent = Math.round((event.loaded / event.total) * 100)
+        onProgress(Math.min(99, percent))
+      }
+
+      const fail = (payload: ApiError, status = 0): void => {
+        reject(new ApiCallError(status, payload))
+      }
+
+      xhr.onload = () => {
+        let parsed: unknown
+        try {
+          parsed = xhr.responseText ? JSON.parse(xhr.responseText) : {}
+        } catch {
+          fail({ error: 'UNKNOWN', message: 'Respuesta inválida del servidor.' }, xhr.status)
+          return
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress?.(100)
+          resolve(parsed as CreateUploadResponse)
+        } else {
+          const payload = (parsed ?? {}) as Partial<ApiError>
+          fail(
+            {
+              ...payload,
+              error: payload.error ?? 'UNKNOWN',
+              message: payload.message ?? xhr.statusText ?? 'Error desconocido',
+            },
+            xhr.status,
+          )
+        }
+      }
+
+      xhr.onerror = () =>
+        fail({ error: 'NETWORK', message: 'No se pudo conectar con el servidor.' })
+      xhr.ontimeout = () =>
+        fail({ error: 'TIMEOUT', message: 'La subida tardó demasiado. Inténtalo de nuevo.' })
+
+      xhr.send(formData)
     })
-    return handleResponse<CreateUploadResponse>(res)
   },
 
   async getUpload(uploadId: string): Promise<UploadSummary> {

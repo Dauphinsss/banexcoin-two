@@ -60,9 +60,9 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
 
   if (status === 'empty') {
     return (
-      <Card className="border-dashed">
+        <Card className="border-dashed">
         <CardContent className="py-6 text-center text-sm text-muted-foreground">
-          Las descargas estarán disponibles cuando un upload termine de procesarse.
+          Las descargas estarán disponibles cuando el archivo termine de procesarse.
         </CardContent>
       </Card>
     )
@@ -89,30 +89,28 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
           <DownloadCard
             href={api.reportUrl(upload.id)}
             title="Reporte Excel"
-            description="Incluye reintegros, resumen por nivel, anomalías, errores de parseo y extractos de pagos/cobros."
+            description="Resumen general del procesamiento con los resultados del período."
             accent="primary"
             icon={BarChart3}
           />
           <DownloadCard
             href={api.banexTransferUrl(upload.id)}
             title="BanexTransfer"
-            description="Archivo listo para cargar transferencias masivas en el formato interno de Banexcoin."
+            description="Archivo listo para preparar y ejecutar los pagos del período."
             accent="emerald"
             icon={Send}
           />
           <DownloadCard
             href={api.balanceSheetUrl(upload.id)}
             title="Cuadre DEBE/HABER"
-            description="Réplica de la hoja Saldos del Excel original: balance por usuario y por servicio."
+            description="Cuadre operativo para revisar balance por usuario y por servicio."
             accent="violet"
             icon={Scale}
           />
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Las descargas se regeneran al momento desde la base de datos. El archivo BanexTransfer usa
-          la cuenta de tesorería configurada en{' '}
-          <span className="font-mono text-foreground">TREASURY_ACCOUNT_NUMBER</span>.
+          Las descargas corresponden al archivo seleccionado y se generan con la información procesada.
         </p>
       </CardContent>
     </Card>
@@ -202,7 +200,7 @@ const DownloadCard = ({
       onClick={() => void download()}
       disabled={state === 'loading'}
       className={cn(
-        'group block w-full rounded-lg border p-4 text-left transition-all',
+        'group block w-full rounded-lg border p-4 text-left transition-[border-color,box-shadow,transform]',
         styles.border,
         styles.bg,
         styles.hoverBorder,
@@ -221,17 +219,19 @@ const DownloadCard = ({
         <div className="min-w-0 flex-1">
           <p className="font-medium text-foreground">{title}</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
-          {state === 'error' ? (
-            <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-destructive">
-              Error al descargar · reintentar
-              <ArrowRight className="size-3.5" aria-hidden="true" />
-            </p>
-          ) : (
-            <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary transition-transform group-hover:translate-x-0.5">
-              {state === 'loading' ? 'Generando…' : 'Descargar'}
-              {state === 'loading' ? null : <ArrowRight className="size-3.5" aria-hidden="true" />}
-            </p>
-          )}
+          <span aria-live="polite">
+            {state === 'error' ? (
+              <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-destructive">
+                Error al descargar · reintentar
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </p>
+            ) : (
+              <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary transition-transform group-hover:translate-x-0.5">
+                {state === 'loading' ? 'Generando…' : `Descargar ${title}`}
+                {state === 'loading' ? null : <ArrowRight className="size-3.5" aria-hidden="true" />}
+              </p>
+            )}
+          </span>
         </div>
       </div>
     </button>

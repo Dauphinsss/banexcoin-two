@@ -164,6 +164,9 @@ body {
   color: var(--color-foreground);
   font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-feature-settings: "rlig" 1, "calt" 1;
+  /* Los glows decorativos (scale/blur/translate) no deben generar
+     barras de scroll: contenemos el overflow horizontal a nivel raíz. */
+  overflow-x: hidden;
 }
 
 ::selection {
