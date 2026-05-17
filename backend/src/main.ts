@@ -12,6 +12,9 @@ async function bootstrap(): Promise<void> {
   const port = Number(process.env.PORT ?? 3000)
   const host = process.env.HOST ?? '0.0.0.0'
   const corsOrigin = process.env.CORS_ORIGIN
+  const trustProxy = process.env.TRUST_PROXY ?? '1'
+
+  app.getHttpAdapter().getInstance().set('trust proxy', trustProxy)
 
   if (corsOrigin) {
     app.enableCors({
