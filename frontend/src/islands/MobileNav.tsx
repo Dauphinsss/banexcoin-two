@@ -36,7 +36,7 @@ export default function MobileNav({ navItems, activePage }: MobileNavProps) {
           )}
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 p-0 flex flex-col" showCloseButton={false}>
+      <SheetContent side="right" className="w-72 p-0 flex flex-col" showCloseButton={false}>
         <SheetHeader className="border-b border-sidebar-border/50 bg-gradient-to-b from-sidebar/50 to-sidebar p-6 flex flex-row items-center justify-between">
           <div className="flex items-center">
             <img
