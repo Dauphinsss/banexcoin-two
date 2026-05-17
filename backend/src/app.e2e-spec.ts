@@ -345,17 +345,18 @@ describe('App e2e', () => {
     expect(persisted.resolutionNote).toBe('Validated manually')
   })
 
-  it('explica anomalías con fallback controlado si IA no está configurada', async () => {
+  it('explica anomalías con diagnóstico local si IA no está configurada', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/reconciliation/explain')
       .send({ uploadId: seededUploadId })
       .expect(200)
 
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       available: false,
       cached: false,
-      explanation: 'La explicación con IA no está disponible: falta configurar GEMINI_API_KEY.',
     })
+    expect(response.body.explanation).toContain('Resumen automático')
+    expect(response.body.explanation).toContain('monto distinto')
   })
 
   it('descarga reportes Excel desde los endpoints de uploads', async () => {
