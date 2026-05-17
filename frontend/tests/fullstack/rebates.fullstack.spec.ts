@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('rebates fullstack', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('banex:onboarding-done', '1')
+    })
+  })
+
   test('filters, sorts and opens the user drawer with real backend data', async ({ page }) => {
     await page.goto('/rebates')
 

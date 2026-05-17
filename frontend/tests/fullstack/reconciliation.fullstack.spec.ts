@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('reconciliation fullstack', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('banex:onboarding-done', '1')
+    })
+  })
+
   test('filters anomalies and resolves the seeded mismatch', async ({ page }) => {
     await page.goto('/reconciliation')
 

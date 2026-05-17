@@ -1,6 +1,4 @@
 import { useEffect, type JSX } from 'react'
-import { driver } from 'driver.js'
-import 'driver.js/dist/driver.css'
 import { ArrowRight, HelpCircle, Sparkles } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
@@ -57,19 +55,38 @@ const steps = [
   },
 ]
 
-function createTour() {
-  return driver({
-    showProgress: true,
-    progressText: '{{current}} de {{total}}',
-    nextBtnText: 'Siguiente',
-    prevBtnText: 'Atrás',
-    doneBtnText: 'Empezar',
-    overlayColor: 'oklch(0.12 0.015 280)',
-    overlayOpacity: 0.72,
-    stagePadding: 6,
-    stageRadius: 10,
-    popoverClass: 'banex-tour',
-    steps,
+type DriverFactory = (options: Record<string, unknown>) => { drive: () => void }
+
+async function createTour() {
+  try {
+    const driverModule = 'driver.js'
+    const driverStyles = 'driver.js/dist/driver.css'
+    const [{ driver }] = await Promise.all([
+      import(/* @vite-ignore */ driverModule) as Promise<{ driver: DriverFactory }>,
+      import(/* @vite-ignore */ driverStyles),
+    ])
+
+    return driver({
+      showProgress: true,
+      progressText: '{{current}} de {{total}}',
+      nextBtnText: 'Siguiente',
+      prevBtnText: 'Atrás',
+      doneBtnText: 'Empezar',
+      overlayColor: 'oklch(0.12 0.015 280)',
+      overlayOpacity: 0.72,
+      stagePadding: 6,
+      stageRadius: 10,
+      popoverClass: 'banex-tour',
+      steps,
+    })
+  } catch {
+    return null
+  }
+}
+
+function driveTourSafely() {
+  void createTour().then((tour) => {
+    tour?.drive()
   })
 }
 
@@ -83,8 +100,7 @@ export function OnboardingTour(): JSX.Element {
     if (localStorage.getItem(TOUR_KEY)) return
     // Pequeño delay para que el sidebar haya animado su entrada.
     const timer = window.setTimeout(() => {
-      const tour = createTour()
-      tour.drive()
+      driveTourSafely()
       localStorage.setItem(TOUR_KEY, '1')
     }, 700)
     return () => window.clearTimeout(timer)
@@ -100,7 +116,7 @@ export function OnboardingTour(): JSX.Element {
               <HoverCardTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => createTour().drive()}
+                  onClick={() => driveTourSafely()}
                   className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-card/90 px-4 py-2.5 text-sm font-medium text-foreground shadow-lg shadow-black/30 backdrop-blur-md transition-[transform,border-color,background-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card hover:shadow-xl hover:shadow-black/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   aria-label="Iniciar recorrido guiado de la aplicación"
                 >

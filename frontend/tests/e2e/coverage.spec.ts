@@ -2,14 +2,20 @@ import { expect, test } from '@playwright/test'
 import { fixtureData, mockApi, mockEmptyApi } from './api-fixtures'
 
 test.describe('cobertura operativa de la web', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('banex:onboarding-done', '1')
+    })
+  })
+
   test('renderiza navegación y estados vacíos en todas las secciones principales', async ({ page }) => {
     await mockEmptyApi(page)
 
     const pages = [
       { path: '/', heading: 'Dashboard' },
-      { path: '/rebates', heading: 'Tabla de reintegros', empty: 'Procesa un Excel para ver la tabla de reintegros.' },
-      { path: '/reconciliation', heading: 'Anomalías de conciliación', empty: 'Procesa un Excel para ver anomalías.' },
-      { path: '/simulator', heading: 'Simulador de cashback', empty: 'Procesa un Excel para simular impacto.' },
+      { path: '/rebates', heading: 'Tabla de reintegros' },
+      { path: '/reconciliation', heading: 'Anomalías de conciliación' },
+      { path: '/simulator', heading: 'Simulador de cashback' },
       { path: '/tiers', heading: 'Configuración de niveles' },
       { path: '/uploads/new', heading: 'Cargar reporte mensual de pagos QR', empty: 'Arrastra el reporte mensual de pagos QR' },
     ]
@@ -18,13 +24,13 @@ test.describe('cobertura operativa de la web', () => {
         await test.step(`pagina ${current.path}`, async () => {
           await page.goto(current.path)
           await expect(page.getByRole('heading', { name: current.heading })).toBeVisible()
-          const emptyState = current.empty
+          const emptyState = 'empty' in current ? current.empty : undefined
           if (emptyState) {
             await expect(page.getByText(emptyState)).toBeVisible()
           }
           await expect(page.getByRole('navigation', { name: /Navegación/ })).toBeVisible()
         })
-      }
+    }
   })
 
   test('muestra skeletons mientras carga el dashboard y luego pinta KPIs', async ({ page }) => {
