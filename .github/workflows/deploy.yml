@@ -64,15 +64,11 @@ jobs:
           # Descargar la nueva versión de tu backend
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
           
-          # Encender el contenedor mapeando el puerto público 80 al puerto 3000 de tu NestJS
+          # Encender el contenedor con el puerto 3000 y el CORS abierto para el Front
           docker run -d \
             --name nestjs_api \
-            -p 80:3000 \
-            -e NODE_ENV=production \
-            -e HOST=0.0.0.0 \
-            -e PORT=3000 \
+            -p 3000:3000 \
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            -e THROTTLE_TTL_MS=60000 \
-            -e THROTTLE_LIMIT=100 \
+            -e CORS_ORIGIN="*" \
             --restart always \
             $ECR_REGISTRY/$ECR_REPOSITORY:latest
