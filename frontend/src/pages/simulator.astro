@@ -1,21 +1,17 @@
 ---
 import AppShell from '../layouts/AppShell.astro'
+import PageHeader from '../components/PageHeader.astro'
 import { WhatIfSimulator } from '../islands/simulator/WhatIfSimulator'
 ---
 
 <AppShell title="Simulador" activePage="simulator">
   <div class="space-y-6">
-    <section class="space-y-2">
-      <div class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-        Impacto what-if
-      </div>
-      <h2 class="text-2xl font-semibold tracking-tight md:text-3xl">Simulador de cashback</h2>
-      <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
-        Ajusta porcentajes de reintegro y recalcula el costo en tiempo real usando las transacciones
-        del último upload. Cuando una propuesta te convenza, expórtala como configuración para
-        revisarla en Niveles.
-      </p>
-    </section>
+    <PageHeader
+      eyebrow="Impacto what-if"
+      title="Simulador de cashback"
+      accent="cashback"
+      description="Ajusta porcentajes de reintegro y recalcula el costo en tiempo real usando las transacciones del último upload. Cuando una propuesta te convenza, expórtala como configuración para revisarla en Niveles."
+    />
 
     <WhatIfSimulator client:load />
   </div>

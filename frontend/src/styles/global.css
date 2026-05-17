@@ -57,9 +57,10 @@
   --popover: oklch(0.24 0.015 280);
   --popover-foreground: oklch(0.985 0 0);
 
-  /* Brand orange */
-  --primary: oklch(0.665 0.205 35);                /* #FF5D30 */
-  --primary-foreground: oklch(0.145 0 0);
+  /* Brand orange — texto blanco para contraste AA sobre el naranja
+     (design system §5: CTA primario = naranja sólido + texto #fff) */
+  --primary: oklch(0.645 0.21 33);                 /* #FF5D30 */
+  --primary-foreground: oklch(1 0 0);
 
   --secondary: oklch(0.28 0.015 280);              /* hover panel */
   --secondary-foreground: oklch(0.985 0 0);
@@ -288,6 +289,54 @@ body {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- Stagger de entrada de página (design system §6) ---------------- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stagger > * {
+  animation: fadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.stagger > *:nth-child(1) { animation-delay: 30ms; }
+.stagger > *:nth-child(2) { animation-delay: 90ms; }
+.stagger > *:nth-child(3) { animation-delay: 150ms; }
+.stagger > *:nth-child(4) { animation-delay: 210ms; }
+.stagger > *:nth-child(5) { animation-delay: 270ms; }
+.stagger > *:nth-child(6) { animation-delay: 330ms; }
+
+/* --- Trazado de líneas de gráfico / sparkline (§6) ----------------- */
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+.draw-line {
+  stroke-dasharray: var(--len, 600);
+  stroke-dashoffset: var(--len, 600);
+  animation: drawLine 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+}
+
+/* --- Barra de nivel: crece + shimmer (§6) -------------------------- */
+@keyframes barGrow { from { width: 0; } to { width: var(--w, 100%); } }
+@keyframes barShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.tier-bar-fill {
+  width: 0;
+  animation: barGrow 1s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+}
+.tier-bar-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.22), transparent);
+  animation: barShimmer 2.4s linear infinite;
+}
+
+/* --- Pulse del punto final del chart (§6) -------------------------- */
+@keyframes endpointPulse {
+  0%, 100% { r: 4; opacity: 1; }
+  50% { r: 7; opacity: 0.55; }
+}
+.chart-endpoint { animation: endpointPulse 2.2s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *,

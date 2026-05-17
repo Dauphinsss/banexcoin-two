@@ -1,25 +1,41 @@
 ---
 import AppShell from '../layouts/AppShell.astro'
+import PageHeader from '../components/PageHeader.astro'
 import { RebatesTable } from '../islands/rebates/RebatesTable'
 import { DownloadsPanel } from '../islands/reports/DownloadsPanel'
 ---
 
 <AppShell title="Reintegros" activePage="rebates">
   <div class="space-y-6">
-    <section class="space-y-2">
-      <div class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-        Usuarios y pagos
+    <PageHeader
+      eyebrow="Usuarios y pagos"
+      title="Tabla de reintegros"
+      accent="reintegros"
+      description="Usuarios calculados desde el último upload procesado, con nivel asignado, monto a pagar y tipo de cambio promedio. Haz click en una fila para ver el detalle del usuario."
+    />
+
+    <section class="space-y-4">
+      <div class="flex items-center gap-3">
+        <h3 class="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Exportaciones
+        </h3>
+        <span class="h-px flex-1 bg-border"></span>
       </div>
-      <h2 class="text-2xl font-semibold tracking-tight md:text-3xl">Tabla de reintegros</h2>
-      <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
-        Usuarios calculados desde el último upload procesado, con nivel asignado,
-        monto a pagar y tipo de cambio promedio. Haz click en una fila para ver
-        el detalle del usuario.
-      </p>
+      <DownloadsPanel client:visible />
     </section>
 
-    <DownloadsPanel client:visible />
+    <div class="pt-2">
+      <div class="h-px w-full bg-linear-to-r from-transparent via-border to-transparent"></div>
+    </div>
 
-    <RebatesTable client:load />
+    <section class="space-y-4">
+      <div class="flex items-center gap-3">
+        <h3 class="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Detalle de usuarios
+        </h3>
+        <span class="h-px flex-1 bg-border"></span>
+      </div>
+      <RebatesTable client:load />
+    </section>
   </div>
 </AppShell>

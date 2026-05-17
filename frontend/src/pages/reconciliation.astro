@@ -1,20 +1,17 @@
 ---
 import AppShell from '../layouts/AppShell.astro'
+import PageHeader from '../components/PageHeader.astro'
 import { AnomalyPanel } from '../islands/reconciliation/AnomalyPanel'
 ---
 
 <AppShell title="Conciliación" activePage="reconciliation">
   <div class="space-y-6">
-    <section class="space-y-2">
-      <div class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-        Control bancario
-      </div>
-      <h2 class="text-2xl font-semibold tracking-tight md:text-3xl">Anomalías de conciliación</h2>
-      <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
-        Cruce de Pago QR contra Extracto de Pagos por identificador de transacción y monto.
-        Resuelve las anomalías manualmente o pide a la IA un análisis de patrones.
-      </p>
-    </section>
+    <PageHeader
+      eyebrow="Control bancario"
+      title="Anomalías de conciliación"
+      accent="conciliación"
+      description="Cruce de Pago QR contra Extracto de Pagos por identificador de transacción y monto. Resuelve las anomalías manualmente o pide a la IA un análisis de patrones."
+    />
 
     <AnomalyPanel client:load />
   </div>

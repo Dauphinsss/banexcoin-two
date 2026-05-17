@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowRight, Download, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowRight, ChevronDown, Download, Search } from 'lucide-react'
 import type { MonthlyRebateDTO, UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
 import { formatBOB, formatPercent, formatRate, formatUSDT } from '../../lib/format'
@@ -154,17 +154,23 @@ export function RebatesTable(): JSX.Element {
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </div>
-              <select
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
-                value={tier}
-                onChange={(event) => setTier(event.target.value)}
-              >
-                {tiers.map((item) => (
-                  <option key={item} value={item} className="bg-popover text-popover-foreground">
-                    {item === 'ALL' ? 'Todos los niveles' : item}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  className="h-9 w-full appearance-none rounded-md border border-input bg-transparent pl-3 pr-9 text-sm text-foreground shadow-[inset_0_1px_2px_rgba(0,0,0,0.18)] transition-[color,box-shadow,border-color] outline-none hover:border-ring/60 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/25 dark:bg-input/30"
+                  value={tier}
+                  onChange={(event) => setTier(event.target.value)}
+                >
+                  {tiers.map((item) => (
+                    <option key={item} value={item} className="bg-popover text-popover-foreground">
+                      {item === 'ALL' ? 'Todos los niveles' : item}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </div>
               <Button
                 type="button"
                 variant="outline"

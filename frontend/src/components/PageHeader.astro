@@ -1,0 +1,76 @@
+---
+/**
+ * Encabezado de página unificado (design system §1, §4).
+ * Eyebrow chip + título con acento + subtítulo, sobre una superficie
+ * de tarjeta con glow ambiental de marca. Profesional y consistente
+ * en todas las vistas del dashboard.
+ */
+interface Props {
+  eyebrow: string
+  title: string
+  /** Palabra del título que recibe el acento naranja. */
+  accent?: string
+  description?: string
+}
+
+const { eyebrow, title, accent, description } = Astro.props
+
+// Divide el título para resaltar `accent` sin romper el resto.
+const parts =
+  accent && title.includes(accent)
+    ? title.split(accent)
+    : null
+---
+
+<section
+  class="relative overflow-hidden rounded-xl border border-border bg-card/70 shadow-xl shadow-black/10"
+>
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute -right-24 -top-24 h-60 w-60 rounded-full bg-primary/15 blur-3xl"
+  >
+  </div>
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute -bottom-28 left-1/4 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl"
+  >
+  </div>
+
+  <div class="relative space-y-3 p-6 md:p-8">
+    <div
+      class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-primary"
+    >
+      <span class="relative flex size-1.5">
+        <span
+          class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60"
+        ></span>
+        <span class="relative inline-flex size-1.5 rounded-full bg-primary"></span>
+      </span>
+      {eyebrow}
+    </div>
+
+    <h2 class="text-2xl font-semibold tracking-tight md:text-3xl">
+      {
+        parts ? (
+          <>
+            {parts[0]}
+            <span class="text-primary">{accent}</span>
+            {parts[1]}
+          </>
+        ) : (
+          title
+        )
+      }
+    </h2>
+
+    {
+      description ? (
+        <p class="max-w-2xl text-sm leading-6 text-muted-foreground md:text-[15px]">
+          {description}
+        </p>
+      ) : null
+    }
+
+    <slot />
+  </div>
+</section>
