@@ -1,5 +1,5 @@
-import { useEffect, useState, type JSX } from 'react'
-import { Check, CircleCheck, TriangleAlert, X } from 'lucide-react'
+import { useEffect, useState, type JSX, type ReactNode } from 'react'
+import { CheckCircle2, TriangleAlert } from 'lucide-react'
 import type { MonthlyRebateDTO, QRTransactionDTO } from '@banex/types'
 import { api, ApiCallError } from '../../lib/api'
 import {
@@ -10,6 +10,32 @@ import {
   formatUSDT,
   formatUSDTCompact,
 } from '../../lib/format'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { cn } from '@/lib/utils'
 
 interface UserDrawerProps {
   uploadId: string
@@ -23,7 +49,6 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [selectedTx, setSelectedTx] = useState<QRTransactionDTO | null>(null)
 
-  // Cargar transacciones cuando se selecciona un rebate
   useEffect(() => {
     if (!rebate) {
       setStatus('idle')
@@ -61,169 +86,144 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
     }
   }, [rebate, uploadId])
 
-  // Cerrar con ESC
-  useEffect(() => {
-    if (!rebate) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        if (selectedTx) setSelectedTx(null)
-        else onClose()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [rebate, selectedTx, onClose])
-
-  if (!rebate) return null
-
   return (
-    <div
-      className="fixed inset-0 z-40 flex justify-end bg-overlay backdrop-blur-sm"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <aside
-        className="h-full w-full max-w-2xl bg-app border-l border-line shadow-2xl overflow-y-auto animate-slide-in"
-        onClick={(e) => e.stopPropagation()}
-        style={{ animation: 'slide-in 250ms ease-in-out' }}
+    <Sheet open={rebate !== null} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        side="right"
+        className="w-full overflow-y-auto p-0 sm:max-w-2xl"
       >
-        <header className="sticky top-0 z-10 bg-app-glass border-b border-line px-6 py-4 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-widest text-faint">Detalle de usuario</p>
-            <h2 className="mt-1 text-lg font-semibold text-main truncate">{rebate.username}</h2>
-            <p className="text-xs text-faint font-mono">Cuenta {rebate.userId}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted hover-text-soft px-2"
-            aria-label="Cerrar"
-          >
-            <X className="size-5" aria-hidden="true" />
-          </button>
-        </header>
+        {rebate ? (
+          <>
+            <SheetHeader className="border-b border-border bg-background/80 px-6 py-5 backdrop-blur-xl">
+              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Detalle de usuario
+              </p>
+              <SheetTitle className="truncate text-lg">{rebate.username}</SheetTitle>
+              <SheetDescription className="font-mono text-xs">
+                Cuenta {rebate.userId}
+              </SheetDescription>
+            </SheetHeader>
 
-        <section className="px-6 py-5 space-y-4 border-b border-line">
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <SummaryRow label="Total gastado" value={formatBOB(rebate.totalSpentBOB)} />
-            <SummaryRow
-              label="Nivel"
-              value={
-                <span className="rounded-md border border-brand-muted bg-brand-soft px-2 py-1 text-xs text-brand-soft">
-                  {rebate.tierName ?? 'Sin nivel'}
-                </span>
-              }
-            />
-            <SummaryRow label="% Cashback" value={formatPercent(rebate.rebatePercent)} />
-            <SummaryRow
-              label="T/C promedio"
-              value={
-                <span className="font-mono tabular-nums text-soft">
-                  {formatRate(rebate.avgExchangeRate)}
-                </span>
-              }
-            />
-            <SummaryRow
-              label="Reintegro USDT"
-              value={
-                <span className="font-mono tabular-nums text-success">
-                  {formatUSDT(rebate.rebateUSDT)}
-                </span>
-              }
-              highlight
-            />
-            <SummaryRow
-              label="Reintegro BOB"
-              value={
-                <span className="font-mono tabular-nums text-soft">
-                  {formatBOB(rebate.rebateBOB)}
-                </span>
-              }
-            />
-          </div>
+            <section className="space-y-4 border-b border-border px-6 py-5">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <SummaryRow label="Total gastado">
+                  <span className="font-mono tabular-nums">{formatBOB(rebate.totalSpentBOB)}</span>
+                </SummaryRow>
+                <SummaryRow label="Nivel">
+                  <Badge variant="secondary" className="border-primary/30 bg-primary/10 text-primary">
+                    {rebate.tierName ?? 'Sin nivel'}
+                  </Badge>
+                </SummaryRow>
+                <SummaryRow label="% Cashback">
+                  <span className="font-mono tabular-nums">{formatPercent(rebate.rebatePercent)}</span>
+                </SummaryRow>
+                <SummaryRow label="T/C promedio">
+                  <span className="font-mono tabular-nums">{formatRate(rebate.avgExchangeRate)}</span>
+                </SummaryRow>
+                <SummaryRow label="Reintegro USDT" highlight>
+                  <span className="font-mono text-base font-semibold tabular-nums text-emerald-400">
+                    {formatUSDT(rebate.rebateUSDT)}
+                  </span>
+                </SummaryRow>
+                <SummaryRow label="Reintegro BOB">
+                  <span className="font-mono tabular-nums">{formatBOB(rebate.rebateBOB)}</span>
+                </SummaryRow>
+              </div>
 
-          <div className="flex items-center justify-between text-xs text-faint">
-            <span>{rebate.transactionCount} transacciones · período {rebate.period}</span>
-            <span className={rebate.paidOut ? 'text-success-strong' : ''}>
-              {rebate.paidOut
-                ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Check className="size-3.5" aria-hidden="true" />
+              <Separator />
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="text-muted-foreground">
+                  {rebate.transactionCount} transacciones · período {rebate.period}
+                </span>
+                {rebate.paidOut ? (
+                  <span className="inline-flex items-center gap-1 font-medium text-emerald-400">
+                    <CheckCircle2 className="size-3.5" aria-hidden="true" />
                     Pagado el {formatDateTime(rebate.paidOutAt)}
                   </span>
-                )
-                : 'Pendiente de pago'}
-            </span>
-          </div>
-        </section>
+                ) : (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-300">
+                    Pendiente de pago
+                  </Badge>
+                )}
+              </div>
+            </section>
 
-        <section className="px-6 py-5">
-          <h3 className="text-sm font-medium text-muted mb-3">Transacciones del período</h3>
-          {status === 'loading' ? (
-            <p className="text-sm text-muted">Cargando transacciones...</p>
-          ) : status === 'error' ? (
-            <p className="text-sm text-danger">{errorMessage}</p>
-          ) : transactions.length === 0 ? (
-            <p className="text-sm text-muted">Sin transacciones para mostrar.</p>
-          ) : (
-            <div className="overflow-hidden rounded-md border border-line">
-              <table className="min-w-full text-xs">
-                <thead className="bg-panel-solid text-faint uppercase tracking-wider">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Fecha</th>
-                    <th className="px-3 py-2 text-right">BOB</th>
-                    <th className="px-3 py-2 text-right">USDT</th>
-                    <th className="px-3 py-2 text-right">T/C</th>
-                    <th className="px-3 py-2 text-center">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line-dark">
-                  {transactions.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      className="hover-bg-panel-hover-muted cursor-pointer"
-                      onClick={() => setSelectedTx(tx)}
-                    >
-                      <td className="px-3 py-2 text-muted font-mono">
-                        {formatDateTime(tx.transactedAt).slice(0, 16)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-soft">
-                        {formatBOB(tx.amountBOB)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
-                        {formatUSDTCompact(tx.amountUSDT)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
-                        {formatRate(tx.exchangeRate)}
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        {tx.reconciledWithExtract ? (
-                          <CircleCheck className="mx-auto size-4 text-success-strong" aria-label="Conciliada con extracto" />
-                        ) : (
-                          <TriangleAlert className="mx-auto size-4 text-warning-strong" aria-label="Sin conciliar" />
-                        )}
-                      </td>
-                    </tr>
+            <section className="px-6 py-5">
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+                Transacciones del período
+              </h3>
+              {status === 'loading' ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-8 w-full" />
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </aside>
+                </div>
+              ) : status === 'error' ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{errorMessage}</AlertDescription>
+                </Alert>
+              ) : transactions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin transacciones para mostrar.</p>
+              ) : (
+                <div className="overflow-hidden rounded-md border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">BOB</TableHead>
+                        <TableHead className="text-right">USDT</TableHead>
+                        <TableHead className="text-right">T/C</TableHead>
+                        <TableHead className="text-center">Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {transactions.map((tx) => (
+                        <TableRow
+                          key={tx.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedTx(tx)}
+                        >
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            {formatDateTime(tx.transactedAt).slice(0, 16)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-xs tabular-nums">
+                            {formatBOB(tx.amountBOB)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground">
+                            {formatUSDTCompact(tx.amountUSDT)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground">
+                            {formatRate(tx.exchangeRate)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {tx.reconciledWithExtract ? (
+                              <CheckCircle2
+                                className="mx-auto size-4 text-emerald-400"
+                                aria-label="Conciliada con extracto"
+                              />
+                            ) : (
+                              <TriangleAlert
+                                className="mx-auto size-4 text-amber-400"
+                                aria-label="Sin conciliar"
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </section>
+          </>
+        ) : null}
+      </SheetContent>
 
       {selectedTx ? (
-        <TransactionModal transaction={selectedTx} onClose={() => setSelectedTx(null)} />
+        <TransactionDialog transaction={selectedTx} onClose={() => setSelectedTx(null)} />
       ) : null}
-
-      <style>{`
-        @keyframes slide-in {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-      `}</style>
-    </div>
+    </Sheet>
   )
 }
 
@@ -231,53 +231,38 @@ export default UserDrawer
 
 const SummaryRow = ({
   label,
-  value,
+  children,
   highlight = false,
 }: {
   label: string
-  value: JSX.Element | string
+  children: ReactNode
   highlight?: boolean
 }): JSX.Element => (
   <div
-    className={`rounded-md border px-3 py-2 ${
+    className={cn(
+      'rounded-md border px-3 py-2',
       highlight
-        ? 'border-success-muted bg-success-faint'
-        : 'border-line bg-panel'
-    }`}
+        ? 'border-emerald-500/30 bg-emerald-500/10'
+        : 'border-border bg-muted/30',
+    )}
   >
-    <p className="text-xs text-faint">{label}</p>
-    <div className="mt-1 text-main">{value}</div>
+    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+    <div className="mt-1">{children}</div>
   </div>
 )
 
-const TransactionModal = ({
+const TransactionDialog = ({
   transaction,
   onClose,
 }: {
   transaction: QRTransactionDTO
   onClose: () => void
 }): JSX.Element => (
-  <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-strong p-4"
-    onClick={onClose}
-    role="dialog"
-    aria-modal="true"
-  >
-    <div
-      className="w-full max-w-lg rounded-lg border border-line-strong bg-app p-6 shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <header className="flex items-center justify-between mb-4">
-        <h4 className="text-base font-semibold text-main">Transacción QR</h4>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-muted hover-text-soft"
-          aria-label="Cerrar"
-        >
-          <X className="size-5" aria-hidden="true" />
-        </button>
-      </header>
+  <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Transacción QR</DialogTitle>
+      </DialogHeader>
       <dl className="grid grid-cols-1 gap-2 text-sm">
         <ModalField label="ID transacción" value={transaction.transactionId} mono />
         <ModalField label="Fecha" value={formatDateTime(transaction.transactedAt)} />
@@ -289,27 +274,25 @@ const TransactionModal = ({
         <ModalField
           label="Conciliada"
           value={
-            transaction.reconciledWithExtract
-              ? (
-                <span className="inline-flex items-center gap-1 text-success-strong">
-                  <CircleCheck className="size-4" aria-hidden="true" />
-                  Sí
-                </span>
-              )
-              : (
-                <span className="inline-flex items-center gap-1 text-warning-strong">
-                  <TriangleAlert className="size-4" aria-hidden="true" />
-                  No
-                </span>
-              )
+            transaction.reconciledWithExtract ? (
+              <span className="inline-flex items-center gap-1 text-emerald-400">
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+                Sí
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-amber-400">
+                <TriangleAlert className="size-4" aria-hidden="true" />
+                No
+              </span>
+            )
           }
         />
         {transaction.extractMismatch ? (
           <ModalField label="Detalle anomalía" value={transaction.extractMismatch} />
         ) : null}
       </dl>
-    </div>
-  </div>
+    </DialogContent>
+  </Dialog>
 )
 
 const ModalField = ({
@@ -318,13 +301,11 @@ const ModalField = ({
   mono = false,
 }: {
   label: string
-  value: JSX.Element | string
+  value: ReactNode
   mono?: boolean
 }): JSX.Element => (
-  <div className="flex justify-between gap-4 border-b border-line pb-1.5">
-    <dt className="text-faint">{label}</dt>
-    <dd className={`text-soft text-right ${mono ? 'font-mono tabular-nums' : ''}`}>
-      {value}
-    </dd>
+  <div className="flex items-center justify-between gap-4 border-b border-border pb-1.5 last:border-0">
+    <dt className="text-muted-foreground">{label}</dt>
+    <dd className={cn('text-right text-foreground', mono && 'font-mono tabular-nums')}>{value}</dd>
   </div>
 )

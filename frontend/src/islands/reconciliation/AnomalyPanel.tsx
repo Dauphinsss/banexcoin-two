@@ -1,13 +1,42 @@
 import { useEffect, useMemo, useState, type JSX } from 'react'
-import { CircleCheck, X } from 'lucide-react'
+import {
+  CheckCircle2,
+  CircleAlert,
+  Download,
+  Loader2,
+  Sparkles,
+  X,
+} from 'lucide-react'
 import type { AnomalyDTO, ReconciliationStats, UploadSummary } from '@banex/types'
 import { api, ApiCallError } from '../../lib/api'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { cn } from '@/lib/utils'
 
 const labels: Record<AnomalyDTO['type'], string> = {
   NO_EXTRACT: 'Sin extracto',
   NO_QR: 'Sin QR',
   AMOUNT_MISMATCH: 'Monto distinto',
   INVALID_RATE: 'T/C inválido',
+}
+
+const TYPE_TONE: Record<AnomalyDTO['type'], string> = {
+  NO_EXTRACT: 'bg-red-500/10 text-red-300 ring-red-500/30',
+  NO_QR: 'bg-amber-500/10 text-amber-300 ring-amber-500/30',
+  AMOUNT_MISMATCH: 'bg-primary/10 text-primary ring-primary/30',
+  INVALID_RATE: 'bg-violet-500/10 text-violet-300 ring-violet-500/30',
 }
 
 export function AnomalyPanel(): JSX.Element {
@@ -114,237 +143,337 @@ export function AnomalyPanel(): JSX.Element {
     URL.revokeObjectURL(url)
   }
 
-  if (status === 'loading') return <p className="text-sm text-muted">Cargando conciliación...</p>
-  if (status === 'empty') return <p className="text-sm text-muted">Procesa un Excel para ver anomalías.</p>
-  if (status === 'error') return <p className="text-sm text-danger">No se pudo cargar la conciliación.</p>
+  if (status === 'loading') {
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-80 w-full" />
+      </div>
+    )
+  }
+  if (status === 'empty') {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          Procesa un Excel para ver anomalías.
+        </CardContent>
+      </Card>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <Alert variant="destructive">
+        <CircleAlert />
+        <AlertTitle>No se pudo cargar la conciliación</AlertTitle>
+      </Alert>
+    )
+  }
+
+  const totalAnomalies = stats?.total ?? 0
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
-        <div>
-          <p className="text-sm text-muted">Upload conciliado</p>
-          <h2 className="mt-1 text-base font-semibold text-main">{upload?.filename}</h2>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="rounded-md border border-success-muted bg-success-soft px-3 py-2 font-mono text-sm text-success">
-            {stats?.reconciliationRate ?? '0.00'}% conciliado
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Upload conciliado
+            </p>
+            <h2 className="text-base font-semibold">{upload?.filename}</h2>
+            {upload?.period ? (
+              <Badge variant="secondary" className="mt-1">
+                {upload.period}
+              </Badge>
+            ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => void handleExplain()}
-            disabled={aiStatus === 'loading' || (stats?.total ?? 0) === 0}
-            className="h-10 px-4 rounded-md border border-blue-500/40 bg-blue-500/10 text-sm text-blue-100 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {aiStatus === 'loading' ? (
-              <span className="flex items-center gap-2">
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-transparent" />
-                Analizando...
-              </span>
-            ) : (
-              'Explicar con IA ✦'
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={exportCSV}
-            disabled={filtered.length === 0}
-            className="h-10 px-4 rounded-md border border-line-strong bg-panel-solid text-sm text-soft hover-bg-chart-track disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Exportar CSV
-          </button>
-        </div>
-      </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-mono text-sm text-emerald-300">
+              {stats?.reconciliationRate ?? '0.00'}% conciliado
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleExplain()}
+              disabled={aiStatus === 'loading' || totalAnomalies === 0}
+              className="border-sky-500/40 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20 hover:text-sky-100"
+            >
+              {aiStatus === 'loading' ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Analizando…
+                </>
+              ) : (
+                <>
+                  <Sparkles />
+                  Explicar con IA
+                </>
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>
+              <Download />
+              Exportar CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {aiStatus === 'done' || aiStatus === 'error' ? (
-        <div
-          className={`rounded-lg border px-4 py-3 text-sm animate-[fadeIn_400ms_ease-out] ${
+        <Alert
+          className={cn(
+            'relative',
             aiStatus === 'error'
-              ? 'border-red-500/40 bg-red-500/10 text-red-200'
-              : 'border-blue-500/40 bg-blue-500/10 text-blue-100'
-          }`}
+              ? 'border-red-500/40 bg-red-500/10 text-red-100 [&>svg]:text-red-300'
+              : 'border-sky-500/40 bg-sky-500/10 text-sky-100 [&>svg]:text-sky-300',
+          )}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-widest text-blue-300/70">
-                {aiStatus === 'error' ? 'IA no disponible' : 'Explicación de IA ✦'}
-              </p>
-              <p className="mt-1 leading-relaxed">{aiText}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAiStatus('idle')}
-              className="text-current opacity-60 hover:opacity-100"
-            >
-              ×
-            </button>
-          </div>
-        </div>
+          <Sparkles />
+          <AlertTitle>{aiStatus === 'error' ? 'IA no disponible' : 'Explicación generada por IA'}</AlertTitle>
+          <AlertDescription className="leading-relaxed">{aiText}</AlertDescription>
+          <button
+            type="button"
+            onClick={() => setAiStatus('idle')}
+            className="absolute right-3 top-3 text-current opacity-60 transition-opacity hover:opacity-100"
+            aria-label="Cerrar"
+          >
+            <X className="size-4" />
+          </button>
+        </Alert>
       ) : null}
 
       {feedback ? (
-        <div
-          className={`rounded-md border px-4 py-2 text-sm ${
+        <Alert
+          className={cn(
+            'relative',
             feedback.kind === 'error'
-              ? 'border-danger-soft bg-danger-soft text-danger'
-              : 'border-success-soft bg-success-soft text-success'
-          }`}
+              ? 'border-destructive/40 bg-destructive/10 text-destructive-foreground [&>svg]:text-destructive'
+              : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100 [&>svg]:text-emerald-300',
+          )}
         >
-          <div className="flex items-center justify-between gap-3">
-            <span>{feedback.message}</span>
-            <button
-              type="button"
-              onClick={() => setFeedback(null)}
-              className="text-current opacity-60 hover:opacity-100"
-              aria-label="Cerrar mensaje"
-            >
-              <X className="size-4" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
+          {feedback.kind === 'error' ? <CircleAlert /> : <CheckCircle2 />}
+          <AlertDescription>{feedback.message}</AlertDescription>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="absolute right-3 top-3 text-current opacity-60 transition-opacity hover:opacity-100"
+            aria-label="Cerrar"
+          >
+            <X className="size-4" />
+          </button>
+        </Alert>
       ) : null}
 
       <div className="grid gap-3 md:grid-cols-4">
-        <Badge label="Total" value={stats?.total ?? 0} active={type === 'ALL'} onClick={() => setType('ALL')} />
-        <Badge label="Sin extracto" value={stats?.noExtract ?? 0} active={type === 'NO_EXTRACT'} onClick={() => setType('NO_EXTRACT')} tone="red" />
-        <Badge label="Sin QR" value={stats?.noQr ?? 0} active={type === 'NO_QR'} onClick={() => setType('NO_QR')} tone="amber" />
-        <Badge label="Monto distinto" value={stats?.amountMismatch ?? 0} active={type === 'AMOUNT_MISMATCH'} onClick={() => setType('AMOUNT_MISMATCH')} tone="orange" />
+        <FilterCard label="Total" value={totalAnomalies} active={type === 'ALL'} onClick={() => setType('ALL')} accent="primary" />
+        <FilterCard label="Sin extracto" value={stats?.noExtract ?? 0} active={type === 'NO_EXTRACT'} onClick={() => setType('NO_EXTRACT')} accent="red" />
+        <FilterCard label="Sin QR" value={stats?.noQr ?? 0} active={type === 'NO_QR'} onClick={() => setType('NO_QR')} accent="amber" />
+        <FilterCard label="Monto distinto" value={stats?.amountMismatch ?? 0} active={type === 'AMOUNT_MISMATCH'} onClick={() => setType('AMOUNT_MISMATCH')} accent="orange" />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line">
-        <table className="min-w-full divide-y divide-line text-sm">
-          <thead className="bg-app text-left text-xs uppercase tracking-widest text-faint">
-            <tr>
-              <th className="px-4 py-3">Tipo</th>
-              <th className="px-4 py-3">Transacción</th>
-              <th className="px-4 py-3 text-right">QR BOB</th>
-              <th className="px-4 py-3 text-right">Extracto BOB</th>
-              <th className="px-4 py-3 text-right">Delta</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3 text-right">Acción</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line-dark bg-panel-muted">
-            {filtered.length === 0 ? (
-              <tr>
-                <td className="px-4 py-8 text-center text-muted" colSpan={7}>
-                  No hay anomalías para este filtro.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((row) => (
-                <tr key={row.id} className="hover-bg-panel-hover-soft align-top">
-                  <td className="px-4 py-3 text-soft">{labels[row.type]}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted">{row.transactionId}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-muted">
-                    {row.qrAmountBOB ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-muted">
-                    {row.extractAmountBOB ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-warning">
-                    {row.deltaBOB ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-muted">
-                    {row.resolved ? (
-                      <span className="inline-flex items-start gap-1 text-success-strong text-xs">
-                        <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                        <span>
-                          Resuelta
-                        {row.resolvedNote ? (
-                          <span className="block font-mono text-faint text-[11px] truncate max-w-[200px]" title={row.resolvedNote}>
-                            "{row.resolvedNote}"
-                          </span>
-                        ) : null}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-warning text-xs">Pendiente</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {row.resolved ? (
-                      <span className="text-xs text-faint">—</span>
-                    ) : resolving === row.id ? (
-                      <div className="flex flex-col gap-2 items-end">
-                        <input
-                          type="text"
-                          autoFocus
-                          value={resolveNote}
-                          onChange={(e) => setResolveNote(e.target.value)}
-                          placeholder="Motivo (opcional)"
-                          className="w-48 h-8 rounded-md border border-line-strong bg-app px-2 text-xs text-main outline-none focus-border-brand"
-                        />
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setResolving(null)
-                              setResolveNote('')
-                            }}
-                            className="px-2 h-7 text-xs text-muted hover-text-main"
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleResolve(row.id)}
-                            className="px-2 h-7 text-xs rounded bg-success text-inverse hover-bg-success-hover"
-                          >
-                            Confirmar
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setResolving(row.id)
-                          setResolveNote('')
-                          setFeedback(null)
-                        }}
-                        className="text-xs text-brand hover-text-brand-soft"
+      <Card>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Transacción</TableHead>
+                <TableHead className="text-right">QR BOB</TableHead>
+                <TableHead className="text-right">Extracto BOB</TableHead>
+                <TableHead className="text-right">Delta</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acción</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                    No hay anomalías para este filtro.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((row) => (
+                  <TableRow key={row.id} className="align-top">
+                    <TableCell>
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
+                          TYPE_TONE[row.type],
+                        )}
                       >
-                        Marcar resuelta
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                        {labels[row.type] ?? row.type}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {row.transactionId}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">
+                      {row.qrAmountBOB ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">
+                      {row.extractAmountBOB ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums text-amber-400">
+                      {row.deltaBOB ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      {row.resolved ? (
+                        <div className="space-y-0.5">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
+                            <CheckCircle2 className="size-3.5" />
+                            Resuelta
+                          </span>
+                          {row.resolvedNote ? (
+                            <p
+                              className="line-clamp-1 max-w-[200px] font-mono text-[11px] text-muted-foreground"
+                              title={row.resolvedNote}
+                            >
+                              "{row.resolvedNote}"
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-300">
+                          <span className="size-1.5 rounded-full bg-amber-400" />
+                          Pendiente
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {row.resolved ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : resolving === row.id ? (
+                        <div className="flex flex-col items-end gap-2">
+                          <Input
+                            autoFocus
+                            value={resolveNote}
+                            onChange={(e) => setResolveNote(e.target.value)}
+                            placeholder="Motivo (opcional)"
+                            className="h-8 w-48 text-xs"
+                          />
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setResolving(null)
+                                setResolveNote('')
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="bg-emerald-500 text-white hover:bg-emerald-500/90"
+                              onClick={() => void handleResolve(row.id)}
+                            >
+                              Confirmar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-primary"
+                          onClick={() => {
+                            setResolving(row.id)
+                            setResolveNote('')
+                            setFeedback(null)
+                          }}
+                        >
+                          Marcar resuelta
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   )
 }
 
-function Badge({
+type Accent = 'primary' | 'red' | 'amber' | 'orange'
+
+const ACCENT: Record<Accent, { activeBorder: string; activeBg: string; bar: string; text: string }> = {
+  primary: {
+    activeBorder: 'border-primary/50',
+    activeBg: 'bg-primary/10',
+    bar: 'bg-primary',
+    text: 'text-primary',
+  },
+  red: {
+    activeBorder: 'border-red-500/50',
+    activeBg: 'bg-red-500/10',
+    bar: 'bg-red-500',
+    text: 'text-red-300',
+  },
+  amber: {
+    activeBorder: 'border-amber-500/50',
+    activeBg: 'bg-amber-500/10',
+    bar: 'bg-amber-500',
+    text: 'text-amber-300',
+  },
+  orange: {
+    activeBorder: 'border-orange-500/50',
+    activeBg: 'bg-orange-500/10',
+    bar: 'bg-orange-500',
+    text: 'text-orange-300',
+  },
+}
+
+function FilterCard({
   label,
   value,
   active,
   onClick,
-  tone = 'default',
+  accent,
 }: {
   label: string
   value: number
   active: boolean
   onClick: () => void
-  tone?: 'default' | 'red' | 'amber' | 'orange'
+  accent: Accent
 }): JSX.Element {
-  const toneClasses: Record<typeof tone, string> = {
-    default: active ? 'border-brand-active bg-brand-selected' : 'border-line bg-panel hover-bg-panel-hover-soft',
-    red: active ? 'border-danger-active bg-danger-selected' : 'border-line bg-panel hover-bg-panel-hover-soft',
-    amber: active ? 'border-warning-active bg-warning-selected' : 'border-line bg-panel hover-bg-panel-hover-soft',
-    orange: active ? 'border-orange-active bg-orange-selected' : 'border-line bg-panel hover-bg-panel-hover-soft',
-  }
+  const styles = ACCENT[accent]
   return (
     <button
-      className={`rounded-lg border p-4 text-left transition-colors ${toneClasses[tone]}`}
       type="button"
       onClick={onClick}
+      className={cn(
+        'group relative overflow-hidden rounded-lg border bg-card/40 p-4 text-left transition-all',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        active
+          ? `${styles.activeBorder} ${styles.activeBg} shadow-md`
+          : 'border-border hover:border-border/70 hover:bg-accent/40',
+      )}
     >
-      <p className="text-xs uppercase tracking-widest text-faint">{label}</p>
-      <p className="mt-2 font-mono text-2xl font-semibold text-main tabular-nums">{value}</p>
+      <div
+        className={cn(
+          'absolute inset-x-0 top-0 h-0.5 transition-opacity',
+          styles.bar,
+          active ? 'opacity-100' : 'opacity-0 group-hover:opacity-60',
+        )}
+      />
+      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          'mt-2 font-mono text-2xl font-semibold tabular-nums',
+          active ? styles.text : 'text-foreground',
+        )}
+      >
+        {value}
+      </p>
     </button>
   )
 }

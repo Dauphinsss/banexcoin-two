@@ -5,12 +5,16 @@ import { AnomalyPanel } from '../islands/reconciliation/AnomalyPanel'
 
 <AppShell title="Conciliación" activePage="reconciliation">
   <div class="space-y-6">
-    <div>
-      <h2 class="text-xl font-semibold tracking-tight text-main">Anomalías de conciliación</h2>
-      <p class="mt-2 max-w-2xl text-sm text-muted">
+    <section class="space-y-2">
+      <div class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+        Control bancario
+      </div>
+      <h2 class="text-2xl font-semibold tracking-tight md:text-3xl">Anomalías de conciliación</h2>
+      <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
         Cruce de Pago QR contra Extracto de Pagos por identificador de transacción y monto.
+        Resuelve las anomalías manualmente o pide a la IA un análisis de patrones.
       </p>
-    </div>
+    </section>
 
     <AnomalyPanel client:load />
   </div>
