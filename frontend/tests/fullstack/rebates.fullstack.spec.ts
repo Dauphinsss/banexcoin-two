@@ -14,10 +14,10 @@ test.describe('rebates fullstack', () => {
     await expect(page.locator('tbody tr').first()).toContainText('CristinaSuarez852025')
 
     await search.fill('')
-    await page.getByRole('button', { name: 'Usuario' }).click()
+    await page.getByRole('button', { name: 'Usuario', exact: true }).click()
     await expect(page.locator('tbody tr').first()).toContainText('CristinaSuarez852025')
 
-    await page.getByRole('button', { name: 'Usuario' }).click()
+    await page.getByRole('button', { name: 'Usuario', exact: true }).click()
     await expect(page.locator('tbody tr').first()).toContainText('VictorFernandez452024')
 
     await page.locator('tbody tr').first().click()

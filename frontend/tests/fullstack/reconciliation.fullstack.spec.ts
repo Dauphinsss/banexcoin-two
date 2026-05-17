@@ -20,6 +20,6 @@ test.describe('reconciliation fullstack', () => {
       await expect(page.getByText('Anomalía marcada como resuelta.')).toBeVisible()
     }
 
-    await expect(page.getByText('Resuelta')).toBeVisible()
+    await expect(page.getByText('Resuelta', { exact: true })).toBeVisible()
   })
 })
