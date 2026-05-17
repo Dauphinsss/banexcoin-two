@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { OpenAI } from 'openai'
 import type { AnomalyDTO } from '@banex/types'
 import { ReconciliationService } from './reconciliation.service'
 
@@ -148,8 +147,6 @@ export class AnomalyExplainerAgent {
       })
     return this.clientPromise
   }
-}
-
   async explain(uploadId: string): Promise<AnomalyExplanation> {
     const prepared = await this.prepareExplanation(uploadId)
     if (prepared.kind === 'static') {
