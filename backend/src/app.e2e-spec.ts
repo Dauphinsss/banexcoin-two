@@ -21,7 +21,7 @@ describe('App e2e', () => {
     process.env.NODE_ENV = 'test'
     process.env.UPLOAD_STORAGE_DIR = './data/test-uploads'
     process.env.MAX_UPLOAD_SIZE_MB = '50'
-    process.env.GEMINI_API_KEY = ''
+    process.env.CEREBRAS_API_KEY = ''
 
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL is required for backend e2e tests.')
@@ -357,6 +357,17 @@ describe('App e2e', () => {
     })
     expect(response.body.explanation).toContain('Resumen automático')
     expect(response.body.explanation).toContain('monto distinto')
+  })
+
+  it('transmite la explicación de anomalías por streaming', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/reconciliation/explain/stream')
+      .send({ uploadId: seededUploadId })
+      .expect(200)
+
+    expect(response.header['content-type']).toContain('text/plain')
+    expect(response.text).toContain('Resumen automático')
+    expect(response.text).toContain('monto distinto')
   })
 
   it('descarga reportes Excel desde los endpoints de uploads', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import {
   CheckCircle2,
   CircleAlert,
@@ -244,10 +244,11 @@ export function AnomalyPanel(): JSX.Element {
   const [resolveNote, setResolveNote] = useState('')
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [aiText, setAiText] = useState<string>('')
-  const [aiGenerated, setAiGenerated] = useState(false)
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(
     null,
   )
+  const pendingAiTextRef = useRef('')
+  const flushFrameRef = useRef<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -282,6 +283,12 @@ export function AnomalyPanel(): JSX.Element {
     }
   }, [])
 
+  useEffect(() => {
+    return () => {
+      cancelFlushFrame()
+    }
+  }, [])
+
   const filtered = useMemo(
     () => anomalies.filter((row) => type === 'ALL' || row.type === type),
     [anomalies, type],
@@ -307,15 +314,24 @@ export function AnomalyPanel(): JSX.Element {
 
   const handleExplain = async (): Promise<void> => {
     if (!upload) return
+
+    pendingAiTextRef.current = ''
+    cancelFlushFrame()
     setAiStatus('loading')
     setAiText('')
-    setAiGenerated(false)
+
     try {
-      const result = await api.explainAnomalies(upload.id)
-      setAiText(result.explanation)
-      setAiGenerated(result.available)
+      await api.explainAnomaliesStream(upload.id, (chunk) => {
+        pendingAiTextRef.current += chunk
+        scheduleFlush()
+      })
+
+      flushPendingText()
       setAiStatus('done')
     } catch (error) {
+      pendingAiTextRef.current = ''
+      cancelFlushFrame()
+
       const message =
         error instanceof ApiCallError
           ? error.payload.message
@@ -416,16 +432,21 @@ export function AnomalyPanel(): JSX.Element {
           <AlertTitle>
             {aiStatus === 'error'
               ? 'IA no disponible'
-              : aiGenerated
-                ? 'Explicación generada por IA'
-                : 'Resumen automático'}
+              : aiStatus === 'loading'
+                ? 'Analizando con Cerebras'
+                : 'Análisis de anomalías'}
           </AlertTitle>
-          <AlertDescription className="leading-relaxed">{aiText}</AlertDescription>
+          <AlertDescription className="whitespace-pre-wrap leading-relaxed">
+            {aiText}
+            {aiStatus === 'loading' ? <span className="ml-0.5 inline-block animate-pulse">|</span> : null}
+          </AlertDescription>
           <button
             type="button"
             onClick={() => {
+              pendingAiTextRef.current = ''
+              cancelFlushFrame()
               setAiStatus('idle')
-              setAiGenerated(false)
+              setAiText('')
             }}
             className="absolute right-3 top-3 text-current opacity-60 transition-opacity hover:opacity-100"
             aria-label="Cerrar"
@@ -590,8 +611,32 @@ export function AnomalyPanel(): JSX.Element {
           </Table>
         </div>
       </Card>
-    </div>
+    </div >
   )
+
+  function scheduleFlush(): void {
+    if (flushFrameRef.current !== null) return
+
+    flushFrameRef.current = window.requestAnimationFrame(() => {
+      flushFrameRef.current = null
+      flushPendingText()
+    })
+  }
+
+  function flushPendingText(): void {
+    if (pendingAiTextRef.current === '') return
+
+    const nextText = pendingAiTextRef.current
+    pendingAiTextRef.current = ''
+    setAiText((prev) => prev + nextText)
+  }
+
+  function cancelFlushFrame(): void {
+    if (flushFrameRef.current === null) return
+
+    window.cancelAnimationFrame(flushFrameRef.current)
+    flushFrameRef.current = null
+  }
 }
 
 type Accent = 'primary' | 'red' | 'amber' | 'orange'
