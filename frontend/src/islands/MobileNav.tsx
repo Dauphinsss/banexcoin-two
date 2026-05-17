@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
-import { Sheet, SheetTrigger, SheetContent, SheetHeader } from '@/components/ui/sheet'
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetClose } from '@/components/ui/sheet'
 
 type NavId = 'dashboard' | 'uploads' | 'rebates' | 'tiers' | 'reconciliation' | 'simulator'
 
@@ -37,7 +37,7 @@ export default function MobileNav({ navItems, activePage }: MobileNavProps) {
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0 flex flex-col" showCloseButton={false}>
-        <SheetHeader className="border-b border-sidebar-border/50 bg-gradient-to-b from-sidebar/50 to-sidebar p-6">
+        <SheetHeader className="border-b border-sidebar-border/50 bg-gradient-to-b from-sidebar/50 to-sidebar p-6 flex flex-row items-center justify-between">
           <div className="flex items-center">
             <img
               src="/logo.png"
@@ -47,6 +47,14 @@ export default function MobileNav({ navItems, activePage }: MobileNavProps) {
               className="h-5 w-auto object-contain opacity-90"
             />
           </div>
+          <SheetClose asChild>
+            <button
+              className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+              aria-label="Cerrar menú"
+            >
+              <X className="size-5" />
+            </button>
+          </SheetClose>
         </SheetHeader>
         <nav className="flex-1 flex flex-col space-y-0.5 overflow-y-auto p-3" aria-label="Navegación móvil">
           {navItems.map((item, index) => {
