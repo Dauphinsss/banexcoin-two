@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX, type ReactNode } from 'react'
 import { CheckCircle2, TriangleAlert } from 'lucide-react'
 import type { MonthlyRebateDTO, QRTransactionDTO } from '@banex/types'
 import { api, ApiCallError } from '../../lib/api'
+import { LevelBadge } from '../../components/LevelBadge'
 import {
   formatBOB,
   formatDateTime,
@@ -109,9 +110,7 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
                   <span className="font-mono tabular-nums">{formatBOB(rebate.totalSpentBOB)}</span>
                 </SummaryRow>
                 <SummaryRow label="Nivel">
-                  <Badge variant="secondary" className="border-primary/30 bg-primary/10 text-primary">
-                    {rebate.tierName ?? 'Sin nivel'}
-                  </Badge>
+                  <LevelBadge levelName={rebate.tierName} variant="soft" />
                 </SummaryRow>
                 <SummaryRow label="% Cashback">
                   <span className="font-mono tabular-nums">{formatPercent(rebate.rebatePercent)}</span>

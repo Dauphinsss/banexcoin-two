@@ -3,6 +3,7 @@ import { ArrowDown, ArrowRight, ArrowUp, RotateCcw, Save } from 'lucide-react'
 import { calculateRebates, type RebateResult } from '@banex/utils'
 import type { CashbackTierDTO, UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
+import { LevelBadge, getLevelColor } from '../../components/LevelBadge'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
@@ -410,8 +411,8 @@ export function WhatIfSimulator(): JSX.Element {
 
                       {/* Header: tier name + user count + delta */}
                       <div className="mb-3 flex items-baseline justify-between gap-3 pl-1">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-base font-semibold tracking-tight">{tier.name}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <LevelBadge levelName={tier.name} variant="soft" />
                           {tierChanged ? (
                             <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
                               modificado
@@ -442,8 +443,8 @@ export function WhatIfSimulator(): JSX.Element {
                       <div className="mb-4 flex items-center gap-3 pl-1">
                         <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted/60">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-primary via-primary to-amber-400 transition-[width] duration-500 ease-out"
-                            style={{ width: `${pct}%` }}
+                            className="h-full rounded-full transition-[width] duration-500 ease-out"
+                            style={{ width: `${pct}%`, backgroundColor: getLevelColor(tier.name) }}
                           />
                         </div>
                         <span className="w-12 shrink-0 text-right font-mono text-[11px] font-semibold tabular-nums text-foreground/80">

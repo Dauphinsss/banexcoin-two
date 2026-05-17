@@ -169,6 +169,17 @@ body {
   overflow-x: hidden;
 }
 
+.nav-item:hover .nav-hover-card,
+.nav-item:focus-within .nav-hover-card {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.nav-hover-card {
+  transform: translateY(-50%) translateX(-6px);
+}
+
 ::selection {
   background: rgb(255 93 48 / 0.34);
   color: white;
@@ -398,13 +409,11 @@ body {
   animation: ambientDrift 9s ease-in-out infinite;
 }
 .app-sidebar,
-.app-header,
 .mobile-nav,
 .page-content {
   animation: softReveal 0.58s var(--ease-banex-soft) both;
 }
 .app-sidebar { animation-delay: 40ms; }
-.app-header { animation-delay: 90ms; }
 .mobile-nav { animation-delay: 120ms; }
 .page-content { animation-delay: 150ms; }
 .page-frame,

@@ -35,6 +35,39 @@ const MAX_BYTES = 50 * 1024 * 1024
 const PAGO_QR_SHEET = 'Pago QR'
 const PREVIEW_ROWS = 20
 
+const PROCESSING_STEPS = [
+  {
+    progress: 5,
+    message: 'Leyendo archivo y validando estructura',
+    agent: 'ParserAgent leyendo hojas y columnas…',
+  },
+  {
+    progress: 25,
+    message: 'Normalizando transacciones QR',
+    agent: 'ParserAgent normalizando Pago QR…',
+  },
+  {
+    progress: 45,
+    message: 'Calculando consumo mensual por usuario',
+    agent: 'TierAgent agregando consumo mensual…',
+  },
+  {
+    progress: 65,
+    message: 'Aplicando niveles de reintegro',
+    agent: 'TierAgent asignando Base, Bronce, Plata, Oro y Platino…',
+  },
+  {
+    progress: 80,
+    message: 'Conciliando contra extracto bancario',
+    agent: 'ReconcileAgent cruzando pagos QR contra extracto…',
+  },
+  {
+    progress: 95,
+    message: 'Guardando resultados y preparando resumen',
+    agent: 'UploadsService persistiendo resultados auditables…',
+  },
+] as const
+
 const REQUIRED_HEADERS = [
   'Creado por',
   'Número de Cuenta',
@@ -119,7 +152,7 @@ export default function UploadDropzone(): JSX.Element {
 
       const file = stage.file
       const preview = stage.preview
-      setStage({ kind: 'uploading', file, preview, progress: 0 })
+      setStage({ kind: 'uploading', file, preview, progress: 5 })
 
       try {
         const response = await api.createUpload(
@@ -128,7 +161,9 @@ export default function UploadDropzone(): JSX.Element {
           allowDuplicate,
           (progress) => {
             setStage((current) =>
-              current.kind === 'uploading' ? { ...current, progress } : current,
+              current.kind === 'uploading'
+                ? { ...current, progress: Math.max(current.progress, Math.min(20, progress)) }
+                : current,
             )
           },
         )
@@ -412,9 +447,27 @@ const UploadingState = ({
   preview: Preview
   progress: number
 }): JSX.Element => {
-  // Una vez el archivo terminó de subir (100%), el backend aún procesa
-  // las filas: mostramos un mensaje distinto y la barra "llena" pulsando.
-  const finishedUploading = progress >= 100
+  const [elapsedMs, setElapsedMs] = useState(0)
+
+  useEffect(() => {
+    const startedAt = Date.now()
+    const timer = window.setInterval(() => {
+      setElapsedMs(Date.now() - startedAt)
+    }, 450)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const estimatedMs = Math.min(
+    28_000,
+    Math.max(12_000, 7_000 + preview.totalRows * 3.4),
+  )
+  const ratio = Math.min(elapsedMs / estimatedMs, 1)
+  const simulatedProgress = Math.min(95, Math.round(5 + ratio * 90))
+  const displayProgress = Math.max(progress, simulatedProgress)
+  const currentStep =
+    [...PROCESSING_STEPS].reverse().find((step) => displayProgress >= step.progress) ??
+    PROCESSING_STEPS[0]
+  const nextStep = PROCESSING_STEPS.find((step) => displayProgress < step.progress)
 
   return (
     <Card>
@@ -425,18 +478,18 @@ const UploadingState = ({
           </div>
           <div className="min-w-0 flex-1 space-y-0.5">
             <p className="truncate text-base font-semibold text-foreground">
-              {finishedUploading ? 'Procesando en el servidor…' : 'Subiendo archivo…'}
+              {currentStep.message}
             </p>
             <p className="truncate font-mono text-xs text-muted-foreground">{filename}</p>
             <p className="text-sm text-muted-foreground">
-              {preview.totalRows.toLocaleString('es-BO')} transacciones en camino.
+              {currentStep.agent}
             </p>
           </div>
           <span
             className="shrink-0 font-mono text-2xl font-semibold tabular-nums text-primary"
             aria-hidden="true"
           >
-            {progress}%
+            {displayProgress}%
           </span>
         </div>
 
@@ -445,23 +498,17 @@ const UploadingState = ({
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={progress}
+          aria-valuenow={displayProgress}
           aria-label="Progreso de subida del archivo"
         >
-          <Progress
-            value={progress}
-            className={cn(
-              'h-2.5 transition-opacity',
-              finishedUploading && 'animate-pulse',
-            )}
-          />
+          <Progress value={displayProgress} className="h-2.5" />
           <p
             className="text-right text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
             aria-live="polite"
           >
-            {finishedUploading
-              ? 'Subida completa · calculando reintegros'
-              : `Transferido ${progress}% del archivo`}
+            {nextStep
+              ? `Siguiente: ${nextStep.message}`
+              : 'Cerrando procesamiento'}
           </p>
         </div>
       </CardContent>

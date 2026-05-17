@@ -1,7 +1,5 @@
 import { useEffect, type JSX } from 'react'
-import { ArrowRight, HelpCircle, Sparkles } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { HelpCircle } from 'lucide-react'
 
 const TOUR_KEY = 'banex:onboarding-done'
 
@@ -109,61 +107,18 @@ export function OnboardingTour(): JSX.Element {
   return (
     <>
       <style>{TOUR_STYLES}</style>
-      <TooltipProvider delayDuration={120}>
-        <HoverCard openDelay={160} closeDelay={120}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <HoverCardTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => driveTourSafely()}
-                  className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-card/90 px-4 py-2.5 text-sm font-medium text-foreground shadow-lg shadow-black/30 backdrop-blur-md transition-[transform,border-color,background-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card hover:shadow-xl hover:shadow-black/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                  aria-label="Iniciar recorrido guiado de la aplicación"
-                >
-                  <span className="relative flex size-7 items-center justify-center rounded-full bg-primary/14 text-primary ring-1 ring-primary/20">
-                    <HelpCircle className="size-4" aria-hidden="true" />
-                    <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary shadow-[0_0_0_4px_oklch(0.645_0.21_33/0.18)]" />
-                  </span>
-                  ¿Cómo funciona?
-                </button>
-              </HoverCardTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="left">Reabrir recorrido guiado</TooltipContent>
-          </Tooltip>
-
-          <HoverCardContent side="left" className="w-[22rem]">
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="grid size-9 place-items-center rounded-lg bg-primary/12 text-primary ring-1 ring-primary/20">
-                  <Sparkles className="size-4" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold">Recorrido guiado</p>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Un repaso corto de las vistas clave para ubicar carga, reintegros, conciliacion y simulacion.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {steps.map((step, index) => (
-                  <div key={step.element} className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-semibold text-foreground">
-                      {index + 1}
-                    </span>
-                    <span className="line-clamp-1">{step.popover.title}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 border-t border-border/70 pt-3 text-xs font-medium text-primary">
-                Iniciar ahora
-                <ArrowRight className="size-3.5" />
-              </div>
-            </div>
-          </HoverCardContent>
-        </HoverCard>
-      </TooltipProvider>
+      <button
+        type="button"
+        onClick={() => driveTourSafely()}
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-card/90 px-4 py-2.5 text-sm font-medium text-foreground shadow-lg shadow-black/30 backdrop-blur-md transition-[transform,border-color,background-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card hover:shadow-xl hover:shadow-black/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        aria-label="Iniciar recorrido guiado de la aplicación"
+      >
+        <span className="relative flex size-7 items-center justify-center rounded-full bg-primary/14 text-primary ring-1 ring-primary/20">
+          <HelpCircle className="size-4" aria-hidden="true" />
+          <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary shadow-[0_0_0_4px_oklch(0.645_0.21_33/0.18)]" />
+        </span>
+        ¿Cómo funciona?
+      </button>
     </>
   )
 }
