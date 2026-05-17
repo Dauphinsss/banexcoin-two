@@ -167,20 +167,23 @@ const currentItem = navItems.find((item) => item.id === activePage)
 
       {/* Main */}
       <main id="main-content" class="flex-1 min-w-0 flex flex-col overflow-y-auto overscroll-contain">
-        <header class="app-header sticky top-0 z-20 border-b border-border/50 bg-gradient-to-b from-background/95 via-background/80 to-background/60 px-4 py-3 backdrop-blur-sm md:px-8 md:py-4">
-          <div class="flex items-center gap-4">
-            <div class="flex md:hidden">
+        <header class="app-header sticky top-0 z-20 border-b border-border/50 bg-gradient-to-b from-background/95 via-background/80 to-background/60 backdrop-blur-sm">
+          <div class="flex items-center justify-between gap-3 px-4 py-3 md:px-8 md:py-4">
+            {/* Mobile Menu Button */}
+            <div class="flex md:hidden shrink-0">
               <MobileNav client:load navItems={navItems} activePage={activePage} />
             </div>
 
+            {/* Title Section */}
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-[11px] font-semibold uppercase tracking-widest text-primary/70 md:text-xs">{currentItem?.hint ?? 'Operación'}</span>
-                <span class="hidden h-1 w-1 rounded-full bg-primary/40 md:inline-block"></span>
+              <div class="flex items-center gap-1.5 md:gap-2">
+                <span class="text-[10px] font-semibold uppercase tracking-widest text-primary/70 md:text-xs">{currentItem?.hint ?? 'Operación'}</span>
+                <span class="h-1 w-1 rounded-full bg-primary/40"></span>
               </div>
-              <h1 class="mt-1 truncate text-xl font-bold tracking-tight md:text-2xl bg-gradient-to-r from-foreground via-foreground to-foreground/80 bg-clip-text text-transparent">{title}</h1>
+              <h1 class="mt-0.5 truncate text-lg font-bold tracking-tight md:text-2xl bg-gradient-to-r from-foreground via-foreground to-foreground/80 bg-clip-text text-transparent">{title}</h1>
             </div>
 
+            {/* Desktop Section Badge */}
             <div class="hidden shrink-0 md:flex">
               <div class="flex items-center gap-3 rounded-lg border border-primary/15 bg-primary/5 px-4 py-2 backdrop-blur-sm">
                 <div class="h-2 w-2 rounded-full bg-primary/60"></div>
