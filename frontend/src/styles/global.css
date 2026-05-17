@@ -99,6 +99,8 @@
 }
 
 @theme inline {
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -167,6 +169,22 @@ body {
   /* Los glows decorativos (scale/blur/translate) no deben generar
      barras de scroll: contenemos el overflow horizontal a nivel raíz. */
   overflow-x: hidden;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-item:hover .nav-hover-card,
+.nav-item:focus-within .nav-hover-card {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.nav-hover-card {
+  transform: translateY(-50%) translateX(-6px);
 }
 
 ::selection {
@@ -398,13 +416,11 @@ body {
   animation: ambientDrift 9s ease-in-out infinite;
 }
 .app-sidebar,
-.app-header,
 .mobile-nav,
 .page-content {
   animation: softReveal 0.58s var(--ease-banex-soft) both;
 }
 .app-sidebar { animation-delay: 40ms; }
-.app-header { animation-delay: 90ms; }
 .mobile-nav { animation-delay: 120ms; }
 .page-content { animation-delay: 150ms; }
 .page-frame,

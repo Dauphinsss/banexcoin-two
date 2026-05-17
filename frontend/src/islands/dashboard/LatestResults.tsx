@@ -6,17 +6,18 @@ import type {
   UploadSummary,
 } from '@banex/types'
 import {
-  ArrowRight,
   ArrowUpRight,
   CircleAlert,
   CircleDollarSign,
   FileSpreadsheet,
-  Inbox,
   ShieldAlert,
   Users,
 } from 'lucide-react'
 import { api } from '../../lib/api'
+import { formatPeriodLabel } from '../../lib/format'
 import { useCounter } from '../../lib/use-counter'
+import { EmptyState } from '../shared/EmptyState'
+import { LevelBadge, getLevelColor } from '../../components/LevelBadge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const money = (value: string | number, fractionDigits = 2) =>
   Number(value).toLocaleString('es-BO', {
@@ -58,14 +60,6 @@ interface LatestState {
 
 // Orden canónico de niveles para la distribución.
 const TIER_ORDER = ['Base', 'Bronce', 'Plata', 'Oro', 'Platino']
-const TIER_COLOR: Record<string, string> = {
-  Base: '#94a3b8',
-  Bronce: '#d97706',
-  Plata: '#cbd5e1',
-  Oro: '#eab308',
-  Platino: '#818cf8',
-}
-
 export function LatestResults() {
   const [state, setState] = useState<LatestState>({
     upload: null,
@@ -158,25 +152,10 @@ export function LatestResults() {
 
   if (status === 'empty') {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center gap-4 py-14 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
-            <Inbox className="size-7" />
-          </div>
-          <div className="space-y-2">
-            <p className="text-base font-semibold">Todavía no hay archivos procesados</p>
-            <p className="mx-auto max-w-md text-sm text-muted-foreground">
-              Sube el Excel mensual para activar el cálculo de reintegros, conciliación y descargas operativas.
-            </p>
-          </div>
-          <Button asChild>
-            <a href="/uploads/new">
-              Subir Excel
-              <ArrowRight />
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
+      <EmptyState
+        title="Todavía no hay archivos procesados"
+        description="Sube el Excel mensual de pagos QR para activar el cálculo de reintegros, la conciliación bancaria y las descargas operativas."
+      />
     )
   }
 
@@ -203,156 +182,204 @@ export function LatestResults() {
   ]
 
   return (
-    <div className="stagger space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label="Reintegrado"
-          value={money(animRebate, 2)}
-          suffix="USDT"
-          secondary={`Bs ${money(derived.rebateBOB, 0)}`}
-          icon={<CircleDollarSign className="size-4" />}
-          accent="primary"
-          spark={derived.curve}
-        />
-        <KpiCard
-          label="Usuarios beneficiados"
-          value={integer(Math.round(animUsers))}
-          secondary={`ticket prom. Bs ${money(derived.averageTicket, 0)}`}
-          icon={<Users className="size-4" />}
-          accent="emerald"
-          spark={derived.userCurve}
-        />
-        <KpiCard
-          label="Transacciones QR"
-          value={integer(derived.transactions)}
-          secondary={`T/C ${money(animTicket)}`}
-          icon={<FileSpreadsheet className="size-4" />}
-          accent="violet"
-          spark={derived.transactionCurve}
-        />
-        <KpiCard
-          label="Anomalías abiertas"
-          value={integer(Math.round(animAnom))}
-          secondary={`conciliación ${reconciliationRate.toFixed(2)}%`}
-          icon={<ShieldAlert className="size-4" />}
-          accent={anomalyTotal > 0 ? 'amber' : 'emerald'}
-          spark={anomalyCurve}
-        />
+    <TooltipProvider delayDuration={120}>
+      <div className="stagger space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <KpiCard
+            label="Reintegrado"
+            value={money(animRebate, 2)}
+            suffix="USDT"
+            secondary={`Bs ${money(derived.rebateBOB, 0)}`}
+            icon={<CircleDollarSign className="size-4" />}
+            accent="primary"
+            spark={derived.curve}
+            tooltip="Monto total estimado del reintegro del período, expresado en USDT y su referencia en bolivianos."
+          />
+          <KpiCard
+            label="Usuarios beneficiados"
+            value={integer(Math.round(animUsers))}
+            secondary={`ticket prom. Bs ${money(derived.averageTicket, 0)}`}
+            icon={<Users className="size-4" />}
+            accent="emerald"
+            spark={derived.userCurve}
+            tooltip="Cantidad de usuarios que calificaron para reintegro en el cierre actual."
+          />
+          <KpiCard
+            label="Transacciones QR"
+            value={integer(derived.transactions)}
+            secondary={`T/C ${money(animTicket)}`}
+            icon={<FileSpreadsheet className="size-4" />}
+            accent="violet"
+            spark={derived.transactionCurve}
+            tooltip="Total de transacciones QR consideradas en el cálculo del período."
+          />
+          <KpiCard
+            label="Anomalías abiertas"
+            value={integer(Math.round(animAnom))}
+            secondary={`conciliación ${reconciliationRate.toFixed(2)}%`}
+            icon={<ShieldAlert className="size-4" />}
+            accent={anomalyTotal > 0 ? 'amber' : 'emerald'}
+            spark={anomalyCurve}
+            tooltip="Incidencias pendientes de conciliación entre pagos QR y extractos bancarios."
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="overflow-hidden">
+                <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+                  <div className="space-y-1.5">
+                    <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
+                      USDT reintegrado · acumulado
+                    </CardDescription>
+                    <CardTitle className="text-base">Trayectoria del cierre</CardTitle>
+                  </div>
+                  <span className="font-mono text-sm font-medium tabular-nums text-emerald-400">
+                    {money(derived.rebateUSDT, 4)} USDT
+                  </span>
+                </CardHeader>
+                <CardContent>
+                  <RebateChart series={derived.curve} />
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              Evolución acumulada del reintegro total a medida que avanza el cierre.
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card>
+                <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+                  <div className="space-y-1.5">
+                    <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
+                      Distribución
+                    </CardDescription>
+                    <CardTitle className="text-base">Usuarios por nivel</CardTitle>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0">
+                    {state.rebates.length} usuarios
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  <TierDistribution buckets={derived.buckets} total={state.rebates.length} />
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              Reparto de usuarios según el nivel de cashback asignado en el período.
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card>
+                <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+                  <div className="space-y-1.5">
+                    <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
+                      Archivo activo
+                    </CardDescription>
+                    <CardTitle className="text-base">Último procesamiento</CardTitle>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{state.upload?.filename}</p>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0">
+                    {formatPeriodLabel(state.upload?.period)}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Metric label="Filas QR" value={integer(state.upload?.rowCount ?? 0)} />
+                    <Metric
+                      label="Parse errors"
+                      value={String(parseErrors)}
+                      tone={parseErrors > 0 ? 'amber' : 'default'}
+                    />
+                    <Metric label="Transacciones" value={integer(derived.transactions)} />
+                  </div>
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xs uppercase tracking-widest text-muted-foreground">
+                        Conciliación bancaria
+                      </p>
+                      <p className="font-mono text-sm font-medium tabular-nums">
+                        {reconciliationRate.toFixed(2)}%
+                      </p>
+                    </div>
+                    <Progress value={reconciliationRate} className="h-2" />
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button asChild variant="secondary" size="sm">
+                          <a href={`/uploads/result?id=${encodeURIComponent(state.upload?.id ?? '')}`}>
+                            Ver resultados
+                            <ArrowUpRight />
+                          </a>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        Abrir detalle completo del archivo procesado
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button asChild variant="ghost" size="sm">
+                          <a href="/reconciliation">Ir a conciliación</a>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        Revisar anomalías y estado del cruce bancario
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              Resumen del archivo actualmente tomado como referencia para el dashboard.
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card>
+                <CardHeader className="space-y-1.5">
+                  <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
+                    Riesgo operativo
+                  </CardDescription>
+                  <CardTitle className="text-base">Anomalías detectadas</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Metric
+                    label="Sin extracto"
+                    value={String(state.stats?.noExtract ?? 0)}
+                    tone={(state.stats?.noExtract ?? 0) > 0 ? 'amber' : 'default'}
+                  />
+                  <Metric
+                    label="Sin QR"
+                    value={String(state.stats?.noQr ?? 0)}
+                    tone={(state.stats?.noQr ?? 0) > 0 ? 'amber' : 'default'}
+                  />
+                  <Metric
+                    label="Monto distinto"
+                    value={String(state.stats?.amountMismatch ?? 0)}
+                    tone={(state.stats?.amountMismatch ?? 0) > 0 ? 'primary' : 'default'}
+                  />
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              Desglose de incidencias detectadas durante la conciliación del período.
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card className="overflow-hidden">
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-            <div className="space-y-1.5">
-              <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
-                USDT reintegrado · acumulado
-              </CardDescription>
-              <CardTitle className="text-base">Trayectoria del cierre</CardTitle>
-            </div>
-            <span className="font-mono text-sm font-medium tabular-nums text-emerald-400">
-              {money(derived.rebateUSDT, 4)} USDT
-            </span>
-          </CardHeader>
-          <CardContent>
-            <RebateChart series={derived.curve} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-            <div className="space-y-1.5">
-              <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
-                Distribución
-              </CardDescription>
-              <CardTitle className="text-base">Usuarios por nivel</CardTitle>
-            </div>
-            <Badge variant="secondary" className="shrink-0">
-              {state.rebates.length} usuarios
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            <TierDistribution buckets={derived.buckets} total={state.rebates.length} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-            <div className="space-y-1.5">
-              <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
-                Archivo activo
-              </CardDescription>
-              <CardTitle className="text-base">Último procesamiento</CardTitle>
-              <p className="text-sm text-muted-foreground line-clamp-1">{state.upload?.filename}</p>
-            </div>
-            <Badge variant="secondary" className="shrink-0">
-              {state.upload?.period ?? 'Sin periodo'}
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Metric label="Filas QR" value={integer(state.upload?.rowCount ?? 0)} />
-              <Metric
-                label="Parse errors"
-                value={String(parseErrors)}
-                tone={parseErrors > 0 ? 'amber' : 'default'}
-              />
-              <Metric label="Transacciones" value={integer(derived.transactions)} />
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <div className="flex items-baseline justify-between">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Conciliación bancaria
-                </p>
-                <p className="font-mono text-sm font-medium tabular-nums">
-                  {reconciliationRate.toFixed(2)}%
-                </p>
-              </div>
-              <Progress value={reconciliationRate} className="h-2" />
-            </div>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button asChild variant="secondary" size="sm">
-                <a href={`/uploads/${state.upload?.id}`}>
-                  Ver resultados
-                  <ArrowUpRight />
-                </a>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <a href="/reconciliation">Ir a conciliación</a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="space-y-1.5">
-            <CardDescription className="text-[10px] uppercase tracking-[0.18em]">
-              Riesgo operativo
-            </CardDescription>
-            <CardTitle className="text-base">Anomalías detectadas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Metric
-              label="Sin extracto"
-              value={String(state.stats?.noExtract ?? 0)}
-              tone={(state.stats?.noExtract ?? 0) > 0 ? 'amber' : 'default'}
-            />
-            <Metric
-              label="Sin QR"
-              value={String(state.stats?.noQr ?? 0)}
-              tone={(state.stats?.noQr ?? 0) > 0 ? 'amber' : 'default'}
-            />
-            <Metric
-              label="Monto distinto"
-              value={String(state.stats?.amountMismatch ?? 0)}
-              tone={(state.stats?.amountMismatch ?? 0) > 0 ? 'primary' : 'default'}
-            />
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    </TooltipProvider>
   )
 }
 
@@ -363,21 +390,21 @@ function LatestResultsSkeleton() {
         {['bg-primary', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500'].map((accent, idx) => (
           <Card
             key={accent}
-            className="relative min-h-[176px] overflow-hidden border-border/70 bg-[linear-gradient(180deg,oklch(0.22_0.018_280/0.94),oklch(0.17_0.017_280/0.98))] py-0"
+            className="relative min-h-[120px] overflow-hidden border-border/70 bg-[linear-gradient(180deg,oklch(0.22_0.018_280/0.94),oklch(0.17_0.017_280/0.98))] py-0"
           >
             <div className={`absolute inset-y-0 left-0 w-1.5 ${accent}`} />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.04] to-transparent" />
-            <CardContent className="relative flex min-h-[176px] flex-col justify-between gap-5 px-7 py-7 pl-9">
-              <div className="flex items-start justify-between gap-5">
-                <div className="space-y-2.5">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/[0.04] to-transparent" />
+            <CardContent className="relative flex min-h-[120px] flex-col justify-between gap-3 px-5 py-4 pl-7">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1.5">
                   <Skeleton className="h-3 w-28 bg-white/10" />
                   {idx === 1 ? <Skeleton className="h-3 w-20 bg-white/10" /> : null}
                 </div>
-                <Skeleton className="size-8 rounded-md bg-white/10" />
+                <Skeleton className="size-7 rounded-md bg-white/10" />
               </div>
-              <div className="space-y-3">
-                <Skeleton className="h-10 w-36 bg-white/10" />
-                <Skeleton className="h-4 w-28 bg-white/10" />
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-32 bg-white/10" />
+                <Skeleton className="h-3 w-24 bg-white/10" />
               </div>
             </CardContent>
           </Card>
@@ -533,6 +560,7 @@ function KpiCard({
   icon,
   accent,
   spark,
+  tooltip,
 }: {
   label: string
   value: string
@@ -541,44 +569,50 @@ function KpiCard({
   icon: React.ReactNode
   accent: Accent
   spark?: number[]
+  tooltip: string
 }) {
   const styles = ACCENT_STYLES[accent]
   return (
-    <Card className="group relative min-h-[176px] overflow-hidden border-border/70 bg-[linear-gradient(180deg,oklch(0.22_0.018_280/0.94),oklch(0.17_0.017_280/0.98))] py-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_50px_-32px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5">
-      <div className={`absolute inset-y-0 left-0 w-1.5 ${styles.edge}`} />
-      <div className={`pointer-events-none absolute -left-10 top-0 size-28 rounded-full blur-3xl ${styles.glow}`} />
-      <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${styles.tint} to-transparent opacity-80`} />
-      {spark && spark.length > 1 ? (
-        <div className="pointer-events-none absolute right-4 top-3 hidden opacity-75 transition-opacity group-hover:opacity-100 sm:block">
-          <Sparkline data={spark} stroke={styles.stroke} />
-        </div>
-      ) : null}
-      <CardContent className="relative flex min-h-[176px] flex-col justify-between gap-5 px-5 py-6 pl-7 sm:px-7 sm:py-7 sm:pl-9">
-        <div className="flex items-center justify-between">
-          <p className="max-w-[13rem] text-xs font-semibold uppercase leading-5 text-muted-foreground">
-            {label}
-          </p>
-          <span
-            className={`flex size-8 items-center justify-center rounded-md ring-1 ${styles.icon} ${styles.ring}`}
-          >
-            {icon}
-          </span>
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="flex min-w-0 items-end gap-2">
-            <p className="min-w-0 truncate font-mono text-[30px] font-semibold leading-none tabular-nums text-foreground min-[380px]:text-[34px] md:text-[42px]">
-              {value}
-            </p>
-            {suffix ? (
-              <span className="pb-1.5 text-xs font-semibold uppercase text-muted-foreground">{suffix}</span>
-            ) : null}
-          </div>
-          {secondary ? (
-            <p className="font-mono text-sm font-medium tabular-nums text-muted-foreground">{secondary}</p>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Card className="group relative min-h-[120px] overflow-hidden border-border/70 bg-[linear-gradient(180deg,oklch(0.22_0.018_280/0.94),oklch(0.17_0.017_280/0.98))] py-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_50px_-32px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5">
+          <div className={`absolute inset-y-0 left-0 w-1.5 ${styles.edge}`} />
+          <div className={`pointer-events-none absolute -left-8 top-0 size-20 rounded-full blur-3xl ${styles.glow}`} />
+          <div className={`pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b ${styles.tint} to-transparent opacity-70`} />
+          {spark && spark.length > 1 ? (
+            <div className="pointer-events-none absolute right-4 top-2 hidden opacity-70 transition-opacity group-hover:opacity-100 sm:block">
+              <Sparkline data={spark} stroke={styles.stroke} w={104} h={32} />
+            </div>
           ) : null}
-        </div>
-      </CardContent>
-    </Card>
+          <CardContent className="relative flex min-h-[120px] flex-col justify-between gap-3 px-5 py-4 pl-7">
+            <div className="flex items-center justify-between">
+              <p className="max-w-[13rem] text-[11px] font-semibold uppercase leading-4 text-muted-foreground">
+                {label}
+              </p>
+              <span
+                className={`flex size-7 items-center justify-center rounded-md ring-1 ${styles.icon} ${styles.ring}`}
+              >
+                {icon}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex min-w-0 items-end gap-2">
+                <p className="min-w-0 truncate font-mono text-[28px] font-semibold leading-none tabular-nums text-foreground md:text-[32px]">
+                  {value}
+                </p>
+                {suffix ? (
+                  <span className="pb-1 text-[11px] font-semibold uppercase text-muted-foreground">{suffix}</span>
+                ) : null}
+              </div>
+              {secondary ? (
+                <p className="font-mono text-xs font-medium tabular-nums text-muted-foreground">{secondary}</p>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      </TooltipTrigger>
+      <TooltipContent side="top">{tooltip}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -718,18 +752,13 @@ function TierDistribution({
     <div className="space-y-3">
       {buckets.map((b, i) => {
         const pct = total === 0 ? 0 : (b.count / total) * 100
-        const color = TIER_COLOR[b.name] ?? '#94a3b8'
+        const color = getLevelColor(b.name)
         return (
           <div
             key={b.name}
-            className="grid grid-cols-[12px_minmax(48px,64px)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[16px_64px_1fr_56px] sm:gap-3"
+            className="grid grid-cols-[minmax(92px,120px)_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3"
           >
-            <span
-              className="size-2.5 rounded-full"
-              style={{ background: color }}
-              aria-hidden="true"
-            />
-            <span className="text-sm text-foreground">{b.name}</span>
+            <LevelBadge levelName={b.name} variant="dot" />
             <span className="relative h-1.5 overflow-hidden rounded-full bg-muted">
               <span
                 className="tier-bar-fill absolute inset-y-0 left-0 block rounded-full"

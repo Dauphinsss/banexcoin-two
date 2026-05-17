@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import type { AnomalyDTO, ReconciliationStats, UploadSummary } from '@banex/types'
 import { api, ApiCallError } from '../../lib/api'
+import { formatPeriodLabel } from '../../lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn } from '@/lib/utils'
+import { cn, resolveUploadId } from '@/lib/utils'
+import { EmptyState } from '../shared/EmptyState'
 
 /* ── Estilos para el panel de thinking ─────────────────────────────── */
 const THINKING_STYLES = `
@@ -259,8 +261,9 @@ export function AnomalyPanel({ uploadId }: AnomalyPanelProps): JSX.Element {
 
     async function load(): Promise<void> {
       try {
-        const targetUpload = uploadId
-          ? await api.getUpload(uploadId)
+        const resolvedId = resolveUploadId(uploadId)
+        const targetUpload = resolvedId
+          ? await api.getUpload(resolvedId)
           : (await api.listUploads()).find((item) => item.status === 'DONE') ?? null
 
         if (!targetUpload || targetUpload.status !== 'DONE') {
@@ -368,11 +371,10 @@ export function AnomalyPanel({ uploadId }: AnomalyPanelProps): JSX.Element {
   }
   if (status === 'empty') {
     return (
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          Procesa un Excel para ver anomalías.
-        </CardContent>
-      </Card>
+      <EmptyState
+        title="Aún no hay conciliación que revisar"
+        description="Procesa el Excel mensual y aquí verás las anomalías detectadas entre los pagos QR y el extracto bancario, con explicación por IA."
+      />
     )
   }
   if (status === 'error') {
@@ -397,7 +399,7 @@ export function AnomalyPanel({ uploadId }: AnomalyPanelProps): JSX.Element {
             <h2 className="text-base font-semibold">{upload?.filename}</h2>
             {upload?.period ? (
               <Badge variant="secondary" className="mt-1">
-                {upload.period}
+                {formatPeriodLabel(upload.period)}
               </Badge>
             ) : null}
           </div>
@@ -481,7 +483,14 @@ export function AnomalyPanel({ uploadId }: AnomalyPanelProps): JSX.Element {
         </Alert>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="flex items-center gap-3">
+        <h3 className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Filtra por tipo de anomalía
+        </h3>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" role="group" aria-label="Filtros de anomalías">
         <FilterCard label="Total" value={totalAnomalies} active={type === 'ALL'} onClick={() => setType('ALL')} accent="primary" />
         <FilterCard label="Sin extracto" value={stats?.noExtract ?? 0} active={type === 'NO_EXTRACT'} onClick={() => setType('NO_EXTRACT')} accent="red" />
         <FilterCard label="Sin QR" value={stats?.noQr ?? 0} active={type === 'NO_QR'} onClick={() => setType('NO_QR')} accent="amber" />
@@ -692,12 +701,14 @@ function FilterCard({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
+      title={`Filtrar: ${label}`}
       className={cn(
         'group relative overflow-hidden rounded-lg border bg-card/40 p-4 text-left transition-[border-color,background-color,box-shadow]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         active
-          ? `${styles.activeBorder} ${styles.activeBg} shadow-md`
-          : 'border-border hover:border-border/70 hover:bg-accent/40',
+          ? `${styles.activeBorder} ${styles.activeBg} shadow-md ring-1 ${styles.activeBorder}`
+          : 'border-border hover:-translate-y-0.5 hover:border-border/70 hover:bg-accent/40 hover:shadow-sm',
       )}
     >
       <div
@@ -707,7 +718,21 @@ function FilterCard({
           active ? 'opacity-100' : 'opacity-0 group-hover:opacity-60',
         )}
       />
-      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {label}
+        </p>
+        {/* Indicador radio: deja claro que es un filtro seleccionable */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'mt-0.5 grid size-3.5 shrink-0 place-items-center rounded-full border transition-colors',
+            active ? `${styles.activeBorder} ${styles.activeBg}` : 'border-border',
+          )}
+        >
+          {active ? <span className={cn('size-1.5 rounded-full', styles.bar)} /> : null}
+        </span>
+      </div>
       <p
         className={cn(
           'mt-2 font-mono text-2xl font-semibold tabular-nums',

@@ -3,6 +3,7 @@ import {
   ArrowRight,
   BarChart3,
   Download,
+  Info,
   Loader2,
   Scale,
   Send,
@@ -10,9 +11,11 @@ import {
 } from 'lucide-react'
 import type { UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
+import { formatPeriodLabel } from '../../lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn, resolveUploadId } from '@/lib/utils'
 
 interface DownloadsPanelProps {
   uploadId?: string
@@ -26,8 +29,9 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
     let cancelled = false
     const load = async (): Promise<void> => {
       try {
-        if (uploadId) {
-          const u = await api.getUpload(uploadId)
+        const resolvedId = resolveUploadId(uploadId)
+        if (resolvedId) {
+          const u = await api.getUpload(resolvedId)
           if (!cancelled) {
             setUpload(u)
             setStatus(u.status === 'DONE' ? 'ready' : 'empty')
@@ -51,7 +55,7 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
   }, [uploadId])
 
   if (status === 'loading') {
-    return <Skeleton className="h-44 w-full" />
+    return <Skeleton className="h-24 w-full" />
   }
 
   if (status === 'error' || !upload) {
@@ -60,8 +64,8 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
 
   if (status === 'empty') {
     return (
-        <Card className="border-dashed">
-        <CardContent className="py-6 text-center text-sm text-muted-foreground">
+      <Card className="border-dashed">
+        <CardContent className="py-4 text-center text-sm text-muted-foreground">
           Las descargas estarán disponibles cuando el archivo termine de procesarse.
         </CardContent>
       </Card>
@@ -69,23 +73,23 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary/15 text-primary ring-1 ring-primary/25">
-            <Download className="size-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold">Descargas operativas</h3>
-            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+    <Card className="overflow-hidden">
+      <CardContent className="space-y-2.5 p-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Download className="size-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Descargas
+            </h3>
+            <p className="line-clamp-1 text-xs text-muted-foreground">
               Período{' '}
-              <span className="font-mono text-foreground">{upload.period ?? '—'}</span> · archivo{' '}
+              <span className="font-medium text-foreground">{formatPeriodLabel(upload.period)}</span> · archivo{' '}
               <span className="font-mono text-foreground">{upload.filename}</span>
             </p>
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-3">
           <DownloadCard
             href={api.reportUrl(upload.id)}
             title="Reporte Excel"
@@ -108,10 +112,6 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
             icon={Scale}
           />
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          Las descargas corresponden al archivo seleccionado y se generan con la información procesada.
-        </p>
       </CardContent>
     </Card>
   )
@@ -195,45 +195,63 @@ const DownloadCard = ({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => void download()}
-      disabled={state === 'loading'}
-      className={cn(
-        'group block w-full rounded-lg border p-4 text-left transition-[border-color,box-shadow,transform]',
-        styles.border,
-        styles.bg,
-        styles.hoverBorder,
-        'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20',
-        'disabled:cursor-progress disabled:opacity-80',
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <div className={cn('grid size-9 shrink-0 place-items-center rounded-md ring-1', styles.icon)}>
-          {state === 'loading' ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Icon className="size-4" />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground">{title}</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
-          <span aria-live="polite">
-            {state === 'error' ? (
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-destructive">
-                Error al descargar · reintentar
-                <ArrowRight className="size-3.5" aria-hidden="true" />
-              </p>
+    <TooltipProvider delayDuration={120}>
+      <button
+        type="button"
+        aria-label={`${title}: ${description}`}
+        onClick={() => void download()}
+        disabled={state === 'loading'}
+        className={cn(
+          'group block w-full rounded-md border px-2.5 py-2 text-left transition-[border-color,box-shadow,transform]',
+          styles.border,
+          styles.bg,
+          styles.hoverBorder,
+          'hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/15',
+          'disabled:cursor-progress disabled:opacity-80',
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <div className={cn('grid size-7 shrink-0 place-items-center rounded-md ring-1', styles.icon)}>
+            {state === 'loading' ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             ) : (
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary transition-transform group-hover:translate-x-0.5">
-                {state === 'loading' ? 'Generando…' : `Descargar ${title}`}
-                {state === 'loading' ? null : <ArrowRight className="size-3.5" aria-hidden="true" />}
-              </p>
+              <Icon className="size-4" />
             )}
-          </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <p className="min-w-0 truncate text-sm font-medium text-foreground">{title}</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/60 text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    <Info className="size-3" aria-hidden="true" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-64">
+                  {description}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <span aria-live="polite">
+              {state === 'error' ? (
+                <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-destructive">
+                  Error al descargar · reintentar
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
+                </p>
+              ) : (
+                <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary transition-transform group-hover:translate-x-0.5">
+                  {state === 'loading' ? 'Generando…' : 'Descargar'}
+                  {state === 'loading' ? null : <ArrowRight className="size-3.5" aria-hidden="true" />}
+                </p>
+              )}
+            </span>
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+    </TooltipProvider>
   )
 }
