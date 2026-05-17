@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css'
+import MobileNav from '../islands/MobileNav'
 
 interface Props {
   title: string
@@ -167,33 +168,15 @@ const currentItem = navItems.find((item) => item.id === activePage)
       {/* Main */}
       <main id="main-content" class="flex-1 min-w-0 flex flex-col overflow-y-auto overscroll-contain">
         <header class="app-header sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl md:px-8">
+          <div class="flex md:hidden">
+            <MobileNav client:load navItems={navItems} activePage={activePage} />
+          </div>
           <div class="flex-1 min-w-0">
             <p class="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{currentItem?.hint ?? 'Operación'}</p>
             <h1 class="truncate text-lg font-semibold tracking-tight md:text-xl">{title}</h1>
           </div>
-         
-        </header>
 
-        {/* Mobile nav */}
-        <nav class="mobile-nav md:hidden flex gap-2 overflow-x-auto overscroll-x-contain border-b border-border bg-background/60 px-4 py-3 backdrop-blur-xl" aria-label="Navegación móvil">
-          {navItems.map((item) => {
-            const isActive = item.id === activePage
-            return (
-              <a
-                href={item.href}
-                aria-label={item.label}
-                class:list={[
-                  'mobile-nav-link shrink-0 rounded-md border px-3 py-2 text-sm transition-colors',
-                  isActive
-                    ? 'border-primary/40 bg-primary/15 text-foreground'
-                    : 'border-border bg-card/40 text-muted-foreground hover:text-foreground',
-                ]}
-              >
-                {item.label}
-              </a>
-            )
-          })}
-        </nav>
+        </header>
 
         <section class="page-content flex-1 px-4 py-6 md:px-8 md:py-8">
           <div class="page-frame w-full min-w-0">
