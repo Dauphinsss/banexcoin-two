@@ -2,8 +2,8 @@
 FROM oven/bun:alpine AS builder
 WORKDIR /app
 
-# Instalar openssl necesario para que Prisma compile sus motores en Alpine
-RUN apk add --no-cache openssl
+# Instalar openssl y gcompat (necesario para compatibilidad de binarios de Prisma en Alpine)
+RUN apk add --no-cache openssl gcompat
 
 # Copiamos todo el monorepo (contexto = la raíz del repositorio)
 COPY . .
@@ -25,8 +25,8 @@ FROM oven/bun:alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# ¡CRUCIAL! Instalar openssl también en el entorno de ejecución final
-RUN apk add --no-cache openssl
+# Instalar las mismas librerías de compatibilidad en el entorno final
+RUN apk add --no-cache openssl gcompat
 
 # Copiamos todo desde el builder.
 # En un monorepo, es la forma más segura y rápida de asegurar
