@@ -26,6 +26,6 @@ test.describe('rebates fullstack', () => {
 
     const firstTransaction = page.locator('[role="dialog"] table tbody tr').first()
     await expect(firstTransaction).toBeVisible()
-    await expect(firstTransaction).toContainText('5.00')
+    await expect(firstTransaction).toContainText('Bs 5,00')
   })
 })
