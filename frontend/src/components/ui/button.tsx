@@ -9,10 +9,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Banexcoin signature: cream → orange → deep red gradient + white text + premium depth
-        // (layered shadows: inset top highlight, inset bottom darken, warm outer halo, violet bloom)
         default:
-          "text-white font-semibold bg-[linear-gradient(135deg,oklch(0.93_0.06_75)_0%,oklch(0.80_0.15_55)_30%,oklch(0.68_0.20_38)_65%,oklch(0.58_0.19_25)_100%)] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),inset_0_-1px_0_0_rgba(0,0,0,0.12),0_2px_8px_-2px_oklch(0.665_0.205_35/0.5),0_12px_32px_-8px_oklch(0.60_0.20_30/0.55),0_18px_50px_-12px_oklch(0.55_0.20_300/0.30)] hover:brightness-110 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.55),inset_0_-1px_0_0_rgba(0,0,0,0.15),0_3px_10px_-2px_oklch(0.665_0.205_35/0.6),0_14px_38px_-8px_oklch(0.60_0.20_30/0.65),0_22px_60px_-12px_oklch(0.55_0.20_300/0.40)]",
+          "banex-primary-button text-white font-semibold",
         destructive:
           "bg-destructive text-white shadow-sm hover:brightness-110 focus-visible:ring-destructive/40",
         // Glassy dark pill — like "Acceso Empresas"

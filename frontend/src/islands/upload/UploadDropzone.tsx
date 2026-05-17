@@ -101,7 +101,7 @@ export default function UploadDropzone(): JSX.Element {
   )
 
   if (typeof window === 'undefined') {
-    return <div className="w-full max-w-3xl mx-auto text-sm text-muted-foreground">Cargando…</div>
+    return <UploadDropzoneSkeleton />
   }
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

@@ -6,7 +6,6 @@ import { api } from '../../lib/api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
@@ -153,15 +152,7 @@ export function WhatIfSimulator(): JSX.Element {
   }
 
   if (status === 'loading') {
-    return (
-      <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
-        <Skeleton className="h-[480px] w-full" />
-        <div className="space-y-5">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-      </div>
-    )
+    return <SimulatorSkeleton />
   }
   if (status === 'empty') {
     return (

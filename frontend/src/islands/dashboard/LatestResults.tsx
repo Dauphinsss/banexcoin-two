@@ -33,6 +33,22 @@ const money = (value: string | number, fractionDigits = 2) =>
 
 const integer = (value: number) => value.toLocaleString('es-BO')
 
+const cumulativeCurve = (values: number[], maxPoints = 18) => {
+  if (values.length === 0) return [0, 0]
+
+  const sampleEvery = Math.max(1, Math.floor(values.length / maxPoints))
+  const points: number[] = []
+  let acc = 0
+
+  values.forEach((value, index) => {
+    acc += value
+    if (index % sampleEvery === 0) points.push(acc)
+  })
+
+  if (points.at(-1) !== acc) points.push(acc)
+  return points.length > 1 ? points : [0, acc]
+}
+
 interface LatestState {
   upload: UploadSummary | null
   rebates: MonthlyRebateDTO[]
@@ -112,18 +128,12 @@ export function LatestResults() {
           b.count - a.count,
       )
 
-    // Curva de reintegro USDT acumulado (usuarios ordenados por aporte desc).
     const sorted = [...state.rebates].sort(
       (a, b) => Number(b.rebateUSDT) - Number(a.rebateUSDT),
     )
-    const points: number[] = []
-    const sampleEvery = Math.max(1, Math.floor(sorted.length / 24))
-    let acc = 0
-    sorted.forEach((row, i) => {
-      acc += Number(row.rebateUSDT)
-      if (i % sampleEvery === 0) points.push(acc)
-    })
-    if (points.at(-1) !== acc) points.push(acc)
+    const transactionSorted = [...state.rebates].sort(
+      (a, b) => b.transactionCount - a.transactionCount,
+    )
 
     return {
       rebateUSDT,
@@ -131,7 +141,9 @@ export function LatestResults() {
       averageTicket: transactions === 0 ? 0 : spentBOB / transactions,
       transactions,
       buckets,
-      curve: points.length > 1 ? points : [0, rebateUSDT],
+      curve: cumulativeCurve(sorted.map((row) => Number(row.rebateUSDT)), 24),
+      userCurve: cumulativeCurve(state.rebates.map(() => 1), 18),
+      transactionCurve: cumulativeCurve(transactionSorted.map((row) => row.transactionCount), 18),
     }
   }, [state.rebates])
 
@@ -141,19 +153,7 @@ export function LatestResults() {
   const animAnom = useCounter(state.stats?.total ?? state.anomalies.length, 900)
 
   if (status === 'loading') {
-    return (
-      <div className="grid gap-4 md:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, idx) => (
-          <Card key={idx}>
-            <CardContent className="space-y-4 pt-6">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-7 w-32" />
-              <Skeleton className="h-2 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    )
+    return <LatestResultsSkeleton />
   }
 
   if (status === 'empty') {
@@ -193,13 +193,19 @@ export function LatestResults() {
   const reconciliationRate = Number(state.stats?.reconciliationRate ?? 0)
   const anomalyTotal = state.stats?.total ?? state.anomalies.length
   const parseErrors = state.upload?.parseErrorCount ?? 0
+  const anomalyCurve = [
+    0,
+    state.stats?.noQr ?? 0,
+    (state.stats?.noQr ?? 0) + (state.stats?.noExtract ?? 0),
+    anomalyTotal,
+  ]
 
   return (
     <div className="stagger space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Reintegrado"
-          value={money(animRebate, 4)}
+          value={money(animRebate, 2)}
           suffix="USDT"
           secondary={`Bs ${money(derived.rebateBOB, 0)}`}
           icon={<CircleDollarSign className="size-4" />}
@@ -207,26 +213,28 @@ export function LatestResults() {
           spark={derived.curve}
         />
         <KpiCard
-          label="Usuarios"
+          label="Usuarios beneficiados"
           value={integer(Math.round(animUsers))}
-          secondary={`${integer(derived.transactions)} transacciones`}
+          secondary={`ticket prom. Bs ${money(derived.averageTicket, 0)}`}
           icon={<Users className="size-4" />}
           accent="emerald"
+          spark={derived.userCurve}
         />
         <KpiCard
-          label="Ticket promedio"
-          value={money(animTicket)}
-          suffix="BOB"
-          secondary="por transacción"
+          label="Transacciones QR"
+          value={integer(derived.transactions)}
+          secondary={`T/C ${money(animTicket)}`}
           icon={<FileSpreadsheet className="size-4" />}
           accent="violet"
+          spark={derived.transactionCurve}
         />
         <KpiCard
-          label="Anomalías"
+          label="Anomalías abiertas"
           value={integer(Math.round(animAnom))}
           secondary={`conciliación ${reconciliationRate.toFixed(2)}%`}
           icon={<ShieldAlert className="size-4" />}
           accent={anomalyTotal > 0 ? 'amber' : 'emerald'}
+          spark={anomalyCurve}
         />
       </div>
 
@@ -346,35 +354,169 @@ export function LatestResults() {
   )
 }
 
+function LatestResultsSkeleton() {
+  return (
+    <div className="stagger space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {['bg-primary', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500'].map((accent, idx) => (
+          <Card
+            key={accent}
+            className="relative min-h-[176px] overflow-hidden border-border/70 bg-[linear-gradient(180deg,oklch(0.22_0.018_280/0.94),oklch(0.17_0.017_280/0.98))] py-0"
+          >
+            <div className={`absolute inset-y-0 left-0 w-1.5 ${accent}`} />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.04] to-transparent" />
+            <CardContent className="relative flex min-h-[176px] flex-col justify-between gap-5 px-7 py-7 pl-9">
+              <div className="flex items-start justify-between gap-5">
+                <div className="space-y-2.5">
+                  <Skeleton className="h-3 w-28 bg-white/10" />
+                  {idx === 1 ? <Skeleton className="h-3 w-20 bg-white/10" /> : null}
+                </div>
+                <Skeleton className="size-8 rounded-md bg-white/10" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-36 bg-white/10" />
+                <Skeleton className="h-4 w-28 bg-white/10" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-44" />
+              <Skeleton className="h-5 w-40" />
+            </div>
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="relative h-[220px]">
+              <div className="absolute inset-x-10 inset-y-6 flex flex-col justify-between">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <Skeleton key={idx} className="h-px w-full rounded-none opacity-60" />
+                ))}
+              </div>
+              <Skeleton className="absolute bottom-6 left-10 h-[64%] w-[88%] rounded-xl bg-primary/10" />
+              <Skeleton className="absolute bottom-[66px] left-20 h-1.5 w-[76%] rounded-full bg-primary/25" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-5 w-36" />
+            </div>
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="grid grid-cols-[16px_64px_1fr_56px] items-center gap-3">
+                <Skeleton className="size-2.5 rounded-full" />
+                <Skeleton className="h-4 w-14" />
+                <Skeleton className="h-1.5 w-full rounded-full" />
+                <Skeleton className="h-3 w-10 justify-self-end" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-56" />
+            </div>
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, idx) => (
+                <div key={idx} className="rounded-md border border-border/50 bg-muted/30 px-3 py-2.5">
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </div>
+            <Separator />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-3 w-40" />
+                <Skeleton className="h-4 w-14" />
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Skeleton className="h-9 w-32 rounded-md" />
+              <Skeleton className="h-9 w-28 rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="space-y-2">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-5 w-40" />
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5"
+              >
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-8" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
 type Accent = 'primary' | 'emerald' | 'violet' | 'amber'
 
 const ACCENT_STYLES: Record<
   Accent,
-  { bar: string; icon: string; ring: string; stroke: string }
+  { edge: string; glow: string; icon: string; ring: string; stroke: string; tint: string }
 > = {
   primary: {
-    bar: 'bg-primary',
+    edge: 'bg-primary',
+    glow: 'bg-primary/20',
     icon: 'bg-primary/15 text-primary',
     ring: 'ring-primary/25',
     stroke: 'var(--primary)',
+    tint: 'from-primary/18',
   },
   emerald: {
-    bar: 'bg-emerald-500',
+    edge: 'bg-emerald-500',
+    glow: 'bg-emerald-500/20',
     icon: 'bg-emerald-500/15 text-emerald-400',
     ring: 'ring-emerald-500/25',
     stroke: '#10b981',
+    tint: 'from-emerald-500/18',
   },
   violet: {
-    bar: 'bg-violet-500',
+    edge: 'bg-violet-500',
+    glow: 'bg-violet-500/20',
     icon: 'bg-violet-500/15 text-violet-400',
     ring: 'ring-violet-500/25',
     stroke: '#8b5cf6',
+    tint: 'from-violet-500/18',
   },
   amber: {
-    bar: 'bg-amber-500',
+    edge: 'bg-amber-500',
+    glow: 'bg-amber-500/20',
     icon: 'bg-amber-500/15 text-amber-400',
     ring: 'ring-amber-500/25',
     stroke: '#f59e0b',
+    tint: 'from-amber-500/18',
   },
 }
 
@@ -397,31 +539,39 @@ function KpiCard({
 }) {
   const styles = ACCENT_STYLES[accent]
   return (
-    <Card className="relative gap-3 overflow-hidden py-5 transition-transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5">
-      <div className={`absolute inset-x-0 top-0 h-0.5 ${styles.bar}`} />
+    <Card className="group relative min-h-[176px] overflow-hidden border-border/70 bg-[linear-gradient(180deg,oklch(0.22_0.018_280/0.94),oklch(0.17_0.017_280/0.98))] py-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_50px_-32px_rgba(0,0,0,0.9)] transition-transform hover:-translate-y-0.5">
+      <div className={`absolute inset-y-0 left-0 w-1.5 ${styles.edge}`} />
+      <div className={`pointer-events-none absolute -left-10 top-0 size-28 rounded-full blur-3xl ${styles.glow}`} />
+      <div className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${styles.tint} to-transparent opacity-80`} />
       {spark && spark.length > 1 ? (
-        <div className="pointer-events-none absolute right-3 top-4 opacity-80">
+        <div className="pointer-events-none absolute right-4 top-3 opacity-75 transition-opacity group-hover:opacity-100">
           <Sparkline data={spark} stroke={styles.stroke} />
         </div>
       ) : null}
-      <CardContent className="space-y-3 pt-6">
+      <CardContent className="relative flex min-h-[176px] flex-col justify-between gap-5 px-7 py-7 pl-9">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="max-w-[13rem] text-xs font-semibold uppercase leading-5 text-muted-foreground">
             {label}
           </p>
           <span
-            className={`flex size-7 items-center justify-center rounded-md ring-1 ${styles.icon} ${styles.ring}`}
+            className={`flex size-8 items-center justify-center rounded-md ring-1 ${styles.icon} ${styles.ring}`}
           >
             {icon}
           </span>
         </div>
-        <div className="flex items-baseline gap-1.5">
-          <p className="font-mono text-[26px] font-semibold leading-none tracking-tight tabular-nums">{value}</p>
-          {suffix ? <span className="text-xs font-medium text-muted-foreground">{suffix}</span> : null}
+        <div className="flex flex-col gap-3">
+          <div className="flex min-w-0 items-end gap-2">
+            <p className="min-w-0 truncate font-mono text-[38px] font-semibold leading-none tabular-nums text-foreground md:text-[42px]">
+              {value}
+            </p>
+            {suffix ? (
+              <span className="pb-1.5 text-xs font-semibold uppercase text-muted-foreground">{suffix}</span>
+            ) : null}
+          </div>
+          {secondary ? (
+            <p className="font-mono text-sm font-medium tabular-nums text-muted-foreground">{secondary}</p>
+          ) : null}
         </div>
-        {secondary ? (
-          <p className="font-mono text-[11px] tabular-nums text-muted-foreground">{secondary}</p>
-        ) : null}
       </CardContent>
     </Card>
   )
@@ -430,8 +580,8 @@ function KpiCard({
 function Sparkline({
   data,
   stroke,
-  w = 88,
-  h = 30,
+  w = 124,
+  h = 44,
 }: {
   data: number[]
   stroke: string
