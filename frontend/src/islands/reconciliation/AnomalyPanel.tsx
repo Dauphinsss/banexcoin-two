@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -144,16 +143,7 @@ export function AnomalyPanel(): JSX.Element {
   }
 
   if (status === 'loading') {
-    return (
-      <div className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </div>
-        <Skeleton className="h-80 w-full" />
-      </div>
-    )
+    return <AnomalyPanelSkeleton />
   }
   if (status === 'empty') {
     return (
