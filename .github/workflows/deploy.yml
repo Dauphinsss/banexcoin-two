@@ -73,7 +73,11 @@ jobs:
             -e THROTTLE_TTL_MS=60000 \
             -e THROTTLE_LIMIT=100 \
             -e FILE_STORAGE_DRIVER=s3 \
-            -e S3_BUCKET="${{ vars.S3_BUCKET }}" \
-            -e S3_REGION="${{ vars.S3_REGION || 'sa-east-1' }}" \
+            -e S3_BUCKET="${{ secrets.S3_BUCKET }}" \
+            -e S3_REGION="${{ secrets.S3_REGION || 'sa-east-1' }}" \
             --restart always \
             $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+          sleep 10
+          docker ps -a
+          docker logs nestjs_api --tail 200 || true
