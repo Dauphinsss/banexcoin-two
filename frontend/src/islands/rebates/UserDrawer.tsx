@@ -11,7 +11,6 @@ import {
   formatUSDTCompact,
 } from '../../lib/format'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -154,11 +153,7 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
                 Transacciones del período
               </h3>
               {status === 'loading' ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-8 w-full" />
-                  ))}
-                </div>
+                <TransactionsSkeleton />
               ) : status === 'error' ? (
                 <Alert variant="destructive">
                   <AlertDescription>{errorMessage}</AlertDescription>

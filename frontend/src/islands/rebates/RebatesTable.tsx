@@ -8,7 +8,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Table,
@@ -113,12 +112,7 @@ export function RebatesTable(): JSX.Element {
   }
 
   if (status === 'loading') {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    )
+    return <RebatesTableSkeleton />
   }
   if (status === 'empty') return <EmptyState />
   if (status === 'error') {
