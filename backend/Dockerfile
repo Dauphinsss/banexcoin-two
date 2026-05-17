@@ -1,5 +1,5 @@
 # --- ESTADIO DE COMPILACIÓN ---
-FROM oven/bun:alpine AS builder
+FROM oven/bun:1.3.11-alpine AS builder
 WORKDIR /app
 
 # Instalar openssl y gcompat (necesario para compatibilidad de binarios de Prisma en Alpine)
@@ -21,7 +21,7 @@ RUN bun run build:shared || true
 RUN bun run --cwd backend build
 
 # --- ESTADIO DE PRODUCCIÓN ---
-FROM oven/bun:alpine AS runner
+FROM oven/bun:1.3.11-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
