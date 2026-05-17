@@ -64,10 +64,10 @@ jobs:
           # Descargar la nueva versión de tu backend
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
           
-          # Encender el contenedor mapeando el puerto público 80 al puerto 3000 de tu NestJS
+          # MODIFICADO: Mapear el puerto interno 3000 directamente para convivir con Nginx
           docker run -d \
             --name nestjs_api \
-            -p 80:3000 \
+            -p 3000:3000 \
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             --restart always \
             $ECR_REGISTRY/$ECR_REPOSITORY:latest
