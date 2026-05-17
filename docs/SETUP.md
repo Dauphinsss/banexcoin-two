@@ -11,7 +11,7 @@ Guía corta para levantar el proyecto y probarlo rápido.
 
 ## Variables De Entorno
 
-Crear archivos de entorno desde los ejemplos:
+Crear archivos de entorno desde los ejemplos: 
 
 Windows:
 
