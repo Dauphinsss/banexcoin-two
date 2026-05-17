@@ -2,6 +2,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Manrope se carga desde Google Fonts en el <head> del AppShell. */
+
 /* ───────────────────────────────────────────────────────────
    shadcn/ui v4 tokens — Banexcoin brand
    Brand source: #171724 base, #FF5D30 / #FF8E0A accents
@@ -143,6 +145,7 @@
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
+  font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
