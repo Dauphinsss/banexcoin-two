@@ -164,7 +164,7 @@ export function LatestResults() {
             <Inbox className="size-7" />
           </div>
           <div className="space-y-2">
-            <p className="text-base font-semibold">Todavía no hay uploads procesados</p>
+            <p className="text-base font-semibold">Todavía no hay archivos procesados</p>
             <p className="mx-auto max-w-md text-sm text-muted-foreground">
               Sube el Excel mensual para activar el cálculo de reintegros, conciliación y descargas operativas.
             </p>
@@ -182,11 +182,13 @@ export function LatestResults() {
 
   if (status === 'error') {
     return (
-      <Alert variant="destructive">
-        <CircleAlert />
-        <AlertTitle>No se pudieron cargar los resultados</AlertTitle>
-        <AlertDescription>Revisa la conexión con la API o inténtalo nuevamente.</AlertDescription>
-      </Alert>
+      <div aria-live="polite">
+        <Alert variant="destructive">
+          <CircleAlert />
+          <AlertTitle>No se pudieron cargar los resultados</AlertTitle>
+          <AlertDescription>Revisa la conexión con la API o inténtalo nuevamente.</AlertDescription>
+        </Alert>
+      </div>
     )
   }
 

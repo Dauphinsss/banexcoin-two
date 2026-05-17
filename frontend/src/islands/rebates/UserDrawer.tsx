@@ -89,7 +89,7 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
     <Sheet open={rebate !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="right"
-        className="w-full overflow-y-auto p-0 sm:max-w-2xl"
+        className="w-full overflow-y-auto overscroll-contain p-0 sm:max-w-2xl"
       >
         {rebate ? (
           <>
@@ -155,9 +155,11 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
               {status === 'loading' ? (
                 <TransactionsSkeleton />
               ) : status === 'error' ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{errorMessage}</AlertDescription>
-                </Alert>
+                <div aria-live="polite">
+                  <Alert variant="destructive">
+                    <AlertDescription>{errorMessage}</AlertDescription>
+                  </Alert>
+                </div>
               ) : transactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sin transacciones para mostrar.</p>
               ) : (
@@ -176,8 +178,17 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
                       {transactions.map((tx) => (
                         <TableRow
                           key={tx.id}
-                          className="cursor-pointer"
+                          className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-inset"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Ver transacción ${tx.transactionId}`}
                           onClick={() => setSelectedTx(tx)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              setSelectedTx(tx)
+                            }
+                          }}
                         >
                           <TableCell className="font-mono text-xs text-muted-foreground">
                             {formatDateTime(tx.transactedAt).slice(0, 16)}

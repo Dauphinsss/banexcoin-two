@@ -57,10 +57,11 @@ const navItems: Array<{ id: NavId; href: string; label: string; hint: string; ic
 const currentItem = navItems.find((item) => item.id === activePage)
 ---
 
-<html lang="es" class="dark">
+<html lang="es" class="dark" style="color-scheme: dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171724" />
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/png" href="/icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -87,7 +88,13 @@ const currentItem = navItems.find((item) => item.id === activePage)
     <meta name="twitter:image" content="https://example.com/og-image.png" />
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased font-sans">
-    <div class="page-shell relative flex min-h-screen">
+    <a
+      href="#main-content"
+      class="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:text-primary-foreground focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
+      Saltar al contenido
+    </a>
+    <div class="page-shell relative flex h-screen overflow-hidden">
       {/* Decorative gradient glow */}
       <div
         aria-hidden="true"
@@ -101,12 +108,14 @@ const currentItem = navItems.find((item) => item.id === activePage)
             <img
               src="/logo.png"
               alt="Banexcoin · BanexReintegra"
+              width="140"
+              height="20"
               class="h-5 w-auto object-contain"
             />
           </a>
         </div>
 
-        <nav class="flex-1 space-y-1 p-3" aria-label="Navegación principal">
+        <nav class="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Navegación principal">
           {navItems.map((item) => {
             const isActive = item.id === activePage
             return (
@@ -139,6 +148,7 @@ const currentItem = navItems.find((item) => item.id === activePage)
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
+                    aria-hidden="true"
                     set:html={item.icon}
                   />
                 </span>
@@ -155,7 +165,7 @@ const currentItem = navItems.find((item) => item.id === activePage)
       </aside>
 
       {/* Main */}
-      <main class="flex-1 min-w-0 flex flex-col">
+      <main id="main-content" class="flex-1 min-w-0 flex flex-col overflow-y-auto overscroll-contain">
         <header class="app-header sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl md:px-8">
           <div class="flex-1 min-w-0">
             <p class="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{currentItem?.hint ?? 'Operación'}</p>
@@ -165,7 +175,7 @@ const currentItem = navItems.find((item) => item.id === activePage)
         </header>
 
         {/* Mobile nav */}
-        <nav class="mobile-nav md:hidden flex gap-2 overflow-x-auto border-b border-border bg-background/60 px-4 py-3 backdrop-blur-xl" aria-label="Navegación móvil">
+        <nav class="mobile-nav md:hidden flex gap-2 overflow-x-auto overscroll-x-contain border-b border-border bg-background/60 px-4 py-3 backdrop-blur-xl" aria-label="Navegación móvil">
           {navItems.map((item) => {
             const isActive = item.id === activePage
             return (

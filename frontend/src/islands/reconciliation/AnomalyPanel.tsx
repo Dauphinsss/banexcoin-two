@@ -234,7 +234,11 @@ const TYPE_TONE: Record<AnomalyDTO['type'], string> = {
   INVALID_RATE: 'bg-violet-500/10 text-violet-300 ring-violet-500/30',
 }
 
-export function AnomalyPanel(): JSX.Element {
+interface AnomalyPanelProps {
+  uploadId?: string
+}
+
+export function AnomalyPanel({ uploadId }: AnomalyPanelProps): JSX.Element {
   const [upload, setUpload] = useState<UploadSummary | null>(null)
   const [stats, setStats] = useState<ReconciliationStats | null>(null)
   const [anomalies, setAnomalies] = useState<AnomalyDTO[]>([])
@@ -255,19 +259,21 @@ export function AnomalyPanel(): JSX.Element {
 
     async function load(): Promise<void> {
       try {
-        const uploads = await api.listUploads()
-        const latest = uploads.find((item) => item.status === 'DONE') ?? null
-        if (!latest) {
+        const targetUpload = uploadId
+          ? await api.getUpload(uploadId)
+          : (await api.listUploads()).find((item) => item.status === 'DONE') ?? null
+
+        if (!targetUpload || targetUpload.status !== 'DONE') {
           if (!cancelled) setStatus('empty')
           return
         }
 
         const [nextStats, rows] = await Promise.all([
-          api.reconciliationStats(latest.id),
-          api.listAnomalies(latest.id),
+          api.reconciliationStats(targetUpload.id),
+          api.listAnomalies(targetUpload.id),
         ])
         if (!cancelled) {
-          setUpload(latest)
+          setUpload(targetUpload)
           setStats(nextStats)
           setAnomalies(rows)
           setStatus('ready')
@@ -281,7 +287,7 @@ export function AnomalyPanel(): JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [uploadId])
 
   useEffect(() => {
     return () => {
@@ -386,7 +392,7 @@ export function AnomalyPanel(): JSX.Element {
         <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-end md:justify-between">
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Upload conciliado
+              Archivo conciliado
             </p>
             <h2 className="text-base font-semibold">{upload?.filename}</h2>
             {upload?.period ? (
@@ -421,6 +427,7 @@ export function AnomalyPanel(): JSX.Element {
 
       {aiStatus === 'done' || aiStatus === 'error' ? (
         <Alert
+          aria-live="polite"
           className={cn(
             'relative',
             aiStatus === 'error'
@@ -430,9 +437,7 @@ export function AnomalyPanel(): JSX.Element {
         >
           <Sparkles />
           <AlertTitle>
-            {aiStatus === 'error'
-              ? 'IA no disponible'
-              : 'Análisis de anomalías'}
+            {aiStatus === 'error' ? 'IA no disponible' : 'Análisis de anomalías'}
           </AlertTitle>
           <AlertDescription className="whitespace-pre-wrap leading-relaxed">
             {aiText}
@@ -455,6 +460,7 @@ export function AnomalyPanel(): JSX.Element {
 
       {feedback ? (
         <Alert
+          aria-live="polite"
           className={cn(
             'relative',
             feedback.kind === 'error'
@@ -558,9 +564,12 @@ export function AnomalyPanel(): JSX.Element {
                         <div className="flex flex-col items-end gap-2">
                           <Input
                             autoFocus
+                            name="resolve-note"
+                            aria-label="Motivo de resolución (opcional)"
+                            autoComplete="off"
                             value={resolveNote}
                             onChange={(e) => setResolveNote(e.target.value)}
-                            placeholder="Motivo (opcional)"
+                            placeholder="Motivo (opcional)…"
                             className="h-8 w-40 text-xs sm:w-48"
                           />
                           <div className="flex gap-1">
@@ -684,7 +693,7 @@ function FilterCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'group relative overflow-hidden rounded-lg border bg-card/40 p-4 text-left transition-all',
+        'group relative overflow-hidden rounded-lg border bg-card/40 p-4 text-left transition-[border-color,background-color,box-shadow]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         active
           ? `${styles.activeBorder} ${styles.activeBg} shadow-md`
