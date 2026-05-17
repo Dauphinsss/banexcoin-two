@@ -18,8 +18,9 @@ test.describe('cobertura operativa de la web', () => {
         await test.step(`pagina ${current.path}`, async () => {
           await page.goto(current.path)
           await expect(page.getByRole('heading', { name: current.heading })).toBeVisible()
-          if ('empty' in current) {
-            await expect(page.getByText(current.empty)).toBeVisible()
+          const emptyState = current.empty
+          if (emptyState) {
+            await expect(page.getByText(emptyState)).toBeVisible()
           }
           await expect(page.getByRole('navigation', { name: /Navegación/ })).toBeVisible()
         })

@@ -808,6 +808,9 @@ async function seedTransactionsScenario(): Promise<void> {
       })
     }
     }
+  }, {
+    maxWait: 10_000,
+    timeout: 30_000,
   })
 }
 
