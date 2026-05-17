@@ -40,7 +40,7 @@ describe('AnomalyExplainerAgent', () => {
     })
   })
 
-  it('devuelve diagnóstico local útil si falta GEMINI_API_KEY', async () => {
+  it('devuelve diagnóstico local útil si falta NVIDIA_API_KEY', async () => {
     const agent = makeAgent([makeAnomaly()])
 
     const result = await agent.explain('upload-1')
@@ -52,7 +52,7 @@ describe('AnomalyExplainerAgent', () => {
     expect(result.explanation).toContain('delta promedio')
   })
 
-  it('usa diagnóstico local para muestras pequeñas aunque exista GEMINI_API_KEY', async () => {
+  it('usa diagnóstico local para muestras pequeñas aunque exista NVIDIA_API_KEY', async () => {
     const config = { get: vi.fn(() => 'fake-key') } as unknown as ConfigService
     const agent = makeAgent([makeAnomaly()], config)
 

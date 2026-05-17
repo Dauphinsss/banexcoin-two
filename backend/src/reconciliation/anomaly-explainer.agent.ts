@@ -1,11 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { OpenAI } from 'openai'
 import type { AnomalyDTO } from '@banex/types'
 import { ReconciliationService } from './reconciliation.service'
-
-type GoogleGenAIClient = InstanceType<
-  typeof import('@google/genai', { with: { 'resolution-mode': 'import' } }).GoogleGenAI
->
 
 export interface AnomalyExplanation {
   available: boolean
@@ -13,21 +10,33 @@ export interface AnomalyExplanation {
   explanation: string
 }
 
-const MODEL = 'gemini-3-flash-preview'
+const MODEL = 'meta/llama-3.1-70b-instruct'
 const MAX_TOKENS = 300
 
-const SYSTEM_PROMPT = `Eres un analista de conciliación financiera de Banexcoin Bolivia.
-Recibes un resumen agregado de anomalías detectadas al cruzar pagos QR contra el
-extracto bancario. Tu tarea es resumir el patrón observado y recomendar la
-siguiente acción operativa.
+const SYSTEM_PROMPT = `Eres un analista de conciliación financiera senior de Banexcoin Bolivia.
+Recibes un resumen agregado de anomalías detectadas al cruzar pagos QR contra el extracto bancario.
+Tu objetivo es:
+1. Identificar el patrón dominante de anomalías
+2. Cuantificar el impacto financiero
+3. Recomendar acciones operativas específicas y priorizadas
 
-Reglas:
-- Responde en español, exactamente en 2 oraciones, sin listas ni encabezados.
-- No inventes causas, horarios, lotes, bancos, procesos internos ni problemas externos.
-- Si el resumen dice que no hay fechas ni causas externas, no menciones contexto temporal.
-- Sé concreto: menciona patrones de monto solo si los datos los sugieren.
-- No inventes cifras que no estén en el resumen.
-- Cierra con una recomendación operativa breve.`
+CONTEXTO BANCARIO:
+- Las reconciliaciones requieren precisión exacta
+- Los errores de monto pueden indicar problemas de procesamiento o fraude
+- Las transacciones faltantes sugieren retrasos en asiento o movimientos externos
+- El análisis debe ser profesional, datos-driven y accionable
+
+FORMATO DE RESPUESTA:
+- Responde EXACTAMENTE en 2-3 oraciones, en español
+- Estructura: [Patrón observado + Cuantificación] → [Recomendación operativa con prioridad]
+- No inventes datos que no estén en el resumen
+- Sé concreto: solo menciona montos, fechas y procesos si están explícitamente en los datos
+- La recomendación debe ser una acción específica que el usuario pueda ejecutar inmediatamente
+
+TONO:
+- Profesional, como un analista de datos bancarios
+- Directo y sin ambigüedades
+- Evita explicaciones innecesarias`
 
 const TYPE_LABELS: Record<string, string> = {
   NO_EXTRACT: 'sin contraparte en el extracto bancario',
@@ -46,7 +55,7 @@ const TYPE_ACTIONS: Record<string, string> = {
 @Injectable()
 export class AnomalyExplainerAgent {
   private readonly logger = new Logger(AnomalyExplainerAgent.name)
-  private clientPromise: Promise<GoogleGenAIClient | null> | null = null
+  private client: OpenAI | null | undefined
 
   constructor(
     @Inject(ConfigService) private readonly config: ConfigService,
@@ -54,27 +63,33 @@ export class AnomalyExplainerAgent {
   ) {}
 
   /**
-   * @google/genai es ESM-only y el backend compila a CommonJS, por eso el
-   * cliente se carga con import() dinámico de forma perezosa y se memoiza.
+   * Inicializa el cliente de OpenAI para conectar con Nvidia Llama via NVIDIA API
+   * Se carga de forma perezosa solo cuando se necesita
    */
-  private getClient(): Promise<GoogleGenAIClient | null> {
-    if (this.clientPromise) return this.clientPromise
+  private getClient(): OpenAI | null {
+    if (this.client !== undefined) return this.client ?? null
 
-    const apiKey = this.config.get<string>('GEMINI_API_KEY')
+    const apiKey = this.config.get<string>('NVIDIA_API_KEY')
     if (!apiKey) {
-      this.clientPromise = Promise.resolve(null)
-      return this.clientPromise
+      this.client = null
+      this.logger.warn('NVIDIA_API_KEY no está configurada')
+      return null
     }
 
-    this.clientPromise = import('@google/genai')
-      .then((mod) => new mod.GoogleGenAI({ apiKey }))
-      .catch((error) => {
-        this.logger.error(
-          `No se pudo cargar @google/genai: ${error instanceof Error ? error.message : String(error)}`,
-        )
-        return null
+    try {
+      this.client = new OpenAI({
+        apiKey,
+        baseURL: 'https://integrate.api.nvidia.com/v1',
       })
-    return this.clientPromise
+      this.logger.log('Cliente de Nvidia Llama inicializado correctamente')
+      return this.client
+    } catch (error) {
+      this.logger.error(
+        `Error inicializando cliente Nvidia: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      this.client = null
+      return null
+    }
   }
 
   async explain(uploadId: string): Promise<AnomalyExplanation> {
@@ -98,8 +113,9 @@ export class AnomalyExplainerAgent {
       }
     }
 
-    const client = await this.getClient()
+    const client = this.getClient()
     if (!client) {
+      this.logger.warn('Cliente de Nvidia no está disponible, usando explicación determinística')
       return {
         available: false,
         cached: false,
@@ -108,24 +124,32 @@ export class AnomalyExplainerAgent {
     }
 
     try {
-      const response = await client.models.generateContent({
+      const response = await client.chat.completions.create({
         model: MODEL,
-        contents: summary,
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-          maxOutputTokens: MAX_TOKENS,
-        },
+        messages: [
+          {
+            role: 'system',
+            content: SYSTEM_PROMPT,
+          },
+          {
+            role: 'user',
+            content: `Analiza las siguientes anomalías de conciliación:\n\n${summary}`,
+          },
+        ],
+        max_tokens: MAX_TOKENS,
+        temperature: 0.3, // Más determinístico para análisis financiero
       })
 
-      const text = (response.text ?? '').trim()
+      const text = (response.choices[0]?.message?.content ?? '').trim()
       if (text === '') {
         throw new Error('Respuesta vacía del modelo')
       }
 
+      this.logger.debug(`Explicación de IA generada para upload ${uploadId}`)
       return { available: true, cached: false, explanation: text }
     } catch (error) {
       this.logger.error(
-        `Fallo al llamar a Gemini: ${error instanceof Error ? error.message : String(error)}`,
+        `Fallo al llamar a Nvidia Llama: ${error instanceof Error ? error.message : String(error)}`,
       )
       return {
         available: false,
