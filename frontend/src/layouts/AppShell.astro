@@ -63,6 +63,21 @@ const currentItem = navItems.find((item) => item.id === activePage)
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <title>{title} · BanexReintegra</title>
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="BanexReintegra es una plataforma de cálculo de cashback mensual, conciliación bancaria y generación de reportes para Banexcoin. Permite cargar Excel, simular políticas y descargar BanexTransfer, todo sin servidores." />
+    <meta name="keywords" content="BanexReintegra, Banexcoin, cashback, QR payments, Bolivia, fintech, conciliación bancaria, Excel, reporte financiero, reintegros, simulador what‑if, conciliación" />
+    <link rel="canonical" href={"https://banexcoin.com" + (Astro.url?.pathname ?? "")} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title + " · BanexReintegra"} />
+    <meta property="og:description" content="BanexReintegra es una plataforma de cálculo de cashback mensual, conciliación bancaria y generación de reportes para Banexcoin. Permite cargar Excel, simular políticas y descargar BanexTransfer, todo sin servidores." />
+    <meta property="og:url" content={"https://banexcoin.com" + (Astro.url?.pathname ?? "")} />
+    <meta property="og:image" content="https://example.com/og-image.png" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:site_name" content="BanexReintegra" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title + " · BanexReintegra"} />
+    <meta name="twitter:description" content="BanexReintegra es una plataforma de cálculo de cashback mensual, conciliación bancaria y generación de reportes para Banexcoin." />
+    <meta name="twitter:image" content="https://example.com/og-image.png" />
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased font-sans">
     <div class="relative flex min-h-screen">
