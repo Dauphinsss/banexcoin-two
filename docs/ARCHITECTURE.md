@@ -36,7 +36,7 @@ Actores principales:
 Sistemas externos:
 
 - PostgreSQL: persistencia principal.
-- Gemini API: explicación opcional de anomalías, solo si está configurada.
+- Cerebras API: explicación opcional de anomalías, solo si está configurada.
 - Archivos Excel de entrada: fuente operativa del proceso mensual.
 
 Límites del sistema:
@@ -77,7 +77,7 @@ Responsabilidad:
 - Parsear archivos.
 - Calcular reintegros.
 - Conciliar transacciones.
-- Explicar anomalías con Gemini cuando `GEMINI_API_KEY` está configurada.
+- Explicar anomalías con Cerebras cuando `CEREBRAS_API_KEY` está configurada.
 - Generar reportes.
 - Persistir datos transaccionalmente.
 

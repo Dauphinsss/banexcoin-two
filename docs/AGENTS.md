@@ -23,7 +23,7 @@ El sistema:
 - Detecta periodo y valida estructura.
 - Calcula reintegros por niveles.
 - Concilia pagos QR contra extractos.
-- Explica anomalías con Gemini si la integración está configurada.
+- Explica anomalías con Cerebras si la integración está configurada.
 - Persiste resultados auditables.
 - Genera reportes descargables.
 
@@ -113,6 +113,6 @@ Si solo se modifica documentación:
 - El procesamiento actual se orquesta desde `UploadsService`.
 - `UploadsService` tiene demasiadas responsabilidades y debe refactorizarse más adelante.
 - `TierAgent` y `ReconcileAgent` existen como servicios especializados.
-- `AnomalyExplainerAgent` existe como integración opcional con Gemini bajo demanda.
+- `AnomalyExplainerAgent` existe como integración opcional con Cerebras bajo demanda.
 - La persistencia dedicada y un orquestador separado quedan pendientes.
 - El frontend consume rutas implementadas desde `frontend/src/lib/api.ts`.
