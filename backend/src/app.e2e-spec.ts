@@ -357,6 +357,26 @@ describe('App e2e', () => {
       explanation: 'La explicación con IA no está disponible: falta configurar GEMINI_API_KEY.',
     })
   })
+
+  it('descarga reportes Excel desde los endpoints de uploads', async () => {
+    const endpoints = [
+      `/api/uploads/${seededUploadId}/report`,
+      `/api/uploads/${seededUploadId}/banex-transfer`,
+      `/api/uploads/${seededUploadId}/balance-sheet`,
+    ]
+
+    for (const endpoint of endpoints) {
+      const response = await request(app.getHttpServer())
+        .get(endpoint)
+        .expect(200)
+
+      expect(response.header['content-type']).toContain(
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      )
+      expect(response.header['content-disposition']).toContain('attachment; filename=')
+      expect(Number(response.header['content-length'])).toBeGreaterThan(0)
+    }
+  })
 })
 
 async function cleanupE2eData(prisma: PrismaService): Promise<void> {
