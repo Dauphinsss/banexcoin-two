@@ -18,11 +18,14 @@ const MAX_TOKENS = 300
 
 const SYSTEM_PROMPT = `Eres un analista de conciliación financiera de Banexcoin Bolivia.
 Recibes un resumen agregado de anomalías detectadas al cruzar pagos QR contra el
-extracto bancario. Tu tarea es proponer hipótesis plausibles sobre su origen.
+extracto bancario. Tu tarea es resumir el patrón observado y recomendar la
+siguiente acción operativa.
 
 Reglas:
-- Responde en español, en 2 o 3 oraciones, sin listas ni encabezados.
-- Sé concreto: menciona patrones temporales o de monto si los datos los sugieren.
+- Responde en español, exactamente en 2 oraciones, sin listas ni encabezados.
+- No inventes causas, horarios, lotes, bancos, procesos internos ni problemas externos.
+- Si el resumen dice que no hay fechas ni causas externas, no menciones contexto temporal.
+- Sé concreto: menciona patrones de monto solo si los datos los sugieren.
 - No inventes cifras que no estén en el resumen.
 - Cierra con una recomendación operativa breve.`
 
@@ -31,6 +34,13 @@ const TYPE_LABELS: Record<string, string> = {
   NO_QR: 'presentes en el extracto pero sin pago QR asociado',
   AMOUNT_MISMATCH: 'con monto distinto entre QR y extracto',
   INVALID_RATE: 'con tipo de cambio inválido',
+}
+
+const TYPE_ACTIONS: Record<string, string> = {
+  NO_EXTRACT: 'validar si esos pagos QR quedaron pendientes de asiento en el extracto antes de ejecutar reintegros.',
+  NO_QR: 'confirmar si esos movimientos del extracto corresponden a cobros, transferencias u otra operación fuera de Pago QR.',
+  AMOUNT_MISMATCH: 'revisar redondeos, reversos parciales o ajustes manuales en las transacciones con diferencia de monto.',
+  INVALID_RATE: 'corregir o excluir las filas con tipo de cambio inválido antes de recalcular reintegros.',
 }
 
 @Injectable()
@@ -70,6 +80,7 @@ export class AnomalyExplainerAgent {
   async explain(uploadId: string): Promise<AnomalyExplanation> {
     const anomalies = await this.reconciliation.list(uploadId)
     const summary = this.buildSummary(anomalies)
+    const fallback = this.buildDeterministicExplanation(anomalies)
 
     if (anomalies.length === 0) {
       return {
@@ -79,13 +90,20 @@ export class AnomalyExplainerAgent {
       }
     }
 
+    if (!this.shouldUseModel(anomalies)) {
+      return {
+        available: false,
+        cached: false,
+        explanation: fallback,
+      }
+    }
+
     const client = await this.getClient()
     if (!client) {
       return {
         available: false,
         cached: false,
-        explanation:
-          'La explicación con IA no está disponible: falta configurar GEMINI_API_KEY.',
+        explanation: fallback,
       }
     }
 
@@ -112,8 +130,7 @@ export class AnomalyExplainerAgent {
       return {
         available: false,
         cached: false,
-        explanation:
-          'No se pudo generar la explicación con IA en este momento. Intenta de nuevo más tarde.',
+        explanation: fallback,
       }
     }
   }
@@ -126,15 +143,17 @@ export class AnomalyExplainerAgent {
       byType.set(anomaly.type, list)
     }
 
+    const resolvedCount = anomalies.filter((a) => a.resolved).length
+    const pendingCount = anomalies.length - resolvedCount
     const lines: string[] = [
+      'Datos agregados de conciliación. No hay fechas ni causas externas en este resumen.',
       `Total de anomalías: ${anomalies.length}.`,
-      `Estado: ${anomalies.filter((a) => a.resolved).length} resueltas y ${
-        anomalies.filter((a) => !a.resolved).length
-      } pendientes.`,
+      `Estado: ${resolvedCount} resueltas y ${pendingCount} pendientes.`,
       'Conteo por tipo:',
     ]
     for (const [type, list] of byType) {
-      lines.push(`- ${list.length} ${TYPE_LABELS[type] ?? type}.`)
+      const percent = anomalies.length === 0 ? 0 : (list.length / anomalies.length) * 100
+      lines.push(`- ${list.length} (${percent.toFixed(1)}%) ${TYPE_LABELS[type] ?? type}.`)
     }
 
     const deltas = anomalies
@@ -151,6 +170,84 @@ export class AnomalyExplainerAgent {
       )
     }
 
+    const qrOnlyBOB = this.sumMoney(
+      anomalies.filter((a) => a.type === 'NO_EXTRACT').map((a) => a.qrAmountBOB),
+    )
+    const extractOnlyBOB = this.sumMoney(
+      anomalies.filter((a) => a.type === 'NO_QR').map((a) => a.extractAmountBOB),
+    )
+    if (qrOnlyBOB > 0) lines.push(`Monto QR sin extracto: Bs ${qrOnlyBOB.toFixed(2)}.`)
+    if (extractOnlyBOB > 0) lines.push(`Monto extracto sin QR: Bs ${extractOnlyBOB.toFixed(2)}.`)
+
+    const dominant = this.getDominantType(anomalies)
+    if (dominant) {
+      lines.push(`Tipo dominante: ${TYPE_LABELS[dominant] ?? dominant}.`)
+      lines.push(`Recomendación base: ${TYPE_ACTIONS[dominant] ?? 'revisar la muestra antes de cerrar la conciliación.'}`)
+    }
+
     return lines.join('\n')
+  }
+
+  private buildDeterministicExplanation(anomalies: AnomalyDTO[]): string {
+    if (anomalies.length === 0) {
+      return 'No se detectaron anomalías en este upload; la conciliación cuadra.'
+    }
+
+    const dominant = this.getDominantType(anomalies)
+    const label = dominant ? TYPE_LABELS[dominant] ?? dominant : 'sin patrón dominante claro'
+    const dominantCount = dominant
+      ? anomalies.filter((a) => a.type === dominant).length
+      : 0
+    const pendingCount = anomalies.filter((a) => !a.resolved).length
+    const deltas = anomalies
+      .filter((a) => a.type === 'AMOUNT_MISMATCH' && a.deltaBOB !== null)
+      .map((a) => Number(a.deltaBOB))
+      .filter(Number.isFinite)
+
+    const amountContext = deltas.length > 0
+      ? ` En diferencias de monto, el delta promedio es Bs ${
+          (deltas.reduce((sum, value) => sum + value, 0) / deltas.length).toFixed(2)
+        }, con máximo Bs ${Math.max(...deltas).toFixed(2)}.`
+      : ''
+
+    const action = dominant
+      ? TYPE_ACTIONS[dominant]
+      : 'revisar primero los casos pendientes de mayor monto y luego cerrar los resueltos.'
+
+    return `Resumen automático: hay ${anomalies.length} anomalías, ${pendingCount} pendientes; el patrón principal es ${label} (${dominantCount} casos).${amountContext} Recomendación: ${action}`
+  }
+
+  private getDominantType(anomalies: AnomalyDTO[]): string | null {
+    const counts = new Map<string, number>()
+    for (const anomaly of anomalies) {
+      counts.set(anomaly.type, (counts.get(anomaly.type) ?? 0) + 1)
+    }
+
+    let dominant: string | null = null
+    let max = 0
+    for (const [type, count] of counts) {
+      if (count > max) {
+        dominant = type
+        max = count
+      }
+    }
+    return dominant
+  }
+
+  private shouldUseModel(anomalies: AnomalyDTO[]): boolean {
+    if (anomalies.length < 3) return false
+
+    const dominant = this.getDominantType(anomalies)
+    if (!dominant) return false
+
+    const dominantCount = anomalies.filter((a) => a.type === dominant).length
+    return dominantCount >= 3
+  }
+
+  private sumMoney(values: Array<string | null>): number {
+    return values.reduce((sum, value) => {
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? sum + parsed : sum
+    }, 0)
   }
 }

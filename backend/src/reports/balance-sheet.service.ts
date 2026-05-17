@@ -3,6 +3,13 @@ import ExcelJS from 'exceljs'
 import { PrismaService } from '../prisma/prisma.service'
 import { UploadNotFoundError } from '../uploads/errors/upload.errors'
 import type { ReportFile } from './report.types'
+import {
+  applyWorkbookMeta,
+  COL_WIDTH,
+  finishTable,
+  styleTableHeader,
+  styleTotalRow,
+} from './excel-style'
 
 /**
  * F6.3 · Genera el cuadre DEBE/HABER por usuario, replicando la hoja
@@ -97,8 +104,7 @@ export class BalanceSheetService {
       .sort((a, b) => (a.username ?? a.accountNumber).localeCompare(b.username ?? b.accountNumber, 'es-BO'))
 
     const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'BanexReintegra'
-    workbook.created = new Date()
+    applyWorkbookMeta(workbook)
 
     this.addCuadreSheet(workbook, rows)
     this.addServiciosSheet(workbook, servicesFound)
@@ -135,12 +141,12 @@ export class BalanceSheetService {
     ws.columns = [
       { header: 'Cuenta', key: 'account', width: 14 },
       { header: 'Usuario', key: 'username', width: 30 },
-      { header: 'DEBE (BOB)', key: 'debe', width: 16, style: { numFmt: '#,##0.00' } },
-      { header: 'HABER (BOB)', key: 'haber', width: 16, style: { numFmt: '#,##0.00' } },
-      { header: 'Saldo (BOB)', key: 'saldo', width: 16, style: { numFmt: '#,##0.00;[Red]-#,##0.00' } },
+      { header: 'DEBE (BOB)', key: 'debe', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00' } },
+      { header: 'HABER (BOB)', key: 'haber', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00' } },
+      { header: 'Saldo (BOB)', key: 'saldo', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00;[Red]-#,##0.00' } },
       { header: 'Servicios involucrados', key: 'services', width: 28 },
     ]
-    styleHeader(ws.getRow(1))
+    styleTableHeader(ws.getRow(1))
 
     let totalDebe = 0
     let totalHaber = 0
@@ -158,6 +164,10 @@ export class BalanceSheetService {
       totalHaber += row.haberBOB
     }
 
+    finishTable(ws, ['debe', 'haber', 'saldo'], rows.length + 1, {
+      saldo: 'signed',
+    })
+
     if (rows.length > 0) {
       const totalRow = ws.addRow({
         account: '',
@@ -167,10 +177,7 @@ export class BalanceSheetService {
         saldo: totalDebe - totalHaber,
         services: '',
       })
-      totalRow.font = { bold: true }
-      totalRow.eachCell((cell) => {
-        cell.border = { top: { style: 'thin', color: { argb: 'FF1A56DB' } } }
-      })
+      styleTotalRow(totalRow)
     }
 
     ws.views = [{ state: 'frozen', ySplit: 1 }]
@@ -187,7 +194,7 @@ export class BalanceSheetService {
       { header: 'Movimiento', key: 'kind', width: 14 },
       { header: 'Procesado en este upload', key: 'found', width: 26 },
     ]
-    styleHeader(ws.getRow(1))
+    styleTableHeader(ws.getRow(1))
 
     const all: Array<[string, string, string]> = [
       ['S-001', 'PAGO QR', 'HABER'],
@@ -207,6 +214,7 @@ export class BalanceSheetService {
       })
     }
 
+    finishTable(ws)
     ws.views = [{ state: 'frozen', ySplit: 1 }]
   }
 
@@ -216,12 +224,13 @@ export class BalanceSheetService {
       { header: 'Concepto', key: 'k', width: 28 },
       { header: 'Detalle', key: 'v', width: 80 },
     ]
-    styleHeader(ws.getRow(1))
+    styleTableHeader(ws.getRow(1))
     ws.addRow({ k: 'DEBE', v: 'Importes que incrementan el saldo del usuario (cobros, depósitos, reintegros recibidos).' })
     ws.addRow({ k: 'HABER', v: 'Importes que disminuyen el saldo del usuario (pagos QR, retiros, transferencias emitidas).' })
     ws.addRow({ k: 'Saldo', v: 'Saldo del período = DEBE − HABER. Negativo indica deuda neta con Banexcoin.' })
     ws.addRow({ k: 'Cobertura', v: 'Si una hoja del Excel original no fue parseada, su servicio no aparece en este cuadre. Ver pestaña "Servicios procesados".' })
     ws.addRow({ k: 'Reintegros', v: 'Los reintegros del mes solo entran al DEBE cuando están marcados como pagados.' })
+    finishTable(ws)
   }
 }
 
@@ -244,17 +253,6 @@ const classify = (serviceCode: string, direction: string | null): Movement => {
     default:
       return 'NEUTRAL'
   }
-}
-
-const styleHeader = (row: ExcelJS.Row): void => {
-  row.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  row.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF1A56DB' },
-  }
-  row.alignment = { vertical: 'middle' }
-  row.height = 22
 }
 
 const toNumber = (value: { toString: () => string } | null | undefined): number => {

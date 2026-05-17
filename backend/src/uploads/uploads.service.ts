@@ -487,6 +487,22 @@ export class UploadsService {
         )
       }
 
+      if (parsed.collectionExtractRows.length > 0) {
+        await createManyInChunks(
+          parsed.collectionExtractRows.map((row) => ({
+            uploadId,
+            extractKind: 'COLLECTION',
+            sourceSheet: 'EXTRACTO DE COBROS',
+            sourceRowNumber: row.rowNumber,
+            transactionId: row.transactionId,
+            transactedAt: row.transactedAt,
+            amountBOB: row.amountBOB,
+            rawRow: JSON.stringify(row.raw),
+          })),
+          (data) => tx.bankExtractEntry.createMany({ data }),
+        )
+      }
+
       const persistedQrTransactions = await tx.ledgerTransaction.findMany({
         where: { uploadId, serviceCode: 'S-001' },
         select: {
@@ -659,7 +675,7 @@ export class UploadsService {
           status: 'DONE',
           rowCount: qrRows.length,
           transactionRowCount: qrRows.length,
-          extractRowCount: parsed.extractRows.length,
+          extractRowCount: parsed.extractRows.length + parsed.collectionExtractRows.length,
           parseErrorCount: parseErrors.length,
           anomalyCount: anomalies.length,
           processedAt: new Date(),

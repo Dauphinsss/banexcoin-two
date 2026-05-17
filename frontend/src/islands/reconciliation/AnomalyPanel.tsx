@@ -48,6 +48,7 @@ export function AnomalyPanel(): JSX.Element {
   const [resolveNote, setResolveNote] = useState('')
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [aiText, setAiText] = useState<string>('')
+  const [aiGenerated, setAiGenerated] = useState(false)
   const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(
     null,
   )
@@ -112,10 +113,12 @@ export function AnomalyPanel(): JSX.Element {
     if (!upload) return
     setAiStatus('loading')
     setAiText('')
+    setAiGenerated(false)
     try {
       const result = await api.explainAnomalies(upload.id)
       setAiText(result.explanation)
-      setAiStatus(result.available ? 'done' : 'error')
+      setAiGenerated(result.available)
+      setAiStatus('done')
     } catch (error) {
       const message =
         error instanceof ApiCallError
@@ -221,11 +224,20 @@ export function AnomalyPanel(): JSX.Element {
           )}
         >
           <Sparkles />
-          <AlertTitle>{aiStatus === 'error' ? 'IA no disponible' : 'Explicación generada por IA'}</AlertTitle>
+          <AlertTitle>
+            {aiStatus === 'error'
+              ? 'IA no disponible'
+              : aiGenerated
+                ? 'Explicación generada por IA'
+                : 'Resumen automático'}
+          </AlertTitle>
           <AlertDescription className="leading-relaxed">{aiText}</AlertDescription>
           <button
             type="button"
-            onClick={() => setAiStatus('idle')}
+            onClick={() => {
+              setAiStatus('idle')
+              setAiGenerated(false)
+            }}
             className="absolute right-3 top-3 text-current opacity-60 transition-opacity hover:opacity-100"
             aria-label="Cerrar"
           >

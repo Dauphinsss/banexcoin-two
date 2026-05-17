@@ -3,6 +3,15 @@ import ExcelJS from 'exceljs'
 import { PrismaService } from '../prisma/prisma.service'
 import { UploadNotFoundError } from '../uploads/errors/upload.errors'
 import type { ReportFile } from './report.types'
+import {
+  applyWorkbookMeta,
+  BRAND,
+  COL_WIDTH,
+  finishTable,
+  styleTableHeader,
+  styleTotalRow,
+} from './excel-style'
+import { buildExtractoSheet, type ExtractoEntry } from './extracto.service'
 
 /**
  * F6.1 · Genera el Excel maestro de reintegros con 4 hojas:
@@ -29,19 +38,43 @@ export class ExcelReportService {
         },
         anomalies: { orderBy: { type: 'asc' } },
         parseErrors: { orderBy: { rowNumber: 'asc' } },
+        extractEntries: {
+          orderBy: [{ transactedAt: 'asc' }, { sourceRowNumber: 'asc' }],
+          select: {
+            extractKind: true,
+            sourceRowNumber: true,
+            transactionId: true,
+            transactedAt: true,
+            amountBOB: true,
+          },
+        },
       },
     })
 
     if (!upload) throw new UploadNotFoundError(uploadId)
 
+    const pagos: ExtractoEntry[] = []
+    const cobros: ExtractoEntry[] = []
+    for (const e of upload.extractEntries) {
+      const row: ExtractoEntry = {
+        sourceRowNumber: e.sourceRowNumber,
+        transactionId: e.transactionId,
+        transactedAt: e.transactedAt,
+        amountBOB: e.amountBOB,
+      }
+      if (e.extractKind === 'COLLECTION') cobros.push(row)
+      else pagos.push(row)
+    }
+
     const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'BanexReintegra'
-    workbook.created = new Date()
+    applyWorkbookMeta(workbook)
 
     this.addRebatesSheet(workbook, upload.rebates)
     this.addSummarySheet(workbook, upload.rebates)
     this.addAnomaliesSheet(workbook, upload.anomalies)
     this.addParseErrorsSheet(workbook, upload.parseErrors)
+    buildExtractoSheet(workbook, 'Extracto de Pagos', 'PAYMENT', pagos)
+    buildExtractoSheet(workbook, 'Extracto de Cobros', 'COLLECTION', cobros)
     this.addMetadataFooter(workbook, upload)
 
     const arrayBuffer = await workbook.xlsx.writeBuffer()
@@ -82,17 +115,17 @@ export class ExcelReportService {
       { header: 'Cuenta', key: 'account', width: 12 },
       { header: 'Usuario', key: 'username', width: 28 },
       { header: 'Período', key: 'period', width: 10 },
-      { header: 'Total BOB', key: 'totalBOB', width: 14, style: { numFmt: '#,##0.00' } },
-      { header: 'Total USDT', key: 'totalUSDT', width: 14, style: { numFmt: '#,##0.00000000' } },
+      { header: 'Total BOB', key: 'totalBOB', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00' } },
+      { header: 'Total USDT', key: 'totalUSDT', width: COL_WIDTH.usdt, style: { numFmt: '#,##0.00000000' } },
       { header: 'Nivel', key: 'tier', width: 14 },
-      { header: '% Cashback', key: 'percent', width: 12, style: { numFmt: '0.00"%"' } },
-      { header: 'Reintegro BOB', key: 'rebateBOB', width: 14, style: { numFmt: '#,##0.00' } },
-      { header: 'Reintegro USDT', key: 'rebateUSDT', width: 16, style: { numFmt: '#,##0.00000000' } },
-      { header: 'T/C promedio', key: 'avgRate', width: 14, style: { numFmt: '0.00000000' } },
+      { header: '% Cashback', key: 'percent', width: COL_WIDTH.percent, style: { numFmt: '0.00"%"' } },
+      { header: 'Reintegro BOB', key: 'rebateBOB', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00' } },
+      { header: 'Reintegro USDT', key: 'rebateUSDT', width: COL_WIDTH.usdt, style: { numFmt: '#,##0.00000000' } },
+      { header: 'T/C promedio', key: 'avgRate', width: COL_WIDTH.rate, style: { numFmt: '0.00000000' } },
       { header: 'Pagado', key: 'paid', width: 10 },
       { header: 'Pagado el', key: 'paidAt', width: 20 },
     ]
-    styleHeader(ws.getRow(1))
+    styleTableHeader(ws.getRow(1))
 
     for (const rebate of rebates) {
       ws.addRow({
@@ -111,6 +144,12 @@ export class ExcelReportService {
       })
     }
 
+    finishTable(
+      ws,
+      ['totalBOB', 'totalUSDT', 'percent', 'rebateBOB', 'rebateUSDT', 'avgRate'],
+      undefined,
+      { rebateUSDT: BRAND.success, rebateBOB: BRAND.success },
+    )
     ws.views = [{ state: 'frozen', ySplit: 1 }]
     ws.autoFilter = { from: 'A1', to: `L${rebates.length + 1}` }
   }
@@ -127,13 +166,13 @@ export class ExcelReportService {
     const ws = wb.addWorksheet('Resumen por nivel')
     ws.columns = [
       { header: 'Nivel', key: 'tier', width: 16 },
-      { header: 'Usuarios', key: 'users', width: 10 },
-      { header: 'Total gastado BOB', key: 'spent', width: 18, style: { numFmt: '#,##0.00' } },
-      { header: 'Reintegro BOB', key: 'rebateBOB', width: 16, style: { numFmt: '#,##0.00' } },
-      { header: 'Reintegro USDT', key: 'rebateUSDT', width: 18, style: { numFmt: '#,##0.00000000' } },
-      { header: '% del total USDT', key: 'share', width: 16, style: { numFmt: '0.00"%"' } },
+      { header: 'Usuarios', key: 'users', width: COL_WIDTH.int },
+      { header: 'Total gastado BOB', key: 'spent', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00' } },
+      { header: 'Reintegro BOB', key: 'rebateBOB', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00' } },
+      { header: 'Reintegro USDT', key: 'rebateUSDT', width: COL_WIDTH.usdt, style: { numFmt: '#,##0.00000000' } },
+      { header: '% del total USDT', key: 'share', width: COL_WIDTH.percent, style: { numFmt: '0.00"%"' } },
     ]
-    styleHeader(ws.getRow(1))
+    styleTableHeader(ws.getRow(1))
 
     type Bucket = { users: number; spent: number; rebateBOB: number; rebateUSDT: number; level: number }
     const buckets = new Map<string, Bucket>()
@@ -169,6 +208,13 @@ export class ExcelReportService {
       })
     }
 
+    finishTable(
+      ws,
+      ['users', 'spent', 'rebateBOB', 'rebateUSDT', 'share'],
+      ordered.length + 1,
+      { rebateUSDT: BRAND.success, rebateBOB: BRAND.success },
+    )
+
     if (ordered.length > 0) {
       const totalRow = ws.addRow({
         tier: 'TOTAL',
@@ -178,10 +224,7 @@ export class ExcelReportService {
         rebateUSDT: totalUSDT,
         share: 100,
       })
-      totalRow.font = { bold: true }
-      totalRow.eachCell((cell) => {
-        cell.border = { top: { style: 'thin', color: { argb: 'FF1A56DB' } } }
-      })
+      styleTotalRow(totalRow)
     }
 
     ws.views = [{ state: 'frozen', ySplit: 1 }]
@@ -203,13 +246,13 @@ export class ExcelReportService {
     ws.columns = [
       { header: 'Tipo', key: 'type', width: 18 },
       { header: 'Transacción Id', key: 'tx', width: 22 },
-      { header: 'QR BOB', key: 'qr', width: 12, style: { numFmt: '#,##0.00' } },
-      { header: 'Extracto BOB', key: 'ex', width: 14, style: { numFmt: '#,##0.00' } },
-      { header: 'Delta BOB', key: 'delta', width: 12, style: { numFmt: '#,##0.00' } },
+      { header: 'QR BOB', key: 'qr', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00' } },
+      { header: 'Extracto BOB', key: 'ex', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00' } },
+      { header: 'Delta BOB', key: 'delta', width: COL_WIDTH.bob, style: { numFmt: '#,##0.00;[Red]-#,##0.00' } },
       { header: 'Resuelta', key: 'resolved', width: 10 },
       { header: 'Nota', key: 'note', width: 40 },
     ]
-    styleHeader(ws.getRow(1))
+    styleTableHeader(ws.getRow(1))
 
     for (const a of anomalies) {
       ws.addRow({
@@ -223,6 +266,7 @@ export class ExcelReportService {
       })
     }
 
+    finishTable(ws, ['qr', 'ex', 'delta'], undefined, { delta: 'signed' })
     ws.views = [{ state: 'frozen', ySplit: 1 }]
     if (anomalies.length > 0) {
       ws.autoFilter = { from: 'A1', to: `G${anomalies.length + 1}` }
@@ -247,7 +291,7 @@ export class ExcelReportService {
       { header: 'Mensaje', key: 'msg', width: 60 },
       { header: 'Snippet', key: 'snip', width: 60 },
     ]
-    styleHeader(ws.getRow(1))
+    styleTableHeader(ws.getRow(1))
 
     for (const e of errors) {
       ws.addRow({
@@ -259,6 +303,7 @@ export class ExcelReportService {
       })
     }
 
+    finishTable(ws, ['row'])
     ws.views = [{ state: 'frozen', ySplit: 1 }]
   }
 
@@ -277,13 +322,14 @@ export class ExcelReportService {
       { header: 'Campo', key: 'k', width: 24 },
       { header: 'Valor', key: 'v', width: 60 },
     ]
-    styleHeader(ws.getRow(1))
+    styleTableHeader(ws.getRow(1))
     ws.addRow({ k: 'Upload ID', v: upload.id })
     ws.addRow({ k: 'Archivo original', v: upload.originalName })
     ws.addRow({ k: 'Hash SHA-256', v: upload.fileHash })
     ws.addRow({ k: 'Período', v: upload.period ?? '—' })
     ws.addRow({ k: 'Procesado el', v: upload.createdAt.toISOString() })
     ws.addRow({ k: 'Reporte generado', v: new Date().toISOString() })
+    finishTable(ws)
   }
 }
 
@@ -292,17 +338,6 @@ const ANOMALY_LABELS: Record<string, string> = {
   NO_QR: 'Sin QR',
   AMOUNT_MISMATCH: 'Monto distinto',
   INVALID_RATE: 'T/C inválido',
-}
-
-const styleHeader = (row: ExcelJS.Row): void => {
-  row.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  row.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF1A56DB' },
-  }
-  row.alignment = { vertical: 'middle' }
-  row.height = 22
 }
 
 const toNumber = (value: { toString: () => string } | null | undefined): number => {
