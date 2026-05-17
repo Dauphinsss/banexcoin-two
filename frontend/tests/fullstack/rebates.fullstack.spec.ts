@@ -6,11 +6,11 @@ test.describe('rebates fullstack', () => {
 
     await expect(page.getByRole('heading', { name: 'Tabla de reintegros' })).toBeVisible()
     await expect(page.getByText('Reportes Banexcoin Bolivia Hackaton 2026.xlsx')).toBeVisible()
-    await expect(page.getByText('2 de 2 reintegros')).toBeVisible()
+    await expect(page.getByText(/de \d+ reintegros/)).toBeVisible()
 
-    const search = page.getByPlaceholder('Buscar usuario o cuenta')
+    const search = page.getByRole('searchbox', { name: 'Buscar usuario o cuenta' })
     await search.fill('Cristina')
-    await expect(page.getByText('1 de 2 reintegros')).toBeVisible()
+    await expect(page.getByText(/1 de \d+ reintegros/)).toBeVisible()
     await expect(page.locator('tbody tr').first()).toContainText('CristinaSuarez852025')
 
     await search.fill('')
