@@ -99,6 +99,8 @@
 }
 
 @theme inline {
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -167,6 +169,11 @@ body {
   /* Los glows decorativos (scale/blur/translate) no deben generar
      barras de scroll: contenemos el overflow horizontal a nivel raíz. */
   overflow-x: hidden;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .nav-item:hover .nav-hover-card,

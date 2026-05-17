@@ -3,6 +3,7 @@ import { ArrowDown, ArrowRight, ArrowUp, RotateCcw, Save } from 'lucide-react'
 import { calculateRebates, type RebateResult } from '@banex/utils'
 import type { CashbackTierDTO, UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
+import { formatPeriodLabel } from '../../lib/format'
 import { LevelBadge, getLevelColor } from '../../components/LevelBadge'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -204,7 +205,7 @@ export function WhatIfSimulator(): JSX.Element {
                 Impacto simulado
               </p>
               <h2 className="mt-0.5 text-balance text-xl font-semibold leading-tight md:text-2xl">
-                {upload?.period ?? 'Último upload'}
+                {formatPeriodLabel(upload?.period)}
               </h2>
               {upload?.filename ? (
                 <p className="mt-1 line-clamp-1 font-mono text-[11px] text-muted-foreground">

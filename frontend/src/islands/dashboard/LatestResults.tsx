@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react'
 import { api } from '../../lib/api'
+import { formatPeriodLabel } from '../../lib/format'
 import { useCounter } from '../../lib/use-counter'
 import { EmptyState } from '../shared/EmptyState'
 import { LevelBadge, getLevelColor } from '../../components/LevelBadge'
@@ -286,7 +287,7 @@ export function LatestResults() {
                     <p className="text-sm text-muted-foreground line-clamp-1">{state.upload?.filename}</p>
                   </div>
                   <Badge variant="secondary" className="shrink-0">
-                    {state.upload?.period ?? 'Sin periodo'}
+                    {formatPeriodLabel(state.upload?.period)}
                   </Badge>
                 </CardHeader>
                 <CardContent className="space-y-4">

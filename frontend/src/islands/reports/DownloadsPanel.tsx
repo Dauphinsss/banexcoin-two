@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import type { UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
+import { formatPeriodLabel } from '../../lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -82,7 +83,7 @@ export const DownloadsPanel = ({ uploadId }: DownloadsPanelProps): JSX.Element |
             </h3>
             <p className="line-clamp-1 text-xs text-muted-foreground">
               Período{' '}
-              <span className="font-mono text-foreground">{upload.period ?? '—'}</span> · archivo{' '}
+              <span className="font-medium text-foreground">{formatPeriodLabel(upload.period)}</span> · archivo{' '}
               <span className="font-mono text-foreground">{upload.filename}</span>
             </p>
           </div>

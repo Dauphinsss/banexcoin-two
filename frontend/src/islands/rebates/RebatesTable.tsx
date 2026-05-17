@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type JSX } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, ChevronRight, Clock3, Download, Filter, Search, X } from 'lucide-react'
 import type { MonthlyRebateDTO, UploadSummary } from '@banex/types'
 import { api } from '../../lib/api'
-import { formatBOB, formatPercent, formatRate, formatUSDT } from '../../lib/format'
+import { formatBOB, formatPercent, formatPeriodLabel, formatRate, formatUSDT } from '../../lib/format'
 import { UserDrawer } from './UserDrawer'
 import { EmptyState } from '../shared/EmptyState'
 import { LevelBadge } from '../../components/LevelBadge'
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,7 +117,7 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
 
   const totals = useMemo(() => getRebateTotals(filteredSorted), [filteredSorted])
   const selectedTotals = useMemo(() => getRebateTotals(selectedRows), [selectedRows])
-  const allVisibleSelected =
+const allVisibleSelected =
     filteredSorted.length > 0 && filteredSorted.every((row) => selectedIds.has(row.id))
 
   const toggleSort = (key: SortKey): void => {
@@ -200,7 +201,7 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
               <h2 className="truncate text-base font-semibold">{upload?.filename}</h2>
               <p className="font-mono text-xs text-muted-foreground">
                 {filteredSorted.length} de {rebates.length} reintegros
-                {upload?.period ? ` · período ${upload.period}` : null}
+                {upload?.period ? ` · período ${formatPeriodLabel(upload.period)}` : null}
               </p>
             </div>
             <FilterBar
@@ -217,33 +218,40 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden">
-          <Table
-            containerClassName="max-h-[560px] overflow-auto"
-            className="min-w-[1080px] table-fixed"
-          >
-            <TableHeader className="sticky top-0 z-20 border-b border-border bg-card/95 shadow-[0_10px_24px_-22px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-10 px-3">
-                  <input
-                    type="checkbox"
-                    aria-label={allVisibleSelected ? 'Quitar selección visible' : 'Seleccionar filas visibles'}
-                    checked={allVisibleSelected}
-                    onChange={toggleAllVisible}
-                    className="size-3.5 rounded border-border bg-background accent-primary"
-                  />
-                </TableHead>
-                <SortHeader className="w-[260px]" label="Usuario" sortKey="username" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                <SortHeader className="w-[132px]" label="Total BOB" sortKey="totalSpentBOB" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                <SortHeader className="w-[124px]" label="Nivel" sortKey="tierName" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                <SortHeader className="w-[72px]" label="%" sortKey="rebatePercent" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                <SortHeader className="w-[150px]" label="USDT" sortKey="rebateUSDT" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                <SortHeader className="w-[112px]" label="T/C" sortKey="avgExchangeRate" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                <SortHeader className="w-[72px]" label="Tx" sortKey="transactionCount" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                <SortHeader className="w-[124px]" label="Estado" sortKey="paidOut" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
-                <TableHead className="w-10" aria-label="Ver detalle" />
-              </TableRow>
-            </TableHeader>
+        <TooltipProvider delayDuration={140}>
+          <Card className="overflow-hidden">
+            <Table
+              containerClassName="max-h-[560px] overflow-auto"
+              className="min-w-[1080px] table-fixed"
+            >
+              <TableHeader className="sticky top-0 z-20 border-b border-border bg-card/95 shadow-[0_10px_24px_-22px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+                <TableRow className="h-8 hover:bg-transparent">
+                  <TableHead className="h-8 w-10 px-3 py-0">
+                    <HeaderHint text="Selecciona todas las filas visibles para sumar el total seleccionado.">
+                      <input
+                        type="checkbox"
+                        aria-label={allVisibleSelected ? 'Quitar selección visible' : 'Seleccionar filas visibles'}
+                        checked={allVisibleSelected}
+                        onChange={toggleAllVisible}
+                        className="block size-3.5 rounded border-border bg-background accent-primary"
+                      />
+                    </HeaderHint>
+                  </TableHead>
+                  <SortHeader className="w-[260px]" label="Usuario" tooltip="Nombre y cuenta del usuario calculado en el cierre." sortKey="username" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader className="w-[132px]" label="Total BOB" tooltip="Consumo total del usuario en bolivianos durante el período." sortKey="totalSpentBOB" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader className="w-[124px]" label="Nivel" tooltip="Nivel de cashback asignado según el consumo mensual." sortKey="tierName" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader className="w-[72px]" label="%" tooltip="Porcentaje de reintegro aplicado al usuario." sortKey="rebatePercent" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader className="w-[150px]" label="USDT" tooltip="Monto final de reintegro expresado en USDT." sortKey="rebateUSDT" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader className="w-[112px]" label="T/C" tooltip="Tipo de cambio promedio usado para convertir el reintegro." sortKey="avgExchangeRate" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader className="w-[72px]" label="Tx" tooltip="Cantidad de transacciones QR incluidas para el usuario." sortKey="transactionCount" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader className="w-[124px]" label="Estado" tooltip="Estado operativo del pago del reintegro." sortKey="paidOut" align="right" active={sortKey} dir={sortDir} onSort={toggleSort} />
+                  <TableHead className="h-8 w-10 py-0" aria-label="Ver detalle">
+                    <HeaderHint text="Abre el detalle del usuario y sus transacciones.">
+                      <span className="sr-only">Ver detalle</span>
+                    </HeaderHint>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {filteredSorted.length === 0 ? (
                 <TableRow>
@@ -331,8 +339,9 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
                 </TableCell>
               </TableRow>
             </TableFooter>
-          </Table>
-        </Card>
+            </Table>
+          </Card>
+        </TooltipProvider>
 
       </div>
 
@@ -349,6 +358,7 @@ export function RebatesTable({ uploadId }: RebatesTableProps): JSX.Element {
 
 const SortHeader = ({
   label,
+  tooltip,
   sortKey: key,
   active,
   dir,
@@ -357,6 +367,7 @@ const SortHeader = ({
   onSort,
 }: {
   label: string
+  tooltip: string
   sortKey: SortKey
   active: SortKey
   dir: SortDir
@@ -367,20 +378,40 @@ const SortHeader = ({
   const isActive = active === key
   const Arrow = !isActive ? ArrowUpDown : dir === 'asc' ? ArrowUp : ArrowDown
   return (
-    <TableHead className={cn(align === 'right' ? 'text-right' : 'text-left', className)}>
-      <button
-        type="button"
-        onClick={() => onSort(key)}
-        className={cn(
-          'inline-flex items-center gap-1 text-xs uppercase tracking-wider transition-colors hover:text-foreground',
-          isActive ? 'text-foreground' : 'text-muted-foreground',
-          align === 'right' ? 'flex-row-reverse' : '',
-        )}
-      >
-        {label}
-        <Arrow className="size-3" />
-      </button>
+    <TableHead className={cn('h-8 py-0', align === 'right' ? 'text-right' : 'text-left', className)}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => onSort(key)}
+            className={cn(
+              'inline-flex h-8 items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors hover:text-foreground',
+              isActive ? 'text-foreground' : 'text-muted-foreground',
+              align === 'right' ? 'ml-auto flex-row-reverse' : '',
+            )}
+          >
+            {label}
+            <Arrow className="size-3" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">{tooltip}</TooltipContent>
+      </Tooltip>
     </TableHead>
+  )
+}
+
+function HeaderHint({
+  text,
+  children,
+}: {
+  text: string
+  children: JSX.Element
+}): JSX.Element {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="top">{text}</TooltipContent>
+    </Tooltip>
   )
 }
 

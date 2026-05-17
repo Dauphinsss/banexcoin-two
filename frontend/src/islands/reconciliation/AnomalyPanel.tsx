@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import type { AnomalyDTO, ReconciliationStats, UploadSummary } from '@banex/types'
 import { api, ApiCallError } from '../../lib/api'
+import { formatPeriodLabel } from '../../lib/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -398,7 +399,7 @@ export function AnomalyPanel({ uploadId }: AnomalyPanelProps): JSX.Element {
             <h2 className="text-base font-semibold">{upload?.filename}</h2>
             {upload?.period ? (
               <Badge variant="secondary" className="mt-1">
-                {upload.period}
+                {formatPeriodLabel(upload.period)}
               </Badge>
             ) : null}
           </div>

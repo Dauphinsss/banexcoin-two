@@ -64,6 +64,25 @@ export const formatRate = (value: string | number | null | undefined): string =>
   return num.toFixed(4)
 }
 
+export const formatPeriodLabel = (value: string | null | undefined): string => {
+  if (!value) return '—'
+  const match = /^(\d{4})-(\d{2})$/.exec(value)
+  if (!match) return value
+
+  const year = Number.parseInt(match[1], 10)
+  const month = Number.parseInt(match[2], 10)
+  if (!Number.isInteger(year) || month < 1 || month > 12) return value
+
+  const date = new Date(Date.UTC(year, month - 1, 1))
+  const label = new Intl.DateTimeFormat('es-BO', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date)
+
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
 export const formatDateTime = (value: string | null | undefined): string => {
   if (!value) return '—'
   const date = new Date(value)

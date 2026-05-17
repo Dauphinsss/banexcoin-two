@@ -7,6 +7,7 @@ import {
   formatBOB,
   formatDateTime,
   formatPercent,
+  formatPeriodLabel,
   formatRate,
   formatUSDT,
   formatUSDTCompact,
@@ -132,7 +133,7 @@ export const UserDrawer = ({ uploadId, rebate, onClose }: UserDrawerProps): JSX.
 
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="text-muted-foreground">
-                  {rebate.transactionCount} transacciones · período {rebate.period}
+                  {rebate.transactionCount} transacciones · período {formatPeriodLabel(rebate.period)}
                 </span>
                 {rebate.paidOut ? (
                   <span className="inline-flex items-center gap-1 font-medium text-emerald-400">
